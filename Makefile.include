@@ -1,0 +1,30 @@
+INCLUDES +=
+
+CFLAGS   += -Wall
+CFLAGS   += -O2
+
+LDFLAGS  +=
+LIBS     += 
+
+all: $(TARGET)
+
+%.o: %.c
+	$(CC) $(CFLAGS) $(INCLUDES) -g -c $< -o $@ -Wno-deprecated-declarations
+
+%.o: %.cpp
+	$(CXX) $(CFLAGS) $(INCLUDES) -g -c $< -o $@ -Wno-deprecated-declarations
+
+%.o: %.cc
+	$(CXX) $(CFLAGS) $(INCLUDES) -g -c $< -o $@ -Wno-deprecated-declarations
+
+$(TARGET): $(OBJS)
+	$(CXX) -o $@ -Wl,--whole-archive $(OBJS) $(LDFLAGS) $(LIBS) -Wl,--no-whole-archive -rdynamic
+
+%.a: $(OBJS)
+	$(AR) r $@ $^
+
+clean:
+	for i in $(OBJS); do (if test -e "$$i"; then ( rm $$i ); fi ); done
+	rm -f $(TARGET) $(LIB)
+
+
