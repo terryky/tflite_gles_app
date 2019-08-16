@@ -25,46 +25,49 @@ static Window  s_xwin;
 void *
 winsys_init_native_display (void)
 {
-    Display *dpy = XOpenDisplay (NULL);
-    if (dpy == NULL)
+    Display *xdpy = XOpenDisplay (NULL);
+    if (xdpy == NULL)
     {
         fprintf (stderr, "Can't open XDisplay.\n");
     }
 
-    s_xdpy = dpy;
+    s_xdpy = xdpy;
 
-    return (void *)dpy;
+    return (void *)xdpy;
 }
 
 
 void *
 winsys_init_native_window (void *dpy, int win_w, int win_h)
 {
+    UNUSED (dpy); /* We use XDisplay instead of EGLDisplay. */
     Display *xdpy = s_xdpy;
-    Window xwindow;
 
-    unsigned long black,white;
-    black=BlackPixel(xdpy,DefaultScreen(xdpy)); //色の取得
-    white=WhitePixel(xdpy,DefaultScreen(xdpy));
-    xwindow=XCreateSimpleWindow(xdpy,RootWindow(xdpy,DefaultScreen(xdpy)),100,50,800,530,1,black,white); //ウィンドウの生成
+    unsigned long black = BlackPixel (xdpy, DefaultScreen (xdpy));
+    unsigned long white = WhitePixel (xdpy, DefaultScreen (xdpy));
 
-    XMapWindow(xdpy, xwindow);
+    Window xwin = XCreateSimpleWindow (xdpy,
+                                       RootWindow (xdpy, DefaultScreen (xdpy)),
+                                       0, 0, win_w, win_h, 
+                                       1, black, white);
+    XMapWindow (xdpy, xwin);
+    XFlush (xdpy);
     
-    s_xwin = xwindow;
+    s_xwin = xwin;
 
-    return (void *)xwindow;
+    return (void *)xwin;
 }
 
 
 int 
 winsys_swap()
 {
-  return 0;
+    return 0;
 }
 
 void *
 winsys_create_native_pixmap (int width, int height)
 {
-  return NULL;
+    return NULL;
 }
 
