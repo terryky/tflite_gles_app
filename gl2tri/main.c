@@ -90,11 +90,13 @@ int
 main(int argc, char *argv[])
 {
     int i;
+    int win_w = 960;
+    int win_h = 540;
     shader_obj_t sobj;
     UNUSED (argc);
     UNUSED (*argv);
 
-    egl_init_with_platform_window_surface (2, 0, 0, 0, 960, 540);
+    egl_init_with_platform_window_surface (2, 0, 0, 0, win_w, win_h);
 
     generate_shader (&sobj, s_strVS, s_strFS);
 
@@ -114,7 +116,7 @@ main(int argc, char *argv[])
 
         egl_swap();
     }
-    //capture_to_img ("out", 1920, 1080);
+    //capture_to_img ("out", win_w, win_h);
     sleep (10);
 
     return 0;
