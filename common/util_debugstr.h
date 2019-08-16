@@ -7,8 +7,8 @@
 
 
 
-void dbgstr_initialize (int w, int h);
-int  dbgstr_draw    (char *str, int x, int y);
-int  dbgstr_draw_ex (char *str, int x, int y, float scale, float *col_fg, float *col_bg);
+void init_dbgstr (int win_w, int win_h);
+int  draw_dbgstr    (char *str, int x, int y);
+int  draw_dbgstr_ex (char *str, int x, int y, float scale, float *col_fg, float *col_bg);
 
 #endif /* _UTIL_DEBUGSTR_H_ */

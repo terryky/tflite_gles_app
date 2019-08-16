@@ -98,10 +98,10 @@ setup_shader()
 
 
 void
-dbgstr_initialize (int w, int h)
+init_dbgstr (int win_w, int win_h)
 {
-    s_wndW = w;
-    s_wndH = h;
+    s_wndW = win_w;
+    s_wndH = win_h;
 
     load_debug_font_texture ();
     setup_shader();
@@ -109,7 +109,7 @@ dbgstr_initialize (int w, int h)
 
 
 int
-dbgstr_draw_ex (char *str, int x, int y, float scale, float *col_fg, float *col_bg)
+draw_dbgstr_ex (char *str, int x, int y, float scale, float *col_fg, float *col_bg)
 {
     int   i, row, column;
     float u0, u1;
@@ -190,13 +190,13 @@ dbgstr_draw_ex (char *str, int x, int y, float scale, float *col_fg, float *col_
 
 
 int
-dbgstr_draw (char *str, int x, int y)
+draw_dbgstr (char *str, int x, int y)
 {
     float col_fg[] = {1.0f, 1.0f, 1.0f, 1.0f};
     float col_bg[] = {0.0f, 0.0f, 0.0f, 0.5f};
     float scale = 1.0f;
 
-    return dbgstr_draw_ex (str, x, y, scale, col_fg, col_bg);
+    return draw_dbgstr_ex (str, x, y, scale, col_fg, col_bg);
 }
 
 
