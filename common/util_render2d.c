@@ -1,0 +1,348 @@
+/* ------------------------------------------------ *
+ * The MIT License (MIT)
+ * Copyright (c) 2019 terryky1220@gmail.com
+ * ------------------------------------------------ */
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
+#include <GLES2/gl2.h>
+#include <GLES2/gl2ext.h>
+#include "assertgl.h"
+#include "util_shader.h"
+#include "util_matrix.h"
+#include "util_render2d.h"
+
+/* ------------------------------------------------------ *
+ *  shader for FillColor
+ * ------------------------------------------------------ */
+static char vs_fill[] = "                             \n\
+                                                      \n\
+attribute    vec4    a_Vertex;                        \n\
+uniform      mat4    u_PMVMatrix;                     \n\
+void main (void)                                      \n\
+{                                                     \n\
+    gl_Position = u_PMVMatrix * a_Vertex;             \n\
+}                                                     ";
+
+static char fs_fill[] = "                             \n\
+                                                      \n\
+precision mediump float;                              \n\
+uniform      vec4    u_Color;                         \n\
+                                                      \n\
+void main (void)                                      \n\
+{                                                     \n\
+    gl_FragColor = u_Color;                           \n\
+}                                                       ";
+
+/* ------------------------------------------------------ *
+ *  shader for Texture
+ * ------------------------------------------------------ */
+static char vs_tex[] = "                              \n\
+attribute    vec4    a_Vertex;                        \n\
+attribute    vec2    a_TexCoord;                      \n\
+varying      vec2    v_TexCoord;                      \n\
+uniform      mat4    u_PMVMatrix;                     \n\
+                                                      \n\
+void main (void)                                      \n\
+{                                                     \n\
+    gl_Position = u_PMVMatrix * a_Vertex;             \n\
+    v_TexCoord  = a_TexCoord;                         \n\
+}                                                     \n";
+
+static char fs_tex[] = "                              \n\
+precision mediump float;                              \n\
+varying     vec2      v_TexCoord;                     \n\
+uniform     sampler2D u_sampler;                      \n\
+uniform     float     u_alpha;                        \n\
+                                                      \n\
+void main (void)                                      \n\
+{                                                     \n\
+    gl_FragColor = texture2D (u_sampler, v_TexCoord); \n\
+    gl_FragColor.a *= u_alpha;                        \n\
+}                                                     \n";
+
+/* ------------------------------------------------------ *
+ *  shader for External Texture
+ * ------------------------------------------------------ */
+static char fs_extex[] = "                            \n\
+#extension GL_NV_EGL_stream_consumer_external: enable \n\
+#extension GL_OES_EGL_image_external : enable         \n\
+precision mediump float;                              \n\
+varying     vec2     v_TexCoord;                      \n\
+uniform samplerExternalOES u_sampler;                 \n\
+uniform     float     u_alpha;                        \n\
+                                                      \n\
+void main (void)                                      \n\
+{                                                     \n\
+    gl_FragColor = texture2D (u_sampler, v_TexCoord); \n\
+    gl_FragColor.a *= u_alpha;                        \n\
+}                                                     \n";
+
+
+#define SHADER_NUM 3
+static char *s_shader[SHADER_NUM * 2] = 
+{
+    vs_fill,   fs_fill,
+    vs_tex,    fs_tex,
+    vs_tex,    fs_extex,
+};
+
+static shader_obj_t s_sobj[SHADER_NUM];
+static int s_loc_mtx[SHADER_NUM];
+static int s_loc_alpha[SHADER_NUM];
+static int s_loc_color[SHADER_NUM];
+
+static float varray[] =
+{   0.0, 0.0,
+    0.0, 1.0,
+    1.0, 0.0,
+    1.0, 1.0 };
+
+static float tarray[] =
+{   0.0, 0.0,
+    0.0, 1.0,
+    1.0, 0.0,
+    1.0, 1.0 };
+
+static float tarray2[] =
+{   0.0, 1.0,
+    0.0, 0.0,
+    1.0, 1.0,
+    1.0, 0.0 };
+
+
+static float s_matprj[16];
+static int
+set_projection_matrix (int w, int h)
+{
+    float mat_proj[] =
+    {
+       0.0f, 0.0f, 0.0f, 0.0f,
+       0.0f, 0.0f, 0.0f, 0.0f,
+       0.0f, 0.0f, 0.0f, 0.0f,
+      -1.0f, 1.0f, 0.0f, 1.0f};
+
+    mat_proj[0] =  2.0f / (float)w;
+    mat_proj[5] = -2.0f / (float)h;
+
+    memcpy (s_matprj, mat_proj, 16*sizeof(float));
+
+    GLASSERT ();
+    return 0;
+}
+
+
+
+int
+init_2d_renderer (int w, int h)
+{
+  int i;
+
+    for (i = 0; i < SHADER_NUM; i ++)
+    {
+        if (generate_shader (&s_sobj[i], s_shader[2*i], s_shader[2*i + 1]) < 0)
+        {
+            fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+            return -1;
+        }
+
+        s_loc_mtx[i]   = glGetUniformLocation(s_sobj[i].program, "u_PMVMatrix" );
+        s_loc_alpha[i] = glGetUniformLocation(s_sobj[i].program, "u_alpha" );
+        s_loc_color[i] = glGetUniformLocation(s_sobj[i].program, "u_Color" );
+    }
+
+    set_projection_matrix (w, h);
+
+    return 0;
+}
+
+typedef struct _texparam
+{
+    int          textype;
+    int          texid;
+    int          x, y, w, h;
+    int          upsidedown;
+    float        alpha;
+    float        *color;
+} texparam_t;
+
+
+static int
+draw_2d_texture_in (texparam_t *tparam)
+{
+    int ttype = tparam->textype;  
+    int texid = tparam->texid;
+    float x   = tparam->x;
+    float y   = tparam->y;
+    float w   = tparam->w;
+    float h   = tparam->h;
+    shader_obj_t *sobj = &s_sobj[ttype];
+    float matrix[16];
+    float *uv = tarray;
+
+    glUseProgram (sobj->program);
+    glUniform1i(sobj->loc_tex, 0);
+
+    switch (ttype)
+    {
+    case 0:
+        glUniform4fv (s_loc_color[ttype], 1, tparam->color);
+        break;
+    case 1:
+        glBindTexture (GL_TEXTURE_2D, texid);
+        uv = tparam->upsidedown ? tarray2 : tarray;
+        break;
+    case 2:
+        glBindTexture (GL_TEXTURE_EXTERNAL_OES, texid);
+        uv = tparam->upsidedown ? tarray : tarray2;
+        break;
+    default:
+        break;
+    }
+
+    if (sobj->loc_uv >= 0)
+    {
+        glEnableVertexAttribArray (sobj->loc_uv);
+        glVertexAttribPointer (sobj->loc_uv, 2, GL_FLOAT, GL_FALSE, 0, uv);
+    }
+
+    glEnable (GL_BLEND);
+    glBlendFuncSeparate (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, 
+               GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+    matrix_identity (matrix);
+    matrix_translate (matrix, x, y, 0.0f);
+    matrix_scale (matrix, w, h, 1.0f);
+    matrix_mult (matrix, s_matprj, matrix);
+
+    glUniformMatrix4fv (s_loc_mtx[ttype], 1, GL_FALSE, matrix);
+    glUniform1f (s_loc_alpha[ttype], tparam->alpha);
+
+    if (sobj->loc_vtx >= 0)
+    {
+        glEnableVertexAttribArray (sobj->loc_vtx);
+        glVertexAttribPointer (sobj->loc_vtx, 2, GL_FLOAT, GL_FALSE, 0, varray);
+    }
+
+    glDrawArrays (GL_TRIANGLE_STRIP, 0, 4);
+
+    glDisable (GL_BLEND);
+    
+    GLASSERT ();
+    return 0;
+    
+}
+
+
+int
+draw_2d_texture (int texid, int x, int y, int w, int h, int upsidedown)
+{
+    texparam_t tparam = {0};
+    tparam.x       = x;
+    tparam.y       = y;
+    tparam.w       = w;
+    tparam.h       = h;
+    tparam.texid   = texid;
+    tparam.textype = 1;
+    tparam.alpha   = 1.0f;
+    tparam.upsidedown = upsidedown;
+    draw_2d_texture_in (&tparam);
+
+    return 0;
+}
+
+
+int
+draw_2d_fillrect (int x, int y, int w, int h, float *color)
+{
+    texparam_t tparam = {0};
+    tparam.x       = x;
+    tparam.y       = y;
+    tparam.w       = w;
+    tparam.h       = h;
+    tparam.textype = 0;
+    tparam.alpha   = 1.0f;
+    tparam.color   = color;
+    draw_2d_texture_in (&tparam);
+
+    return 0;
+}
+
+
+int
+draw_2d_rect (int x, int y, int w, int h, float *color, float line_width)
+{
+    int ttype = 0;
+    shader_obj_t *sobj = &s_sobj[ttype];
+    float matrix[16];
+    
+    glUseProgram (sobj->program);
+    glUniform4fv (s_loc_color[ttype], 1, color);
+
+    glEnable (GL_BLEND);
+    glBlendFuncSeparate (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, 
+               GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+    matrix_identity (matrix);
+    matrix_mult (matrix, s_matprj, matrix);
+    glUniformMatrix4fv (s_loc_mtx[ttype], 1, GL_FALSE, matrix);
+
+    glLineWidth (line_width);
+    float x1 = x;
+    float x2 = x + w;
+    float y1 = y;
+    float y2 = y + h;
+    if (sobj->loc_vtx >= 0)
+    {
+        float vtx[] = {x1, y1,
+                       x2, y1,
+                       x2, y2,
+                       x1, y2,
+                       x1, y1};
+
+        glEnableVertexAttribArray (sobj->loc_vtx);
+        glVertexAttribPointer (sobj->loc_vtx, 2, GL_FLOAT, GL_FALSE, 0, vtx);
+        glDrawArrays (GL_LINE_STRIP, 0, 5);
+    }
+
+    glDisable (GL_BLEND);
+
+    GLASSERT ();
+    return 0;
+}
+
+
+int
+draw_2d_line (int x0, int y0, int x1, int y1, float *color, float line_width)
+{
+    int ttype = 0;  
+    shader_obj_t *sobj = &s_sobj[ttype];
+    float matrix[16];
+
+    glUseProgram (sobj->program);
+    glUniform4fv (s_loc_color[ttype], 1, color);
+
+    glEnable (GL_BLEND);
+    glBlendFuncSeparate (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, 
+               GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+    matrix_identity (matrix);
+    matrix_mult (matrix, s_matprj, matrix);
+    glUniformMatrix4fv (s_loc_mtx[ttype], 1, GL_FALSE, matrix);
+
+    glLineWidth (line_width);
+    if (sobj->loc_vtx >= 0)
+    {
+        float vtx[] = {x0, y0, x1, y1};
+
+        glEnableVertexAttribArray (sobj->loc_vtx);
+        glVertexAttribPointer (sobj->loc_vtx, 2, GL_FLOAT, GL_FALSE, 0, vtx);
+        glDrawArrays (GL_LINE_STRIP, 0, 2);
+    }
+
+    glDisable (GL_BLEND);
+
+    GLASSERT ();
+    return 0;
+}
+
