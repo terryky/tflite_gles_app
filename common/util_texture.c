@@ -120,6 +120,7 @@ load_jpg_texture (char *name, int *lpTexID, int *lpWidth, int *lpHeight)
 int
 load_png_cube_texture (char *name[], int *lpTexID)
 {
+#if defined (USE_PNG_TEXTURE)
     unsigned int  width, height;
     int           ctype, mem_size;
     unsigned char *lpBuf;
@@ -179,4 +180,8 @@ load_png_cube_texture (char *name[], int *lpTexID)
 
     GLASSERT();
     return 0;
+#else
+    fprintf (stderr, "please enable compile option: \"USE_PNG_TEXTURE\"\n");
+    return -1;
+#endif
 }
