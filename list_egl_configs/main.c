@@ -206,7 +206,12 @@ main (int argc, char *argv[])
     EGLConfig  *configs;
     int        i;
 
+#if 1
     egl_init_with_platform_window_surface (2, 0, 0, 0, 960, 540);
+#else
+    egl_init_with_pbuffer_surface (2, 0, 0, 0, 960, 540);
+#endif
+
     dpy = egl_get_display();
     if (dpy == EGL_NO_DISPLAY)
     {

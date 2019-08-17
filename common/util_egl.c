@@ -112,6 +112,86 @@ exit:
 
 
 int
+egl_init_with_pbuffer_surface (int gles_version, int depth_size, int stencil_size, int sample_num,
+                               int win_w, int win_h)
+{
+    EGLint      major, minor;
+    EGLConfig   config;
+    EGLBoolean  ret;
+
+    EGLint context_attribs[] =
+    {
+        EGL_CONTEXT_CLIENT_VERSION, 2,
+        EGL_NONE
+    };
+
+    EGLint sfc_attr[] =
+    {
+        EGL_WIDTH,  win_w,
+        EGL_HEIGHT, win_h,
+        EGL_NONE };
+
+    s_dpy = eglGetDisplay (EGL_DEFAULT_DISPLAY);
+    if (s_dpy == EGL_NO_DISPLAY)
+    {
+        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+
+    ret = eglInitialize (s_dpy, &major, &minor);
+    if (ret != EGL_TRUE)
+    {
+        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+
+    config = find_egl_config (8, 8, 8, 8, depth_size, stencil_size, sample_num, EGL_WINDOW_BIT);
+    if (ret != EGL_TRUE)
+    {
+        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+
+    s_sfc = eglCreatePbufferSurface (s_dpy, config, sfc_attr);
+    if (s_sfc == EGL_NO_SURFACE)
+    {
+        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        return( -1 );
+    }
+    EGLASSERT();
+
+    eglBindAPI (EGL_OPENGL_ES_API);
+
+    switch (gles_version)
+    {
+    case 1: context_attribs[1] = 1; break;
+    case 2: context_attribs[1] = 2; break;
+    default:
+        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+
+    s_ctx = eglCreateContext (s_dpy, config, EGL_NO_CONTEXT, context_attribs);
+    if (s_ctx== EGL_NO_CONTEXT)
+    {
+        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        return( -1 );
+    }
+    EGLASSERT();
+
+    ret = eglMakeCurrent (s_dpy, s_sfc, s_sfc, s_ctx);
+    if (ret != EGL_TRUE)
+    {
+        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+    EGLASSERT();
+
+    return 0;
+}
+
+
+int
 egl_init_with_window_surface (int gles_version, void *window, int depth_size, int stencil_size, int sample_num)
 {
     EGLint      major, minor;
