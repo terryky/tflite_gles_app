@@ -37,9 +37,21 @@ Before you build this application, you need to build the TensorFlow Lite C++ sta
 
 - 5) now you can run the application.
 ```
-> cd ~/work/gles_app/gl2detection
-> ./gl2detection food.jpg
+> cd ~/work/gles_app/gl2posenet
+> ./gl2detection pakutaso_person.jpg
 ```
 
 - for more information about TensorFlow Lite, please refer official document:
 https://www.tensorflow.org/lite/guide/build_arm64
+
+## Visualize Heatmap
+To visualize the heatmap of each keypoints, edit just one line.
+
+![heatmap](heatmap.gif "heatmap")
+```
+"main.c"
+
+#if 1
+render_posenet_heatmap (draw_x, draw_y, draw_w, draw_h, &pose_ret);
+#endif
+```
