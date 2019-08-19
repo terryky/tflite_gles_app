@@ -24,10 +24,10 @@ feed_posenet_image(int texid, int win_w, int win_h)
 {
     int x, y, w, h;
     float *buf_fp32;
-    unsigned char *buf_ui8;
-    
+    unsigned char *buf_ui8, *pui8;;
+
     buf_fp32 = (float *)get_posenet_input_buf (&w, &h);
-    buf_ui8 = (unsigned char *)malloc(w * h * 3);
+    pui8 = buf_ui8 = (unsigned char *)malloc(w * h * 3);
 
     draw_2d_texture (texid, 0, win_h - h, w, h, 1);
 
@@ -51,6 +51,7 @@ feed_posenet_image(int texid, int win_w, int win_h)
         }
     }
 
+    free (pui8);
     return;
 }
 
