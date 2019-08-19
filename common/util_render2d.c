@@ -78,13 +78,62 @@ void main (void)                                      \n\
     gl_FragColor.a *= u_alpha;                        \n\
 }                                                     \n";
 
+/* ------------------------------------------------------ *
+ *  shader for MATLAB Jet colormap
+ * ------------------------------------------------------ */
+static char fs_cmap_jet[] ="                          \n\
+precision mediump float;                              \n\
+varying     vec2      v_TexCoord;                     \n\
+uniform     sampler2D u_sampler;                      \n\
+uniform     float     u_alpha;                        \n\
+                                                      \n\
+float cmap_jet_red(float x) {                         \n\
+    if (x < 0.7) {                                    \n\
+        return 4.0 * x - 1.5;                         \n\
+    } else {                                          \n\
+        return -4.0 * x + 4.5;                        \n\
+    }                                                 \n\
+}                                                     \n\
+                                                      \n\
+float cmap_jet_green(float x) {                       \n\
+    if (x < 0.5) {                                    \n\
+        return 4.0 * x - 0.5;                         \n\
+    } else {                                          \n\
+        return -4.0 * x + 3.5;                        \n\
+    }                                                 \n\
+}                                                     \n\
+                                                      \n\
+float cmap_jet_blue(float x) {                        \n\
+    if (x < 0.3) {                                    \n\
+       return 4.0 * x + 0.5;                          \n\
+    } else {                                          \n\
+       return -4.0 * x + 2.5;                         \n\
+    }                                                 \n\
+}                                                     \n\
+                                                      \n\
+vec4 colormap_jet(float x) {                          \n\
+    float r = clamp(cmap_jet_red(x),   0.0, 1.0);     \n\
+    float g = clamp(cmap_jet_green(x), 0.0, 1.0);     \n\
+    float b = clamp(cmap_jet_blue(x),  0.0, 1.0);     \n\
+    return vec4(r, g, b, 1.0);                        \n\
+}                                                     \n\
+                                                      \n\
+void main (void)                                      \n\
+{                                                     \n\
+    vec4 src_col = texture2D (u_sampler, v_TexCoord); \n\
+    gl_FragColor = colormap_jet (src_col.r);          \n\
+    gl_FragColor.a *= u_alpha;                        \n\
+}                                                     \n";
 
-#define SHADER_NUM 3
+
+
+#define SHADER_NUM 4
 static char *s_shader[SHADER_NUM * 2] = 
 {
     vs_fill,   fs_fill,
     vs_tex,    fs_tex,
     vs_tex,    fs_extex,
+    vs_tex,    fs_cmap_jet,
 };
 
 static shader_obj_t s_sobj[SHADER_NUM];
@@ -245,6 +294,23 @@ draw_2d_texture (int texid, int x, int y, int w, int h, int upsidedown)
     tparam.texid   = texid;
     tparam.textype = 1;
     tparam.alpha   = 1.0f;
+    tparam.upsidedown = upsidedown;
+    draw_2d_texture_in (&tparam);
+
+    return 0;
+}
+
+int
+draw_2d_colormap (int texid, int x, int y, int w, int h, float alpha, int upsidedown)
+{
+    texparam_t tparam = {0};
+    tparam.x       = x;
+    tparam.y       = y;
+    tparam.w       = w;
+    tparam.h       = h;
+    tparam.texid   = texid;
+    tparam.textype = 3;
+    tparam.alpha   = alpha;
     tparam.upsidedown = upsidedown;
     draw_2d_texture_in (&tparam);
 
