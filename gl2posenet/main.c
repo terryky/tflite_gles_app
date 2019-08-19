@@ -179,6 +179,14 @@ render_posenet_heatmap (int ofstx, int ofsty, int draw_w, int draw_h, posenet_re
     draw_2d_colormap (texid, ofstx, ofsty, draw_w, draw_h, 0.8f, 0);
 
     glDeleteTextures (1, &texid);
+
+    {
+        char strKey[][32] = {"Nose", "LEye", "REye", "LEar", "REar", "LShoulder", "RShoulder",
+                             "LElbow", "RElbow", "LWrist", "RWrist", "LHip", "RHip",
+                             "LKnee", "RKnee", "LAnkle", "RAnkle"};
+        draw_dbgstr (strKey[key_id], ofstx + 5, 5);
+    }
+
 }
 
 
