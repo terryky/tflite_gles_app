@@ -27,12 +27,12 @@ feed_posenet_image(int texid, int win_w, int win_h)
     unsigned char *buf_ui8, *pui8;;
 
     buf_fp32 = (float *)get_posenet_input_buf (&w, &h);
-    pui8 = buf_ui8 = (unsigned char *)malloc(w * h * 3);
+    pui8 = buf_ui8 = (unsigned char *)malloc(w * h * 4);
 
     draw_2d_texture (texid, 0, win_h - h, w, h, 1);
 
     glPixelStorei (GL_PACK_ALIGNMENT, 1);
-    glReadPixels (0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, buf_ui8);
+    glReadPixels (0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, buf_ui8);
 
     /* convert UI8 [0, 255] ==> FP32 [-1, 1] */
     float mean = 128.0f;
@@ -44,6 +44,7 @@ feed_posenet_image(int texid, int win_w, int win_h)
             int r = *buf_ui8 ++;
             int g = *buf_ui8 ++;
             int b = *buf_ui8 ++;
+            buf_ui8 ++;          /* skip alpha */
             
             *buf_fp32 ++ = (float)(r - mean) / std;
             *buf_fp32 ++ = (float)(g - mean) / std;

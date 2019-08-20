@@ -53,8 +53,8 @@ print_tensor_info ()
     int out_size = interpreter->outputs().size();
 
     fprintf (stderr, "-----------------------------------------------------------------------------\n");
-    fprintf (stderr, "tensors size     : %ld\n", interpreter->tensors_size());
-    fprintf (stderr, "nodes   size     : %ld\n", interpreter->nodes_size());
+    fprintf (stderr, "tensors size     : %zu\n", interpreter->tensors_size());
+    fprintf (stderr, "nodes   size     : %zu\n", interpreter->nodes_size());
     fprintf (stderr, "number of inputs : %d\n", in_size);
     fprintf (stderr, "number of outputs: %d\n", out_size);
     fprintf (stderr, "input(0) name    : %s\n", interpreter->GetInputName(0));
@@ -66,7 +66,7 @@ print_tensor_info ()
     int t_size = interpreter->tensors_size();
     for (i = 0; i < t_size; i++) 
     {
-        fprintf (stderr, "Tensor[%2d] %-32s %8ld, %2d, %f, %3d\n", i, 
+        fprintf (stderr, "Tensor[%2d] %-32s %8zu, %2d, %f, %3d\n", i,
             interpreter->tensor(i)->name, 
             interpreter->tensor(i)->bytes,
             interpreter->tensor(i)->type,

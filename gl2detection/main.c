@@ -27,8 +27,30 @@ feed_detect_image(int texid, int win_w, int win_h)
 
     draw_2d_texture (texid, 0, win_h - h, w, h, 1);
 
+#if 0 /* if your platform supports glReadPixles(GL_RGB), use this code. */
     glPixelStorei (GL_PACK_ALIGNMENT, 1);
     glReadPixels (0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, buf);
+#else /* if your platform supports only glReadPixels(GL_RGBA), try this code. */
+    {
+        int x, y;
+        unsigned char *bufRGBA = (unsigned char *)malloc (w * h * 4);
+        unsigned char *pRGBA = bufRGBA;
+        unsigned char *pRGB  = (unsigned char *)buf;
+        glPixelStorei (GL_PACK_ALIGNMENT, 4);
+        glReadPixels (0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, bufRGBA);
+        for (y = 0; y < h; y ++)
+        {
+            for (x = 0; x < w; x ++)
+            {
+                *pRGB ++ = *pRGBA ++;  /* R */
+                *pRGB ++ = *pRGBA ++;  /* G */
+                *pRGB ++ = *pRGBA ++;  /* B */
+                pRGBA ++;              /* skip Alpha */
+            }
+        }
+        free (bufRGBA);
+    }
+#endif
 
     return;
 }
