@@ -12,10 +12,10 @@ all: $(TARGET)
 	$(CC) $(CFLAGS) $(INCLUDES) -g -c $< -o $@ -Wno-deprecated-declarations
 
 %.o: %.cpp
-	$(CXX) $(CFLAGS) $(INCLUDES) -g -c $< -o $@ -Wno-deprecated-declarations
+	$(CXX) $(CFLAGS) $(CXXFLAGS) $(INCLUDES) -g -c $< -o $@ -Wno-deprecated-declarations
 
 %.o: %.cc
-	$(CXX) $(CFLAGS) $(INCLUDES) -g -c $< -o $@ -Wno-deprecated-declarations
+	$(CXX) $(CFLAGS) $(CXXFLAGS) $(INCLUDES) -g -c $< -o $@ -Wno-deprecated-declarations
 
 $(TARGET): $(OBJS)
 	$(CXX) -o $@ -Wl,--whole-archive $(OBJS) $(LDFLAGS) $(LIBS) -Wl,--no-whole-archive -rdynamic
