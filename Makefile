@@ -1,3 +1,7 @@
+#
+# > make TARGET_ENV=x11
+# > make TARGET_ENV=raspi
+#
 all:
 	make -C list_egl_configs
 	make -C gl2tri

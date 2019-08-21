@@ -13,3 +13,19 @@ You can select the platform by editing [Makefile.env](Makefile.env).
 - Linux PC (XWindow/Wayland/DRM)
 - NVIDIA Jetson TX2 (XWindow/Wayland/EGLStream)
 - RaspberryPi (Dispmanx)
+
+
+### How to Build & Run
+For Linux X11:
+```
+> make TARGET_ENV=x11
+> cd gl2detection
+> ./gl2detection
+```
+
+For Raspberry Pi (native build on RaaspberryPi)
+```
+> make TARGET_ENV=raspi
+> cd gl2detection
+> ./gl2detection
+```
