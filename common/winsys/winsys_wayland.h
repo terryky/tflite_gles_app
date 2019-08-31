@@ -5,6 +5,8 @@
 #ifndef UTIL_WAYLAND_H_
 #define UTIL_WAYLAND_H_
 
+//#define USE_XKBCOMMON
+
 #define MOD_SHIFT_MASK    0x01
 #define MOD_ALT_MASK      0x02
 #define MOD_CONTROL_MASK  0x04
@@ -20,14 +22,16 @@ struct Display
 	struct wl_pointer *pointer;
 	struct wl_keyboard *keyboard;
 	struct xkb_context *xkb_context;
-	struct {
+#if defined (USE_XKBCOMMON)
+    struct {
 		struct xkb_keymap *keymap;
 		struct xkb_state *state;
 		xkb_mod_mask_t control_mask;
 		xkb_mod_mask_t alt_mask;
 		xkb_mod_mask_t shift_mask;
 	} xkb;
-	uint32_t modifiers;
+#endif
+    uint32_t modifiers;
 	uint32_t serial;
 	struct sigaction sigint;
 	struct Window *window;
@@ -47,12 +51,6 @@ struct Window {
 	struct Geometry geometry,window_size;
 };
 
-
-typedef void (*NvGlDemoCloseCB)(void);
-typedef void (*NvGlDemoResizeCB)(int w, int h);
-typedef void (*NvGlDemoKeyCB)(char key, int state);
-typedef void (*NvGlDemoPointerCB)(int x, int y);
-typedef void (*NvGlDemoButtonCB)(int button, int state);
 
 #endif
 

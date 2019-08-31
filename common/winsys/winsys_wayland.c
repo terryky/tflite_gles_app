@@ -8,7 +8,9 @@
 #include <unistd.h>
 #include <sys/mman.h>
 #include <signal.h>
+#if defined (USE_XKBCOMMON)
 #include <xkbcommon/xkbcommon.h>
+#endif
 #include "wayland-client.h"
 #include "wayland-egl.h"
 #include "winsys_wayland.h"
@@ -17,12 +19,6 @@
 
 struct Display s_display;
 struct Window  s_window;
-
-static NvGlDemoCloseCB   closeCB   = NULL;
-static NvGlDemoResizeCB  resizeCB  = NULL;
-static NvGlDemoKeyCB     keyCB     = NULL;
-static NvGlDemoPointerCB pointerCB = NULL;
-static NvGlDemoButtonCB  buttonCB  = NULL;
 
 static void
 handle_ping(void *data, struct wl_shell_surface *wlShellSurface,
@@ -51,10 +47,6 @@ handle_configure(void *data, struct wl_shell_surface *shell_surface,
 
     if (!window->fullscreen) {
         window->window_size = window->geometry;
-    }
-
-    if(resizeCB) {
-       resizeCB(width, height);
     }
 }
 
@@ -137,12 +129,6 @@ pointer_handle_motion(void *data, struct wl_pointer *pointer,
     UNUSED (data);
     UNUSED (pointer);
     UNUSED (time);
-
-    if (pointerCB) {
-        float sx = wl_fixed_to_double(sx_w);
-        float sy = wl_fixed_to_double(sy_w);
-        pointerCB(sx, sy);
-    }
 }
 
 static void
@@ -188,6 +174,7 @@ static void
 keyboard_handle_keymap(void *data, struct wl_keyboard *keyboard,
                        uint32_t format, int fd, uint32_t size)
 {
+#if defined (USE_XKBCOMMON)
     struct Display *input = data;
     struct xkb_keymap *keymap;
     struct xkb_state *state;
@@ -238,6 +225,7 @@ keyboard_handle_keymap(void *data, struct wl_keyboard *keyboard,
         1 << xkb_map_mod_get_index(input->xkb.keymap, "Mod1");
     input->xkb.shift_mask =
         1 << xkb_map_mod_get_index(input->xkb.keymap, "Shift");
+#endif
 }
 
 static void
@@ -267,6 +255,7 @@ keyboard_handle_key(void *data, struct wl_keyboard *keyboard,
                     uint32_t serial, uint32_t time, uint32_t key,
                     uint32_t state)
 {
+#if defined (USE_XKBCOMMON)
     struct Display *input = data;
     uint32_t code, num_syms;
     const xkb_keysym_t *syms;
@@ -294,6 +283,7 @@ keyboard_handle_key(void *data, struct wl_keyboard *keyboard,
             keyCB(buf[0], (state == WL_KEYBOARD_KEY_STATE_PRESSED)? 1 : 0);
         }
     }
+#endif
 }
 
 static void
@@ -302,6 +292,7 @@ keyboard_handle_modifiers(void *data, struct wl_keyboard *keyboard,
                           uint32_t mods_latched, uint32_t mods_locked,
                           uint32_t group)
 {
+#if defined (USE_XKBCOMMON)
     struct Display *input = data;
     xkb_mod_mask_t mask;
     UNUSED (keyboard);
@@ -329,6 +320,7 @@ keyboard_handle_modifiers(void *data, struct wl_keyboard *keyboard,
     if (mask & input->xkb.shift_mask) {
         input->modifiers |= MOD_SHIFT_MASK;
     }
+#endif
 }
 
 static const struct wl_keyboard_listener keyboard_listener =
@@ -416,12 +408,14 @@ winsys_init_native_display (void)
         return 0;
     }
 
+#if defined (USE_XKBCOMMON)
     s_display.xkb_context = xkb_context_new(0);
     if (s_display.xkb_context == NULL)
     {
         fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
         return 0;
     }
+#endif
 
     s_display.wlRegistry = wl_display_get_registry(s_display.wlDisplay);
     if (s_display.wlRegistry == NULL)
