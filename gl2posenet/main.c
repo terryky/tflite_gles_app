@@ -280,12 +280,13 @@ main(int argc, char *argv[])
         interval = (count > 0) ? ttime1 - ttime0 : 0;
         ttime0 = ttime1;
 
+        glClear (GL_COLOR_BUFFER_BIT);
+
         /* invoke pose estimation using TensorflowLite */
         feed_posenet_image (texid, win_w, win_h);
         invoke_posenet (&pose_ret);
 
         /* visualize the object detection results. */
-        glClear (GL_COLOR_BUFFER_BIT);
         draw_2d_texture (texid,  draw_x, draw_y, draw_w, draw_h, 0);
         render_posenet_result (draw_x, draw_y, draw_w, draw_h, &pose_ret);
 

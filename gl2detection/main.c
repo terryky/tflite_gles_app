@@ -169,12 +169,13 @@ main(int argc, char *argv[])
         interval = (count > 0) ? ttime1 - ttime0 : 0;
         ttime0 = ttime1;
 
+        glClear (GL_COLOR_BUFFER_BIT);
+
         /* invoke object detection using TensorflowLite */
         feed_detect_image (texid, win_w, win_h);
         invoke_detect (&detection);
 
         /* visualize the object detection results. */
-        glClear (GL_COLOR_BUFFER_BIT);
         draw_2d_texture (texid,  draw_x, draw_y, draw_w, draw_h, 0);
         render_detect_region (draw_x, draw_y, draw_w, draw_h, &detection);
 
