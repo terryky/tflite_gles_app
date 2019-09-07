@@ -38,7 +38,19 @@ TENSORFLOW_DIR = $(HOME)/work/tensorflow
 INCLUDES += -I$(TENSORFLOW_DIR)
 INCLUDES += -I$(TENSORFLOW_DIR)/tensorflow/lite/tools/make/downloads/flatbuffers/include
 LDFLAGS  += -L$(TENSORFLOW_DIR)/tensorflow/lite/tools/make/gen/linux_x86_64/lib/
+LDFLAGS  += -L$(TENSORFLOW_DIR)/
 LIBS     += -ltensorflow-lite -ldl
+
+LDFLAGS  += -Wl,--allow-multiple-definition
+
+
+# ---------------------
+#  for TFLite GPU GL Delegate
+# ---------------------
+
+#LDFLAGS  += -L$(TENSORFLOW_DIR)/bazel-bin/tensorflow/lite/delegates/gpu
+#LIBS     += -ltensorflowlite_gpu_gl
+#LIBS     += -lgl_delegate
 
 
 include ../Makefile.include
