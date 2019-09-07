@@ -263,6 +263,12 @@ main(int argc, char *argv[])
     init_dbgstr (win_w, win_h);
     init_tflite_posenet ();
 
+#if defined (USE_GL_DELEGATE)
+    /* we need to recover framebuffer because GPU Delegate changes the context */
+    glBindFramebuffer (GL_FRAMEBUFFER, 0);
+    glViewport (0, 0, win_w, win_h);
+#endif
+
     load_jpg_texture (input_name, &texid, &texw, &texh);
     adjust_texture (win_w, win_h, texw, texh, &draw_x, &draw_y, &draw_w, &draw_h);
 
