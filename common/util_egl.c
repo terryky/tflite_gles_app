@@ -27,7 +27,7 @@ init_ext_functions ()
 
 
 static EGLConfig
-find_egl_config (int r, int g, int b, int a, int d, int s, int ms, int sfc_type)
+find_egl_config (int r, int g, int b, int a, int d, int s, int ms, int sfc_type, int ver)
 {
     EGLint num_conf, i;
     EGLBoolean ret;
@@ -56,6 +56,17 @@ find_egl_config (int r, int g, int b, int a, int d, int s, int ms, int sfc_type)
     config_attribs[13] = ms; 
     config_attribs[15] = sfc_type; /* EGL_WINDOW_BIT/EGL_STREAM_BIT_KHR */
 
+    switch (ver)
+    {
+    case 1:
+    case 2: config_attribs[17] = EGL_OPENGL_ES2_BIT; break;
+#if defined (USE_GLES_31)
+    case 3: config_attribs[17] = EGL_OPENGL_ES3_BIT; break;
+#endif
+    default:
+        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        goto exit;
+    }
 
     ret = eglChooseConfig (s_dpy, config_attribs, NULL, 0, &num_conf);
     if (ret != EGL_TRUE || num_conf == 0)
@@ -145,7 +156,7 @@ egl_init_with_pbuffer_surface (int gles_version, int depth_size, int stencil_siz
         return -1;
     }
 
-    config = find_egl_config (8, 8, 8, 8, depth_size, stencil_size, sample_num, EGL_WINDOW_BIT);
+    config = find_egl_config (8, 8, 8, 8, depth_size, stencil_size, sample_num, EGL_WINDOW_BIT, gles_version);
     if (ret != EGL_TRUE)
     {
         fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
@@ -166,6 +177,7 @@ egl_init_with_pbuffer_surface (int gles_version, int depth_size, int stencil_siz
     {
     case 1: context_attribs[1] = 1; break;
     case 2: context_attribs[1] = 2; break;
+    case 3: context_attribs[1] = 3; break;
     default:
         fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
         return -1;
@@ -220,7 +232,7 @@ egl_init_with_window_surface (int gles_version, void *window, int depth_size, in
         return -1;
     }
 
-    config = find_egl_config (8, 8, 8, 8, depth_size, stencil_size, sample_num, EGL_WINDOW_BIT);
+    config = find_egl_config (8, 8, 8, 8, depth_size, stencil_size, sample_num, EGL_WINDOW_BIT, gles_version);
     if (ret != EGL_TRUE)
     {
         fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
@@ -241,6 +253,7 @@ egl_init_with_window_surface (int gles_version, void *window, int depth_size, in
     {
     case 1: context_attribs[1] = 1; break;
     case 2: context_attribs[1] = 2; break;
+    case 3: context_attribs[1] = 3; break;
     default: 
         fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
         return -1;
@@ -305,7 +318,7 @@ egl_init_with_platform_window_surface (int gles_version, int depth_size, int ste
 
     eglBindAPI (EGL_OPENGL_ES_API);
 
-    config = find_egl_config (8, 8, 8, 8, depth_size, stencil_size, sample_num, EGL_WINDOW_BIT);
+    config = find_egl_config (8, 8, 8, 8, depth_size, stencil_size, sample_num, EGL_WINDOW_BIT, gles_version);
     if (config == NULL)
     {
         fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
@@ -331,6 +344,7 @@ egl_init_with_platform_window_surface (int gles_version, int depth_size, int ste
     {
     case 1: context_attribs[1] = 1; break;
     case 2: context_attribs[1] = 2; break;
+    case 3: context_attribs[1] = 3; break;
     default: 
         fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
         return -1;

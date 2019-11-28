@@ -6,6 +6,10 @@
 #include <stdlib.h>
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
+#if defined (USE_GLES_31)
+#include <GLES3/gl31.h>
+#include <GLES3/gl3ext.h>
+#endif
 #include "util_shader.h"
 #include "util_egl.h"
 
@@ -213,6 +217,18 @@ generate_shader_from_file (shader_obj_t *sobj, char *dir_name, char *vs_fname, c
   return 0;
 }
 
+#if defined (USE_GLES_31)
+int
+build_compute_shader (const char *strCS)
+{
+    GLuint cs, prog;
+
+    cs = compile_shader_text (GL_COMPUTE_SHADER, strCS);
+    prog = link_shaders (cs, 0);
+
+    return prog;
+}
+#endif
 
 int
 delete_shader (shader_obj_t *sobj)
