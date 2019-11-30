@@ -20,7 +20,6 @@ int main(int argc, char *argv[])
     FILE    *fp;
     FILE    *fpdst;
     char    strReadBuf[1024];
-    char    *lpStr;
 
     if (argc < 2)
     {
@@ -42,6 +41,16 @@ int main(int argc, char *argv[])
         return -1;
     }
     
+#if 0
+    [pattern-1]
+    SUBCOMMAND: # @flatbuffers//:flatc_library [action 'Compiling external/flatbuffers/src/util.cpp [for host]']
+        ==> ignore the last "[for host]']"
+
+    [pattern-2]
+    SUBCOMMAND: # //tensorflow/lite/delegates/gpu/gl/kernels:depthwise_conv [action 'Compiling tensorflow/lite/delegates/gpu/gl/kernels/depthwise_conv.cc']
+        ==> ignore the last "']"
+#endif
+
     while ( fgets( strReadBuf, 1024, fp ) != NULL )
     {
         /* extract lines starting with "SUBCOMMAND" */
@@ -52,16 +61,29 @@ int main(int argc, char *argv[])
             if (lptmp)
             {
                 lptmp += 10; /* skip "Compiling" */
+#if 0
                 int len = strlen(lptmp);
                 lptmp[len-4] = '\0';
 
-                /* ignore the last blaket */
+                /* ignore the last bracket */
                 len = strlen(lptmp);
                 if (lptmp[len-1] == ']')
                 {
                     lptmp[len-11] = '\0';
                 }
+#else
+                /* ignore the last single-quotation mark */
+                char *p = strrchr (lptmp, '\'');
+                *p = '\0';
 
+                /* ignore the last bracket */
+                int len = strlen(lptmp);
+                if (lptmp[len-1] == ']')
+                {
+                    p = strrchr (lptmp, '[');
+                    *p = '\0';
+                }
+#endif
                 /* Emit file name for make */
                 fprintf (fpdst, "CORE_CC_ALL_SRCS += %s\n", lptmp);
             }
