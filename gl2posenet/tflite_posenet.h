@@ -5,6 +5,8 @@
 #ifndef TFLITE_DETECT_H_
 #define TFLITE_DETECT_H_
 
+#include "ssbo_tensor.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -57,7 +59,7 @@ typedef struct _posenet_result_t
 
 
 
-extern int init_tflite_posenet ();
+extern int init_tflite_posenet (ssbo_t *ssbo);
 extern void  *get_posenet_input_buf (int *w, int *h);
 
 extern int invoke_posenet (posenet_result_t *pose_result);

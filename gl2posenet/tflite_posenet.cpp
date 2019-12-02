@@ -13,6 +13,7 @@
 #endif
 #include "tflite_posenet.h"
 #include <float.h>
+#include "ssbo_tensor.h"
 
 /* 
  * https://storage.googleapis.com/download.tensorflow.org/models/tflite/posenet_mobilenet_v1_100_257x257_multi_kpt_stripped.tflite
@@ -109,7 +110,7 @@ print_tensor_info ()
 }
 
 int
-init_tflite_posenet()
+init_tflite_posenet(ssbo_t *ssbo)
 {
     model = FlatBufferModel::BuildFromFile(POSENET_MODEL_PATH);
     if (!model)
@@ -135,6 +136,34 @@ init_tflite_posenet()
         },
     };
     auto* delegate = TfLiteGpuDelegateCreate(&options);
+
+#if defined (USE_INPUT_SSBO)
+    if (ssbo)
+    {
+        int ssbo_id = ssbo->ssbo_id;
+        int tensor_index = interpreter->inputs()[0];
+
+        /* check enough space in SSBO */
+        TfLiteIntArray *dim = interpreter->tensor(tensor_index)->dims;
+        int tensor_w = dim->data[2];
+        int tensor_h = dim->data[1];
+
+        if (ssbo->width < tensor_w || ssbo->height < tensor_h)
+        {
+            fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+            return -1;
+        }
+
+        if (TfLiteGpuDelegateBindBufferToTensor(delegate, ssbo_id, tensor_index) != kTfLiteOk)
+        {
+            fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+            return -1;
+        }
+        ssbo->active_width  = tensor_w;
+        ssbo->active_height = tensor_h;
+    }
+#endif
+
     if (interpreter->ModifyGraphWithDelegate(delegate) != kTfLiteOk)
     {
         fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);

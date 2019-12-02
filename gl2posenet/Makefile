@@ -53,4 +53,13 @@ LDFLAGS  += -Wl,--allow-multiple-definition
 #LIBS     += -lgl_delegate
 
 
+
+# ---------------------
+#  for TFLite GPU GL Delegate with SSBO binding.
+# ---------------------
+#CFLAGS   += -DUSE_GLES_31
+#CFLAGS   += -DUSE_INPUT_SSBO
+#SRCS     += ssbo_tensor.c
+
+
 include ../Makefile.include

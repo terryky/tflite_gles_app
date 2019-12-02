@@ -14,14 +14,18 @@
 #include "util_texture.h"
 #include "util_render2d.h"
 #include "tflite_posenet.h"
+#include "ssbo_tensor.h"
 
 #define UNUSED(x) (void)(x)
 
 
 /* resize image to DNN network input size and convert to fp32. */
 void
-feed_posenet_image(int texid, int win_w, int win_h)
+feed_posenet_image(int texid, ssbo_t *ssbo, int win_w, int win_h)
 {
+#if defined (USE_INPUT_SSBO)
+    resize_texture_to_ssbo (texid, ssbo);
+#else
     int x, y, w, h;
     float *buf_fp32;
     unsigned char *buf_ui8, *pui8;;
@@ -53,6 +57,7 @@ feed_posenet_image(int texid, int win_w, int win_h)
     }
 
     free (pui8);
+#endif
     return;
 }
 
@@ -249,6 +254,7 @@ main(int argc, char *argv[])
     int win_h = 540;
     int texid;
     int texw, texh, draw_x, draw_y, draw_w, draw_h;
+    ssbo_t *ssbo = NULL;
     double ttime0 = 0, ttime1 = 0, interval;
     UNUSED (argc);
     UNUSED (*argv);
@@ -261,7 +267,12 @@ main(int argc, char *argv[])
     init_2d_renderer (win_w, win_h);
     init_pmeter (win_w, win_h, 500);
     init_dbgstr (win_w, win_h);
-    init_tflite_posenet ();
+
+#if defined (USE_INPUT_SSBO)
+    ssbo = init_ssbo_tensor (512, 512);
+#endif
+
+    init_tflite_posenet (ssbo);
 
 #if defined (USE_GL_DELEGATE)
     /* we need to recover framebuffer because GPU Delegate changes the context */
@@ -289,9 +300,13 @@ main(int argc, char *argv[])
         glClear (GL_COLOR_BUFFER_BIT);
 
         /* invoke pose estimation using TensorflowLite */
-        feed_posenet_image (texid, win_w, win_h);
+        feed_posenet_image (texid, ssbo, win_w, win_h);
         invoke_posenet (&pose_ret);
 
+#if defined (USE_INPUT_SSBO) /* for Debug. */
+        /* visualize the contents of SSBO for input tensor. */
+        visualize_ssbo (ssbo);
+#endif
         /* visualize the object detection results. */
         draw_2d_texture (texid,  draw_x, draw_y, draw_w, draw_h, 0);
         render_posenet_result (draw_x, draw_y, draw_w, draw_h, &pose_ret);
