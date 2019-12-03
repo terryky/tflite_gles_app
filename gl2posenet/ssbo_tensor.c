@@ -157,6 +157,39 @@ init_ssbo_tensor (int img_w, int img_h)
 }
 
 int
+dump_ssbo_to_file (char *fname, int ssbo_id, int offset, int bytes)
+{
+    void *p;
+    FILE *fp;
+
+    glBindBuffer (GL_SHADER_STORAGE_BUFFER, ssbo_id);
+
+    p = glMapBufferRange (GL_SHADER_STORAGE_BUFFER, offset, bytes, GL_MAP_READ_BIT );
+    if (p == NULL)
+    {
+        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+
+    fp = fopen (fname, "wb");
+    if (fp == NULL)
+    {
+        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+
+    fwrite (p, 1, bytes, fp);
+    fclose (fp);
+
+    glUnmapBuffer (GL_SHADER_STORAGE_BUFFER);
+    glBindBuffer (GL_SHADER_STORAGE_BUFFER, 0);
+
+    return 0;
+}
+
+
+
+int
 resize_texture_to_ssbo (int texid, ssbo_t *ssbo)
 {
     int resize_w = ssbo->active_width;
@@ -180,6 +213,17 @@ resize_texture_to_ssbo (int texid, ssbo_t *ssbo)
     glBindBuffer (GL_SHADER_STORAGE_BUFFER, 0);
     glBindTexture (GL_TEXTURE_2D, 0);
     GLASSERT();
+
+#if 0
+    {
+        static int is_first = 1;
+        if (is_first)
+        {
+            dump_ssbo_to_file ("ssbo.bin", ssboid, 0, ssbo_range);
+            is_first = 0;
+        }
+    }
+#endif
 
     return 0;
 }
