@@ -228,6 +228,27 @@ build_compute_shader (const char *strCS)
 
     return prog;
 }
+
+int
+build_compute_shader_from_file (char *dir_name, char *cs_fname)
+{
+    GLuint cs, prog;
+    char cs_path[128];
+
+    snprintf (cs_path, sizeof (cs_path), "%s/%s", dir_name, cs_fname);
+
+    cs = compile_shader_file (GL_COMPUTE_SHADER, cs_path);
+    if (cs == 0)
+    {
+        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+
+    prog = link_shaders (cs, 0);
+
+    return prog;
+}
+
 #endif
 
 int

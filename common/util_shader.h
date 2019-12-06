@@ -38,6 +38,7 @@ typedef struct separate_shader_obj_t
 
 int build_shader (const char *strVS, const char *strFS);
 int build_compute_shader (const char *strCS);
+int build_compute_shader_from_file (char *dir_name, char *cs_fname);
 int generate_shader (shader_obj_t *sobj, char *str_vs, char *str_fs);
 int generate_shader_from_file (shader_obj_t *sobj, char *dir_name, char *vs_fname, char *fs_fname);
 int generate_separate_shader (separate_shader_obj_t *sobj, char *str_vs, char *str_fs);
