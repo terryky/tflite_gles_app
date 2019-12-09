@@ -36,5 +36,21 @@ half2float (unsigned short half_)
 }
 
 
+
+static inline unsigned short
+float2half (unsigned float fval_)
+{
+    unifloat_t u;
+    u.f = fval_;
+    unsigned int fval = u.n;
+    unsigned int sign = (fval >> 16) & 0x8000;
+    unsigned int expn = (((fval >> 23) - 127 + 15) & 0x1f) << 10;
+    unsigned int frac = (fval >> (23 - 10)) & 0x3ff;
+    unsigned int fp32 = (sign) | (expn << 10) | (frac);
+
+    return (fp16_t)fp32;
+}
+
+
 #endif /* _FLOAT16_H_ */
     
