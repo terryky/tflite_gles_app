@@ -40,5 +40,25 @@ INCLUDES += -I$(TENSORFLOW_DIR)/tensorflow/lite/tools/make/downloads/flatbuffers
 LDFLAGS  += -L$(TENSORFLOW_DIR)/tensorflow/lite/tools/make/gen/linux_x86_64/lib/
 LIBS     += -ltensorflow-lite -ldl
 
+LDFLAGS  += -Wl,--allow-multiple-definition
+
+
+# ---------------------
+#  for TFLite GPU GL Delegate
+# ---------------------
+
+#LDFLAGS  += -L$(TENSORFLOW_DIR)/bazel-bin/tensorflow/lite/delegates/gpu
+#LIBS     += -ltensorflowlite_gpu_gl
+#LIBS     += -lgl_delegate
+
+
+
+# ---------------------
+#  for TFLite GPU GL Delegate with SSBO binding.
+# ---------------------
+#CFLAGS   += -DUSE_GLES_31
+#CFLAGS   += -DUSE_INPUT_SSBO
+#SRCS     += ssbo_tensor.c
+
 
 include ../Makefile.include
