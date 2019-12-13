@@ -213,6 +213,9 @@ typedef struct _texparam
     int          upsidedown;
     float        alpha;
     float        *color;
+    float        rot;               /* degree */
+    int          blendfunc_en;
+    unsigned int blendfunc[4];      /* src_rgb, dst_rgb, src_alpha, dst_alpha */
 } texparam_t;
 
 
@@ -225,6 +228,7 @@ draw_2d_texture_in (texparam_t *tparam)
     float y   = tparam->y;
     float w   = tparam->w;
     float h   = tparam->h;
+    float rot = tparam->rot;
     shader_obj_t *sobj = &s_sobj[ttype];
     float matrix[16];
     float *uv = tarray;
@@ -256,11 +260,26 @@ draw_2d_texture_in (texparam_t *tparam)
     }
 
     glEnable (GL_BLEND);
-    glBlendFuncSeparate (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, 
-               GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+    if (tparam->blendfunc_en)
+    {
+        glBlendFuncSeparate (tparam->blendfunc[0], tparam->blendfunc[1],
+                   tparam->blendfunc[2], tparam->blendfunc[3]);
+    }
+    else
+    {
+        glBlendFuncSeparate (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+                   GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+    }
 
     matrix_identity (matrix);
     matrix_translate (matrix, x, y, 0.0f);
+    if (rot != 0)
+    {
+        matrix_translate (matrix, 0,  h * 0.5f, 0.0f);
+        matrix_rotate (matrix, rot, 0.0f, 0.0f, 1.0f);
+        matrix_translate (matrix, 0, -h * 0.5f, 0.0f);
+    }
     matrix_scale (matrix, w, h, 1.0f);
     matrix_mult (matrix, s_matprj, matrix);
 
@@ -295,6 +314,29 @@ draw_2d_texture (int texid, int x, int y, int w, int h, int upsidedown)
     tparam.textype = 1;
     tparam.alpha   = 1.0f;
     tparam.upsidedown = upsidedown;
+    draw_2d_texture_in (&tparam);
+
+    return 0;
+}
+
+int
+draw_2d_texture_blendfunc (int texid, int x, int y, int w, int h,
+                           int upsidedown, unsigned int *blendfunc)
+{
+    texparam_t tparam = {0};
+    tparam.x       = x;
+    tparam.y       = y;
+    tparam.w       = w;
+    tparam.h       = h;
+    tparam.texid   = texid;
+    tparam.textype = 1;
+    tparam.alpha   = 1.0f;
+    tparam.upsidedown = upsidedown;
+    tparam.blendfunc_en = 1;
+    tparam.blendfunc[0] = blendfunc[0];
+    tparam.blendfunc[1] = blendfunc[1];
+    tparam.blendfunc[2] = blendfunc[2];
+    tparam.blendfunc[3] = blendfunc[3];
     draw_2d_texture_in (&tparam);
 
     return 0;
@@ -381,32 +423,24 @@ draw_2d_rect (int x, int y, int w, int h, float *color, float line_width)
 int
 draw_2d_line (int x0, int y0, int x1, int y1, float *color, float line_width)
 {
-    int ttype = 0;  
-    shader_obj_t *sobj = &s_sobj[ttype];
-    float matrix[16];
+    float dx = x1 - x0;
+    float dy = y1 - y0;
+    float len = sqrtf (dx * dx + dy * dy);
+    float theta = acosf (dx / len);
 
-    glUseProgram (sobj->program);
-    glUniform4fv (s_loc_color[ttype], 1, color);
+    if (dy < 0)
+        theta = -theta;
 
-    glEnable (GL_BLEND);
-    glBlendFuncSeparate (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, 
-               GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-
-    matrix_identity (matrix);
-    matrix_mult (matrix, s_matprj, matrix);
-    glUniformMatrix4fv (s_loc_mtx[ttype], 1, GL_FALSE, matrix);
-
-    glLineWidth (line_width);
-    if (sobj->loc_vtx >= 0)
-    {
-        float vtx[] = {x0, y0, x1, y1};
-
-        glEnableVertexAttribArray (sobj->loc_vtx);
-        glVertexAttribPointer (sobj->loc_vtx, 2, GL_FLOAT, GL_FALSE, 0, vtx);
-        glDrawArrays (GL_LINE_STRIP, 0, 2);
-    }
-
-    glDisable (GL_BLEND);
+    texparam_t tparam = {0};
+    tparam.x       = x0;
+    tparam.y       = y0 - 0.5f * line_width;
+    tparam.w       = len;
+    tparam.h       = line_width;
+    tparam.rot     = RAD_TO_DEG (theta);
+    tparam.textype = 0;
+    tparam.alpha   = 1.0f;
+    tparam.color   = color;
+    draw_2d_texture_in (&tparam);
 
     GLASSERT ();
     return 0;
