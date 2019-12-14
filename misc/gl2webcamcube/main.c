@@ -12,6 +12,7 @@
 #include "assertgl.h"
 #include "util_shader.h"
 #include "util_matrix.h"
+#include "util_debugstr.h"
 #include "util_pmeter.h"
 #include "util_debug.h"
 #include "util_v4l2.h"
@@ -290,8 +291,13 @@ update_capture_texture ()
             *dst8 ++ = 255;
         }
     }
-    glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, s_tex_w, s_tex_h, GL_RGBA, GL_UNSIGNED_BYTE, s_buf);
-    
+
+    if (s_buf)
+    {
+        glBindTexture (GL_TEXTURE_2D, s_texid_dummy);
+        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, s_tex_w, s_tex_h, GL_RGBA, GL_UNSIGNED_BYTE, s_buf);
+    }
+
     return 0;
 }
 
@@ -343,7 +349,8 @@ init_app (int win_w, int win_h)
 
     glGenTextures (1, &s_texid_dummy);
 
-    init_pmeter (win_w, win_h, win_h);
+    init_pmeter (win_w, win_h, 500);
+    init_dbgstr (win_w, win_h);
 
     glClearColor (0.7f, 0.7f, 0.7f, 1.0f);
 
@@ -356,9 +363,11 @@ init_app (int win_w, int win_h)
 
 int main(int argc, char *argv[])
 {
-    int win_w = 640;
-    int win_h = 480;
+    int win_w = 960;
+    int win_h = 540;
     int count;
+    double ttime0 = 0, ttime1 = 0, interval;
+    char strbuf[512];
     UNUSED (argc);
     UNUSED (argv);
 
@@ -372,12 +381,19 @@ int main(int argc, char *argv[])
         PMETER_RESET_LAP ();
         PMETER_SET_LAP ();
 
+        ttime1 = pmeter_get_time_ms ();
+        interval = (count > 0) ? ttime1 - ttime0 : 0;
+        ttime0 = ttime1;
+
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         update_capture_texture ();
 
         draw_cube (count);
-        draw_pmeter (0, 0);
+        draw_pmeter (0, 40);
+
+        sprintf (strbuf, "%.1f [ms]\n", interval);
+        draw_dbgstr (strbuf, 10, 10);
 
         egl_swap();
     }
