@@ -36,6 +36,7 @@ For Jetson Nano (native build on Jetson Nano)
 For Raspberry Pi 4 (native build on RaaspberryPi)
 ```
 > sudo apt install libgles2-mesa-dev 
+> sudo apt-get install libdrm-dev
 > make TARGET_ENV=raspi4
 > cd gl2detection
 > ./gl2detection
