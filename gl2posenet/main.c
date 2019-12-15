@@ -15,14 +15,37 @@
 #include "util_render2d.h"
 #include "tflite_posenet.h"
 #include "ssbo_tensor.h"
+#include "camera_capture.h"
 
 #define UNUSED(x) (void)(x)
 
+
+#if defined (USE_INPUT_CAMERA_CAPTURE)
+static void
+update_capture_texture (int texid)
+{
+    int   cap_w, cap_h;
+    void *cap_buf;
+
+    get_capture_dimension (&cap_w, &cap_h);
+    get_capture_buffer (&cap_buf);
+
+    if (cap_buf)
+    {
+        glBindTexture (GL_TEXTURE_2D, texid);
+        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, cap_w, cap_h, GL_RGBA, GL_UNSIGNED_BYTE, cap_buf);
+    }
+}
+#endif
 
 /* resize image to DNN network input size and convert to fp32. */
 void
 feed_posenet_image(int texid, ssbo_t *ssbo, int win_w, int win_h)
 {
+#if defined (USE_INPUT_CAMERA_CAPTURE)
+    update_capture_texture (texid);
+#endif
+
 #if defined (USE_INPUT_SSBO)
     resize_texture_to_ssbo (texid, ssbo);
 #else
@@ -280,6 +303,17 @@ main(int argc, char *argv[])
     glViewport (0, 0, win_w, win_h);
 #endif
 
+#if defined (USE_INPUT_CAMERA_CAPTURE)
+    /* initialize V4L2 capture function */
+    if (init_capture () == 0)
+    {
+        /* allocate texture buffer for captured image */
+        get_capture_dimension (&texw, &texh);
+        texid = create_2d_texture (NULL, texw, texh);
+        start_capture ();
+    }
+    else
+#endif
     load_jpg_texture (input_name, &texid, &texw, &texh);
     adjust_texture (win_w, win_h, texw, texh, &draw_x, &draw_y, &draw_w, &draw_h);
 

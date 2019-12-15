@@ -30,6 +30,15 @@ CFLAGS   += -DUSE_JPEG_TEXTURE
 LIBS     += -lpthread
 LIBS     += -ljpeg
 
+
+# for V4L2 camera capture
+CFLAGS   += -DUSE_INPUT_CAMERA_CAPTURE
+SRCS     += camera_capture.c
+SRCS     += ../common/util_v4l2.c
+SRCS     += ../common/util_drm.c
+LIBS     += -ldrm
+
+
 # ---------------------
 #  for TFLite
 # ---------------------
@@ -39,6 +48,7 @@ INCLUDES += -I$(TENSORFLOW_DIR)
 INCLUDES += -I$(TENSORFLOW_DIR)/tensorflow/lite/tools/make/downloads/flatbuffers/include
 LDFLAGS  += -L$(TENSORFLOW_DIR)/tensorflow/lite/tools/make/gen/linux_x86_64/lib/
 LDFLAGS  += -L$(TENSORFLOW_DIR)/
+LDFLAGS  += -L./
 LIBS     += -ltensorflow-lite -ldl
 
 LDFLAGS  += -Wl,--allow-multiple-definition
