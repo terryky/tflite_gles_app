@@ -8,4 +8,6 @@
 int load_png_texture (char *name, int *lpTexID, int *width, int *height);
 int load_jpg_texture (char *name, int *lpTexID, int *width, int *height);
 
+GLuint create_2d_texture (void *imgbuf, int width, int height);
+
 #endif /* TEXTURE_UTIL_H */

@@ -16,7 +16,7 @@
 #endif
 
 
-static GLuint
+GLuint
 create_2d_texture (void *imgbuf, int width, int height)
 {
     GLuint texid;
