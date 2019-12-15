@@ -26,7 +26,7 @@ For Linux X11:
 > ./gl2detection
 ```
 
-For Jetson Nano (native build on RaaspberryPi)
+For Jetson Nano (native build on Jetson Nano)
 ```
 > make TARGET_ENV=jetson_nano
 > cd gl2detection
