@@ -10,6 +10,7 @@
 #include "util_egl.h"
 #include "assertgl.h"
 #include "util_matrix.h"
+#include "util_debugstr.h"
 #include "util_pmeter.h"
 #include "util_debug.h"
 #include "util_render2d.h"
@@ -54,7 +55,8 @@ init_app (int win_w, int win_h)
     DBG_ASSERT (ret == 0, "failed to create filter");
 
     init_2d_renderer (win_w, win_h);
-    init_pmeter (win_w, win_h, win_h);
+    init_pmeter (win_w, win_h, 500);
+    init_dbgstr (win_w, win_h);
 
     return 0;
 }
@@ -120,6 +122,8 @@ int main(int argc, char *argv[])
     int win_w = 960;
     int win_h = 540;
     int count;
+    double ttime0 = 0, ttime1 = 0, interval;
+    char strbuf[512];
     UNUSED (argc);
     UNUSED (argv);
 
@@ -132,6 +136,10 @@ int main(int argc, char *argv[])
     {
         PMETER_RESET_LAP ();
         PMETER_SET_LAP ();
+
+        ttime1 = pmeter_get_time_ms ();
+        interval = (count > 0) ? ttime1 - ttime0 : 0;
+        ttime0 = ttime1;
 
         render_to_fbo (win_w, win_h);
 
@@ -151,7 +159,10 @@ int main(int argc, char *argv[])
             draw_2d_texture_blendfunc (s_fbo_blur.texid, 0, 0, win_w, win_h, 0, blend_add);
         }
 
-        draw_pmeter (0, 0);
+        draw_pmeter (0, 40);
+
+        sprintf (strbuf, "%.1f [ms]\n", interval);
+        draw_dbgstr (strbuf, 10, 10);
 
         egl_swap();
     }
