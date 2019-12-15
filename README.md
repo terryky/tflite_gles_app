@@ -10,22 +10,33 @@ This repository contains several applications which invoke DNN inference with **
 
 ### tested platforms
 You can select the platform by editing [Makefile.env](Makefile.env).
-- Linux PC (XWindow/Wayland/DRM)
-- NVIDIA Jetson TX2 (XWindow/Wayland/EGLStream)
-- RaspberryPi (Dispmanx)
-
+- Linux PC (X11)
+- NVIDIA Jetson Nano (X11)
+- NVIDIA Jetson TX2 (X11)
+- RaspberryPi4 (X11)
+- RaspberryPi3 (Dispmanx)
+- Coral EdgeTPU Devboard (Wayland)
 
 ### How to Build & Run
 For Linux X11:
 ```
+> sudo apt install libgles2-mesa-dev 
 > make TARGET_ENV=x11
 > cd gl2detection
 > ./gl2detection
 ```
 
-For Raspberry Pi (native build on RaaspberryPi)
+For Jetson Nano (native build on RaaspberryPi)
 ```
-> make TARGET_ENV=raspi
+> make TARGET_ENV=jetson_nano
+> cd gl2detection
+> ./gl2detection
+```
+
+For Raspberry Pi 4 (native build on RaaspberryPi)
+```
+> sudo apt install libgles2-mesa-dev 
+> make TARGET_ENV=raspi4
 > cd gl2detection
 > ./gl2detection
 ```
