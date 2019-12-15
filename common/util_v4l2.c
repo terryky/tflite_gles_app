@@ -244,7 +244,7 @@ v4l2_open_capture_device (int devid)
     cap_dev = (capture_dev_t *)malloc (sizeof (capture_dev_t));
     DBG_ASSERT (cap_dev, "alloc error.\n");
 
-    snprintf (cap_dev->dev_name, sizeof (cap_dev->dev_name), devname);
+    snprintf (cap_dev->dev_name, sizeof (cap_dev->dev_name), "%s", devname);
     cap_dev->v4l_fd   = v4l_fd;
     cap_dev->dev_type = dev_type;
 
