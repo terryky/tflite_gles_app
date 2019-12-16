@@ -30,6 +30,10 @@ CFLAGS   += -DUSE_JPEG_TEXTURE
 LIBS     += -lpthread
 LIBS     += -ljpeg
 
+# for PNG texture
+CFLAGS   += -DUSE_PNG_TEXTURE
+SRCS     += ../common/util_image_png.c
+LIBS     += -lpng
 
 # for V4L2 camera capture
 CFLAGS   += -DUSE_INPUT_CAMERA_CAPTURE

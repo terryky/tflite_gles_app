@@ -19,6 +19,8 @@
 
 #define UNUSED(x) (void)(x)
 
+//#define USE_FACE_MASK
+
 
 #if defined (USE_INPUT_CAMERA_CAPTURE)
 static void
@@ -84,6 +86,38 @@ feed_posenet_image(int texid, ssbo_t *ssbo, int win_w, int win_h)
     return;
 }
 
+
+#if defined (USE_FACE_MASK)
+static void
+render_facemask (int x, int y, int w, int h, posenet_result_t *pose_ret)
+{
+    static int s_mask_texid = 0;
+    static int s_mask_w;
+    static int s_mask_h;
+
+    if (s_mask_texid == 0)
+    {
+        load_png_texture ("facemask/facemask.png", &s_mask_texid, &s_mask_w, &s_mask_h);
+    }
+
+    for (int i = 0; i < pose_ret->num; i ++)
+    {
+        float rx = pose_ret->pose[i].key[kRightEar].x * w + x;
+        float ry = pose_ret->pose[i].key[kRightEar].y * h + y;
+        float lx = pose_ret->pose[i].key[kLeftEar ].x * w + x;
+        float ly = pose_ret->pose[i].key[kLeftEar ].y * h + y;
+        float cx = (rx + lx) * 0.5f;
+        float cy = (ry + ly) * 0.5f;
+        float scale = (rx - lx) / (float)s_mask_w * 3;
+        float mask_w = s_mask_w * scale;
+        float mask_h = s_mask_h * scale;
+        draw_2d_texture (s_mask_texid,
+                         cx - mask_w * 0.5f, cy - mask_h * 0.5f,
+                         mask_w, mask_h, 1);
+    }
+}
+#endif
+
 /* render a bone of skelton. */
 void
 render_bone (int ofstx, int ofsty, int drw_w, int drw_h, 
@@ -146,6 +180,10 @@ render_posenet_result (int x, int y, int w, int h, posenet_result_t *pose_ret)
             draw_2d_fillrect (keyx - (r/2), keyy - (r/2), r, r, col_red);
         }
     }
+
+#if defined (USE_FACE_MASK)
+    render_facemask (x, y, w, h, pose_ret);
+#endif
 }
 
 void
