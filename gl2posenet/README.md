@@ -55,3 +55,12 @@ To visualize the heatmap of each keypoints, edit just one line.
 render_posenet_heatmap (draw_x, draw_y, draw_w, draw_h, &pose_ret);
 #endif
 ```
+
+
+## Webcam capture & Particle rendering
+If a webcam is connected, capture the video..
+Render particle fireballs at the estimated wrist position.
+
+![particle](img/gl2posenet.gif "particle")
+
+
