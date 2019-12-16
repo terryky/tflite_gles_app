@@ -53,12 +53,12 @@ static char fs_tex[] = "                              \n\
 precision mediump float;                              \n\
 varying     vec2      v_TexCoord;                     \n\
 uniform     sampler2D u_sampler;                      \n\
-uniform     float     u_alpha;                        \n\
+uniform     vec4      u_Color;                        \n\
                                                       \n\
 void main (void)                                      \n\
 {                                                     \n\
     gl_FragColor = texture2D (u_sampler, v_TexCoord); \n\
-    gl_FragColor.a *= u_alpha;                        \n\
+    gl_FragColor *= u_Color;                          \n\
 }                                                     \n";
 
 /* ------------------------------------------------------ *
@@ -70,12 +70,12 @@ static char fs_extex[] = "                            \n\
 precision mediump float;                              \n\
 varying     vec2     v_TexCoord;                      \n\
 uniform samplerExternalOES u_sampler;                 \n\
-uniform     float     u_alpha;                        \n\
+uniform     vec4      u_Color;                        \n\
                                                       \n\
 void main (void)                                      \n\
 {                                                     \n\
     gl_FragColor = texture2D (u_sampler, v_TexCoord); \n\
-    gl_FragColor.a *= u_alpha;                        \n\
+    gl_FragColor *= u_Color;                          \n\
 }                                                     \n";
 
 /* ------------------------------------------------------ *
@@ -138,7 +138,6 @@ static char *s_shader[SHADER_NUM * 2] =
 
 static shader_obj_t s_sobj[SHADER_NUM];
 static int s_loc_mtx[SHADER_NUM];
-static int s_loc_alpha[SHADER_NUM];
 static int s_loc_color[SHADER_NUM];
 
 static float varray[] =
@@ -196,7 +195,6 @@ init_2d_renderer (int w, int h)
         }
 
         s_loc_mtx[i]   = glGetUniformLocation(s_sobj[i].program, "u_PMVMatrix" );
-        s_loc_alpha[i] = glGetUniformLocation(s_sobj[i].program, "u_alpha" );
         s_loc_color[i] = glGetUniformLocation(s_sobj[i].program, "u_Color" );
     }
 
@@ -211,8 +209,7 @@ typedef struct _texparam
     int          texid;
     int          x, y, w, h;
     int          upsidedown;
-    float        alpha;
-    float        *color;
+    float        color[4];
     float        rot;               /* degree */
     int          blendfunc_en;
     unsigned int blendfunc[4];      /* src_rgb, dst_rgb, src_alpha, dst_alpha */
@@ -239,7 +236,6 @@ draw_2d_texture_in (texparam_t *tparam)
     switch (ttype)
     {
     case 0:
-        glUniform4fv (s_loc_color[ttype], 1, tparam->color);
         break;
     case 1:
         glBindTexture (GL_TEXTURE_2D, texid);
@@ -284,7 +280,7 @@ draw_2d_texture_in (texparam_t *tparam)
     matrix_mult (matrix, s_matprj, matrix);
 
     glUniformMatrix4fv (s_loc_mtx[ttype], 1, GL_FALSE, matrix);
-    glUniform1f (s_loc_alpha[ttype], tparam->alpha);
+    glUniform4fv (s_loc_color[ttype], 1, tparam->color);
 
     if (sobj->loc_vtx >= 0)
     {
@@ -312,7 +308,10 @@ draw_2d_texture (int texid, int x, int y, int w, int h, int upsidedown)
     tparam.h       = h;
     tparam.texid   = texid;
     tparam.textype = 1;
-    tparam.alpha   = 1.0f;
+    tparam.color[0]= 1.0f;
+    tparam.color[1]= 1.0f;
+    tparam.color[2]= 1.0f;
+    tparam.color[3]= 1.0f;
     tparam.upsidedown = upsidedown;
     draw_2d_texture_in (&tparam);
 
@@ -330,7 +329,36 @@ draw_2d_texture_blendfunc (int texid, int x, int y, int w, int h,
     tparam.h       = h;
     tparam.texid   = texid;
     tparam.textype = 1;
-    tparam.alpha   = 1.0f;
+    tparam.color[0]= 1.0f;
+    tparam.color[1]= 1.0f;
+    tparam.color[2]= 1.0f;
+    tparam.color[3]= 1.0f;
+    tparam.upsidedown = upsidedown;
+    tparam.blendfunc_en = 1;
+    tparam.blendfunc[0] = blendfunc[0];
+    tparam.blendfunc[1] = blendfunc[1];
+    tparam.blendfunc[2] = blendfunc[2];
+    tparam.blendfunc[3] = blendfunc[3];
+    draw_2d_texture_in (&tparam);
+
+    return 0;
+}
+
+int
+draw_2d_texture_modulate (int texid, int x, int y, int w, int h,
+                           int upsidedown, float *color, unsigned int *blendfunc)
+{
+    texparam_t tparam = {0};
+    tparam.x       = x;
+    tparam.y       = y;
+    tparam.w       = w;
+    tparam.h       = h;
+    tparam.texid   = texid;
+    tparam.textype = 1;
+    tparam.color[0]= color[0];
+    tparam.color[1]= color[1];
+    tparam.color[2]= color[2];
+    tparam.color[3]= color[3];
     tparam.upsidedown = upsidedown;
     tparam.blendfunc_en = 1;
     tparam.blendfunc[0] = blendfunc[0];
@@ -352,7 +380,10 @@ draw_2d_colormap (int texid, int x, int y, int w, int h, float alpha, int upside
     tparam.h       = h;
     tparam.texid   = texid;
     tparam.textype = 3;
-    tparam.alpha   = alpha;
+    tparam.color[0]= 1.0f;
+    tparam.color[1]= 1.0f;
+    tparam.color[2]= 1.0f;
+    tparam.color[3]= alpha;
     tparam.upsidedown = upsidedown;
     draw_2d_texture_in (&tparam);
 
@@ -369,8 +400,10 @@ draw_2d_fillrect (int x, int y, int w, int h, float *color)
     tparam.w       = w;
     tparam.h       = h;
     tparam.textype = 0;
-    tparam.alpha   = 1.0f;
-    tparam.color   = color;
+    tparam.color[0]= color[0];
+    tparam.color[1]= color[1];
+    tparam.color[2]= color[2];
+    tparam.color[3]= color[3];
     draw_2d_texture_in (&tparam);
 
     return 0;
@@ -438,8 +471,10 @@ draw_2d_line (int x0, int y0, int x1, int y1, float *color, float line_width)
     tparam.h       = line_width;
     tparam.rot     = RAD_TO_DEG (theta);
     tparam.textype = 0;
-    tparam.alpha   = 1.0f;
-    tparam.color   = color;
+    tparam.color[0]= color[0];
+    tparam.color[1]= color[1];
+    tparam.color[2]= color[2];
+    tparam.color[3]= color[3];
     draw_2d_texture_in (&tparam);
 
     GLASSERT ();
