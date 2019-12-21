@@ -16,10 +16,12 @@
 #include "tflite_posenet.h"
 #include "ssbo_tensor.h"
 #include "camera_capture.h"
+#include "particle.h"
 
 #define UNUSED(x) (void)(x)
 
 //#define USE_FACE_MASK
+//#define USE_FIREBALL_PARTICLE
 
 
 #if defined (USE_INPUT_CAMERA_CAPTURE)
@@ -108,7 +110,7 @@ render_facemask (int x, int y, int w, int h, posenet_result_t *pose_ret)
         float ly = pose_ret->pose[i].key[kLeftEar ].y * h + y;
         float cx = (rx + lx) * 0.5f;
         float cy = (ry + ly) * 0.5f;
-        float scale = (rx - lx) / (float)s_mask_w * 3;
+        float scale = (rx - lx) / (float)s_mask_w * 2.5;
         float mask_w = s_mask_w * scale;
         float mask_h = s_mask_h * scale;
         draw_2d_texture (s_mask_texid,
@@ -134,7 +136,7 @@ render_bone (int ofstx, int ofsty, int drw_w, int drw_h,
 
     /* if the confidence score is low, draw more transparently. */
     col[3] = (s0 + s1) * 0.5f;
-    draw_2d_line (x0, y0, x1, y1, col, 1.0f);
+    draw_2d_line (x0, y0, x1, y1, col, 5.0f);
 
     col[3] = 1.0f;
 }
@@ -179,6 +181,16 @@ render_posenet_result (int x, int y, int w, int h, posenet_result_t *pose_ret)
             int r = 9;
             draw_2d_fillrect (keyx - (r/2), keyy - (r/2), r, r, col_red);
         }
+
+#if defined (USE_FIREBALL_PARTICLE)
+        {
+            float x0 = pose_ret->pose[i].key[kRightWrist].x * w + x;
+            float y0 = pose_ret->pose[i].key[kRightWrist].y * h + y;
+            float x1 = pose_ret->pose[i].key[kLeftWrist].x * w + x;
+            float y1 = pose_ret->pose[i].key[kLeftWrist].y * h + y;
+            render_posenet_particle (x0, y0, x1, y1);
+        }
+#endif
     }
 
 #if defined (USE_FACE_MASK)
@@ -355,7 +367,11 @@ main(int argc, char *argv[])
     load_jpg_texture (input_name, &texid, &texw, &texh);
     adjust_texture (win_w, win_h, texw, texh, &draw_x, &draw_y, &draw_w, &draw_h);
 
-    glClearColor (0.7f, 0.7f, 0.7f, 1.0f);
+#if defined (USE_FIREBALL_PARTICLE)
+    init_posenet_particle (win_w, win_h);
+#endif
+
+    glClearColor (0.f, 0.f, 0.f, 1.0f);
 
     for (count = 0; ; count ++)
     {
@@ -374,6 +390,8 @@ main(int argc, char *argv[])
         /* invoke pose estimation using TensorflowLite */
         feed_posenet_image (texid, ssbo, win_w, win_h);
         invoke_posenet (&pose_ret);
+
+        glClear (GL_COLOR_BUFFER_BIT);
 
 #if defined (USE_INPUT_SSBO) /* for Debug. */
         /* visualize the contents of SSBO for input tensor. */
