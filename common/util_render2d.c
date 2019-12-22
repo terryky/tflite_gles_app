@@ -85,7 +85,7 @@ static char fs_cmap_jet[] ="                          \n\
 precision mediump float;                              \n\
 varying     vec2      v_TexCoord;                     \n\
 uniform     sampler2D u_sampler;                      \n\
-uniform     float     u_alpha;                        \n\
+uniform     vec4      u_Color;                        \n\
                                                       \n\
 float cmap_jet_red(float x) {                         \n\
     if (x < 0.7) {                                    \n\
@@ -122,7 +122,7 @@ void main (void)                                      \n\
 {                                                     \n\
     vec4 src_col = texture2D (u_sampler, v_TexCoord); \n\
     gl_FragColor = colormap_jet (src_col.r);          \n\
-    gl_FragColor.a *= u_alpha;                        \n\
+    gl_FragColor *= u_Color;                          \n\
 }                                                     \n";
 
 
