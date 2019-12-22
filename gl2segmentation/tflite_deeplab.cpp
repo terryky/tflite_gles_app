@@ -14,7 +14,7 @@
 /* 
  * https://storage.googleapis.com/download.tensorflow.org/models/tflite/gpu/deeplabv3_257_mv_gpu.tflite
  */
-#define DEEPLAB_MODEL_PATH  "./posenet_model/deeplabv3_257_mv_gpu.tflite"
+#define DEEPLAB_MODEL_PATH  "./deeplab_model/deeplabv3_257_mv_gpu.tflite"
 
 using namespace std;
 using namespace tflite;
