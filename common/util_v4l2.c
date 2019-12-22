@@ -248,7 +248,7 @@ v4l2_open_capture_device (int devid)
     cap_dev->v4l_fd   = v4l_fd;
     cap_dev->dev_type = dev_type;
 
-    init_capture_stream (cap_dev, V4L2_MEMORY_MMAP, 3);
+    init_capture_stream (cap_dev, V4L2_MEMORY_MMAP, 4);
     alloc_buffer (cap_dev);
 
     return cap_dev;
