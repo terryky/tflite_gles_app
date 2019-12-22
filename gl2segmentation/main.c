@@ -18,6 +18,7 @@
 
 #define UNUSED(x) (void)(x)
 
+//#undef USE_INPUT_CAMERA_CAPTURE
 
 #if defined (USE_INPUT_CAMERA_CAPTURE)
 static void
@@ -96,7 +97,7 @@ render_deeplab_result (int ofstx, int ofsty, int draw_w, int draw_h, deeplab_res
         for (x = 0; x < segmap_w; x ++)
         {
             int max_id;
-            float conf_max;
+            float conf_max = 0;
             for (c = 0; c < 21; c ++)
             {
                 float confidence = segmap[(y * segmap_w * segmap_c)+ (x * segmap_c) + c];
@@ -271,8 +272,8 @@ main(int argc, char *argv[])
     char input_name_default[] = "ride_horse.jpg";
     char *input_name = input_name_default;
     int count;
-    int win_w = 960;
-    int win_h = 540;
+    int win_w = 1280;
+    int win_h =  480;
     int texid;
     int texw, texh, draw_x, draw_y, draw_w, draw_h;
     double ttime0 = 0, ttime1 = 0, interval;
@@ -307,7 +308,7 @@ main(int argc, char *argv[])
     else
 #endif
     load_jpg_texture (input_name, &texid, &texw, &texh);
-    adjust_texture (win_w, win_h, texw, texh, &draw_x, &draw_y, &draw_w, &draw_h);
+    adjust_texture (win_w/2, win_h, texw, texh, &draw_x, &draw_y, &draw_w, &draw_h);
 
     glClearColor (0.7f, 0.7f, 0.7f, 1.0f);
 
@@ -331,10 +332,10 @@ main(int argc, char *argv[])
 
         /* visualize the object detection results. */
         draw_2d_texture (texid,  draw_x, draw_y, draw_w, draw_h, 0);
-        render_deeplab_result (draw_x, draw_y, draw_w, draw_h, &deeplab_result);
+        render_deeplab_result (draw_x+draw_w, draw_y, draw_w, draw_h, &deeplab_result);
 
 #if 0
-        render_deeplab_heatmap (draw_x, draw_y, draw_w, draw_h, &deeplab_result);
+        render_deeplab_heatmap (draw_x+draw_w, draw_y, draw_w, draw_h, &deeplab_result);
 #endif
 
         draw_pmeter (0, 40);
