@@ -140,17 +140,20 @@ bind_ssbo (int binding, ssbo_t *ssbo)
 int
 main(int argc, char *argv[])
 {
-    char input_cs_name[2][64] = {"kernel/conv2d_highp.cs", "kernel/conv2d_mediump.cs"};
+    char input_cs_name[2][64];
     char gen_cs_name[2][64];
     char *input_cs, *gen_cs;
     int use_mediump = 0;
     int workload_x = 9;
     int workload_y = 9;
     int workload_z = 1024;
+    int workload_xm= 9;
     int workload_z4= workload_z / 4;
     int local_size_x = 8;
     int local_size_y = 4;
     int local_size_z = 8;
+    int multiplier = 1;
+    int ret;
     UNUSED (argc);
     UNUSED (*argv);
 
@@ -161,12 +164,13 @@ main(int argc, char *argv[])
         {"local_size_x", required_argument, NULL, 'x'},
         {"local_size_y", required_argument, NULL, 'y'},
         {"local_size_z", required_argument, NULL, 'z'},
+        {"multiplier",   required_argument, NULL, 'M'},
         {"use_mediump", no_argument, NULL, 'm'},
         {0, 0, 0, 0},
     };
 
     int c, option_index;
-    while ((c = getopt_long (argc, argv, "X:Y:Z:x:y:z:m",
+    while ((c = getopt_long (argc, argv, "X:Y:Z:x:y:z:M:m",
                              long_options, &option_index)) != -1)
     {
         switch (c)
@@ -177,26 +181,37 @@ main(int argc, char *argv[])
         case 'x': local_size_x = atoi (optarg); break;
         case 'y': local_size_y = atoi (optarg); break;
         case 'z': local_size_z = atoi (optarg); break;
+        case 'M': multiplier   = atoi (optarg); break;
         case 'm': use_mediump  = 1; break;
         case '?':
             return -1;
         }
     }
 
-    snprintf (gen_cs_name[0], 64, "kernel/conv2d_highp_%dx%dx%d.cs",   local_size_x, local_size_y, local_size_z);
-    snprintf (gen_cs_name[1], 64, "kernel/conv2d_mediump_%dx%dx%d.cs", local_size_x, local_size_y, local_size_z);
+    snprintf (input_cs_name[0], 64, "kernel/conv2d_highp_multi%d.cs", multiplier);
+    snprintf (input_cs_name[1], 64, "kernel/conv2d_mediump_multi%d.cs", multiplier);
+
+    snprintf (gen_cs_name[0], 64, "kernel/conv2d_highp_multi%d_%dx%dx%d.cs",   multiplier, local_size_x, local_size_y, local_size_z);
+    snprintf (gen_cs_name[1], 64, "kernel/conv2d_mediump_multi%d_%dx%dx%d.cs", multiplier, local_size_x, local_size_y, local_size_z);
     input_cs = input_cs_name[use_mediump];
-    gen_cs   =gen_cs_name[use_mediump];
+    gen_cs   = gen_cs_name[use_mediump];
 
-    generate_shader_source (gen_cs, input_cs, local_size_x, local_size_y, local_size_z);
+    ret = generate_shader_source (gen_cs, input_cs, local_size_x, local_size_y, local_size_z);
+    if (ret < 0)
+    {
+        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
 
+    workload_xm = (int)ceil((float)workload_x / (float)multiplier);
     workload_z  = ALIGN4(workload_z);
     workload_z4 = workload_z / 4;
 
     fprintf (stderr, "-----------------------------------\n");
     fprintf (stderr, "SHADER FILENAME: %s\n", gen_cs);
-    fprintf (stderr, "GLOBAL_WORKLOAD: (%d, %d, %d)\n", 
-                            workload_x, workload_y, workload_z);
+    fprintf (stderr, "GLOBAL_WORKLOAD: (%d, %d, %d)  --> (%d, %d, %d)\n",
+                            workload_x,  workload_y, workload_z,
+                            workload_xm, workload_y, workload_z);
     fprintf (stderr, "LOCAL_WORK_SIZE: (%d, %d, %d)\n", 
                             local_size_x, local_size_y, local_size_z);
     fprintf (stderr, "-----------------------------------\n");
@@ -207,6 +222,12 @@ main(int argc, char *argv[])
 
     /* initialize compute shader */
     int progCS = build_compute_shader_from_file ("./", gen_cs);
+    if (progCS <= 0)
+    {
+        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+
     int loc_clip       = glGetUniformLocation(progCS, "clip");
     int loc_input_h    = glGetUniformLocation(progCS, "input_data_0_h");
     int loc_input_w    = glGetUniformLocation(progCS, "input_data_0_w");
@@ -251,11 +272,11 @@ main(int argc, char *argv[])
         glProgramUniform1i (progCS, loc_src_depth,  workload_z4);   // 256
         glProgramUniform1i (progCS, loc_weight_h,   workload_z4);   // 256
         glProgramUniform1i (progCS, loc_weight_w,   4);             // 4
-        glProgramUniform1i (progCS, loc_workload_x, workload_x);    // 9
+        glProgramUniform1i (progCS, loc_workload_x, workload_xm);   // ceil(9 / multiplier)
         glProgramUniform1i (progCS, loc_workload_y, workload_y);    // 9
         glProgramUniform1i (progCS, loc_workload_z, workload_z4);   // 256
 
-        int num_group_x = (int)ceil((float)workload_x  / (float)local_size_x);
+        int num_group_x = (int)ceil((float)workload_xm / (float)local_size_x);
         int num_group_y = (int)ceil((float)workload_y  / (float)local_size_y);
         int num_group_z = (int)ceil((float)workload_z4 / (float)local_size_z);
         glDispatchCompute (num_group_x, num_group_y, num_group_z);
