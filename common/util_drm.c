@@ -236,6 +236,7 @@ drm_add_fb (int fd, drm_fb_t *dfb)
 }
 
 
+#if defined (DRM_MODE_OBJECT_CRTC)
 /* -------------------------------------------------------------------------- *
  *  DRM VideoPath Setting Operation functions.
  * -------------------------------------------------------------------------- */
@@ -519,6 +520,16 @@ connect_drm_path (drm_obj_t *dobj)
 
     return 0;
 }
+
+
+#else
+static int
+connect_drm_path (drm_obj_t *dobj)
+{
+    fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+    return -1;
+}
+#endif
 
 static void
 dump_drm_path (drm_obj_t *dobj)
