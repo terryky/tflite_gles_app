@@ -40,5 +40,6 @@ INCLUDES += -I$(TENSORFLOW_DIR)/tensorflow/lite/tools/make/downloads/flatbuffers
 LDFLAGS  += -L$(TENSORFLOW_DIR)/tensorflow/lite/tools/make/gen/linux_x86_64/lib/
 LIBS     += -ltensorflow-lite -ldl
 
+LDFLAGS  += -Wl,--allow-multiple-definition
 
 include ../Makefile.include
