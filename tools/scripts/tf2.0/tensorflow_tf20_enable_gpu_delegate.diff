@@ -1,0 +1,559 @@
+diff --git a/tensorflow/lite/delegates/gpu/gl/gl_buffer.cc b/tensorflow/lite/delegates/gpu/gl/gl_buffer.cc
+index 86c3c59639..8357ff33ac 100644
+--- a/tensorflow/lite/delegates/gpu/gl/gl_buffer.cc
++++ b/tensorflow/lite/delegates/gpu/gl/gl_buffer.cc
+@@ -17,6 +17,9 @@ limitations under the License.
+ 
+ #include "tensorflow/lite/delegates/gpu/common/status.h"
+ 
++extern int g_nDispatchCount;
++extern int g_nInvokeCount;
++
+ namespace tflite {
+ namespace gpu {
+ namespace gl {
+@@ -64,7 +67,47 @@ void GlBuffer::Invalidate() {
+   }
+ }
+ 
++#if defined(USE_DUMP_SSBO_AND_KERNEL)
++static int
++dump_ssbo_to_file (char *fname, int ssbo_id, int offset, int bytes)
++{
++    void *p;
++    FILE *fp;
++
++    glBindBuffer (GL_SHADER_STORAGE_BUFFER, ssbo_id);
++
++    p = glMapBufferRange (GL_SHADER_STORAGE_BUFFER, offset, bytes, GL_MAP_READ_BIT );
++    if (p == NULL)
++    {
++        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
++        return -1;
++    }
++
++    fp = fopen (fname, "wb");
++    if (fp == NULL)
++    {
++        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
++        return -1;
++    }
++
++    fwrite (p, 1, bytes, fp);
++    fclose (fp);
++
++    glUnmapBuffer (GL_SHADER_STORAGE_BUFFER);
++    glBindBuffer (GL_SHADER_STORAGE_BUFFER, 0);
++
++    return 0;
++}
++#endif
++
++
+ Status GlBuffer::BindToIndex(uint32_t index) const {
++#if defined(USE_DUMP_SSBO_AND_KERNEL)
++  char strbuf[512];
++    sprintf (strbuf, "tflite_%02d_%02d_ssbo_bind%d_ssbo%d.bin",
++	     g_nInvokeCount, g_nDispatchCount, index, id_);
++    dump_ssbo_to_file (strbuf, id_, offset_, bytes_size_);
++#endif
+   return TFLITE_GPU_CALL_GL(glBindBufferRange, target_, index, id_, offset_,
+                             bytes_size_);
+ }
+diff --git a/tensorflow/lite/delegates/gpu/gl/gl_call.h b/tensorflow/lite/delegates/gpu/gl/gl_call.h
+index a8a81bae60..8ab21ab7f9 100644
+--- a/tensorflow/lite/delegates/gpu/gl/gl_call.h
++++ b/tensorflow/lite/delegates/gpu/gl/gl_call.h
+@@ -78,6 +78,9 @@ struct Caller<void> {
+ template <typename F, typename ErrorF, typename ResultT, typename... ParamsT>
+ Status CallAndCheckError(const std::string& context, F func, ErrorF error_func,
+                          ResultT* result, ParamsT&&... params) {
++#if defined(USE_VERBOSE_GLES_LOG)
++  fprintf (stderr, "############ %s\n", context.c_str());
++#endif
+   return Caller<ResultT>()(context, func, error_func, result,
+                            std::forward<ParamsT>(params)...);
+ }
+@@ -85,6 +88,9 @@ Status CallAndCheckError(const std::string& context, F func, ErrorF error_func,
+ template <typename F, typename ErrorF, typename... Params>
+ Status CallAndCheckError(const std::string& context, F func, ErrorF error_func,
+                          Params&&... params) {
++#if defined(USE_VERBOSE_GLES_LOG)
++  fprintf (stderr, "############ %s\n", context.c_str());
++#endif
+   return Caller<void>()(context, func, error_func,
+                         std::forward<Params>(params)...);
+ }
+diff --git a/tensorflow/lite/delegates/gpu/gl/gl_errors.cc b/tensorflow/lite/delegates/gpu/gl/gl_errors.cc
+index 2c29127839..09dc820152 100644
+--- a/tensorflow/lite/delegates/gpu/gl/gl_errors.cc
++++ b/tensorflow/lite/delegates/gpu/gl/gl_errors.cc
+@@ -61,16 +61,25 @@ struct ErrorFormatter {
+ Status GetOpenGlErrors() {
+   auto error = glGetError();
+   if (error == GL_NO_ERROR) {
++#if defined(USE_VERBOSE_GLES_LOG)
++    fprintf (stderr, "GL_NO_ERROR\n");
++#endif
+     return OkStatus();
+   }
+   auto error2 = glGetError();
+   if (error2 == GL_NO_ERROR) {
++#if defined(USE_VERBOSE_GLES_LOG)
++    fprintf (stderr, "@@@@@@@@@GL_ERROR1\n");
++#endif
+     return InternalError(ErrorToString(error));
+   }
+   std::vector<GLenum> errors = {error, error2};
+   for (error = glGetError(); error != GL_NO_ERROR; error = glGetError()) {
+     errors.push_back(error);
+   }
++#if defined(USE_VERBOSE_GLES_LOG)
++    fprintf (stderr, "@@@@@@@@@GL_ERROR2\n");
++#endif
+   return InternalError(absl::StrJoin(errors, ",", ErrorFormatter()));
+ }
+ 
+diff --git a/tensorflow/lite/delegates/gpu/gl/gl_program.cc b/tensorflow/lite/delegates/gpu/gl/gl_program.cc
+index def82357a6..5975caecb7 100644
+--- a/tensorflow/lite/delegates/gpu/gl/gl_program.cc
++++ b/tensorflow/lite/delegates/gpu/gl/gl_program.cc
+@@ -24,6 +24,12 @@ limitations under the License.
+ #include "tensorflow/lite/delegates/gpu/gl/gl_errors.h"
+ #include "tensorflow/lite/delegates/gpu/gl/variable.h"
+ 
++extern int g_nDispatchCount;
++extern int g_nInvokeCount;
++
++extern double pmeter_get_time_ms ();
++extern double g_ttime_kernel_sum[];
++
+ namespace tflite {
+ namespace gpu {
+ namespace gl {
+@@ -126,6 +132,19 @@ Status GlProgram::CreateWithShader(const GlShader& shader,
+   GLuint program_id;
+   RETURN_IF_ERROR(CreateNewProgramId(&program_id));
+ 
++#if defined(USE_DUMP_SSBO_AND_KERNEL)
++  {
++    char strbuf[128];
++    static int s_ncnt = 0;
++
++    sprintf (strbuf, "tflite_program_%04d_prog%04d_shader%04d.txt",
++	     s_ncnt, program_id, shader.id());
++    s_ncnt ++;
++    FILE *fp = fopen (strbuf, "w");
++    fclose (fp);
++  }
++#endif
++
+   // program_id needs to be properly deleted if there will be an error, hense
+   // wrap program_id into Program.
+   GlProgram program(program_id);
+@@ -209,12 +228,35 @@ Status GlProgram::SetParameter(const Variable& param) {
+ }
+ 
+ Status GlProgram::Dispatch(const uint3& workgroups) const {
++#if defined(USE_DUMP_SSBO_AND_KERNEL)
++  {
++    char strbuf[512];
++    sprintf (strbuf, "tflite_%02d_%02d_prog%d_%dx%dx%d.txt",
++             g_nInvokeCount, g_nDispatchCount, id_,workgroups.x, workgroups.y, workgroups.z);
++    FILE *fp = fopen(strbuf, "w");
++    fclose(fp);
++  }
++#endif
+   if (workgroups.x == 0 || workgroups.y == 0 || workgroups.z == 0) {
+     return InvalidArgumentError("Invalid workgroups");
+   }
+   RETURN_IF_ERROR(TFLITE_GPU_CALL_GL(glUseProgram, id_));
++#if 0
+   return TFLITE_GPU_CALL_GL(glDispatchCompute, workgroups.x, workgroups.y,
+                             workgroups.z);
++#else
++  double ttime0 = pmeter_get_time_ms ();
++
++  Status stat = TFLITE_GPU_CALL_GL(glDispatchCompute, workgroups.x, workgroups.y, workgroups.z);
++
++  // glFinish();
++  double ttime1 = pmeter_get_time_ms ();
++
++  g_ttime_kernel_sum[g_nDispatchCount] += ttime1 - ttime0;
++  g_nDispatchCount ++;
++
++  return stat;
++#endif
+ }
+ 
+ }  // namespace gl
+diff --git a/tensorflow/lite/delegates/gpu/gl/gl_shader.cc b/tensorflow/lite/delegates/gpu/gl/gl_shader.cc
+index 3239174998..d3fccb4ee0 100644
+--- a/tensorflow/lite/delegates/gpu/gl/gl_shader.cc
++++ b/tensorflow/lite/delegates/gpu/gl/gl_shader.cc
+@@ -51,6 +51,18 @@ Status GlShader::CompileShader(GLenum shader_type,
+   GlShader shader(shader_id);
+ 
+   const char* src = shader_source.c_str();
++#if defined(USE_DUMP_SSBO_AND_KERNEL)
++  {
++    char strbuf[128];
++    static int s_ncnt = 0;
++
++    sprintf (strbuf, "tflite_shader_%04d_shader%04d.cs", s_ncnt, shader.id());
++    s_ncnt ++;
++    FILE *fp = fopen (strbuf, "w");
++    fprintf (fp, "%s\n", src);
++    fclose (fp);
++  }
++#endif
+   RETURN_IF_ERROR(
+       TFLITE_GPU_CALL_GL(glShaderSource, shader.id(), 1, &src, nullptr));
+ 
+diff --git a/tensorflow/lite/delegates/gpu/gl/gl_sync.cc b/tensorflow/lite/delegates/gpu/gl/gl_sync.cc
+index 92caaa5c78..47b1137ec9 100644
+--- a/tensorflow/lite/delegates/gpu/gl/gl_sync.cc
++++ b/tensorflow/lite/delegates/gpu/gl/gl_sync.cc
+@@ -47,6 +47,10 @@ Status GlSyncWait() {
+ }
+ 
+ Status GlActiveSyncWait() {
++#if defined (USE_WORKAROUND_FOR_CORAL_DEVBOARD)
++  glFinish(); /* ‚ª‚Á‚Â‚è‘SŠ®—¹‘Ò‚¿ */
++  return OkStatus();
++#endif
+   GlSync sync;
+   RETURN_IF_ERROR(GlSync::NewSync(&sync));
+   // Since creating a Sync object is itself a GL command it *must* be flushed.
+diff --git a/tensorflow/lite/delegates/gpu/gl/gpu_info.cc b/tensorflow/lite/delegates/gpu/gl/gpu_info.cc
+index d40910c335..b67e8a49bc 100644
+--- a/tensorflow/lite/delegates/gpu/gl/gpu_info.cc
++++ b/tensorflow/lite/delegates/gpu/gl/gpu_info.cc
+@@ -147,6 +147,21 @@ Status RequestGpuInfo(GpuInfo* gpu_info) {
+   glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &info.max_array_texture_layers);
+   RETURN_IF_ERROR(GetOpenGlErrors());
+   *gpu_info = info;
++
++  int work_group_cnt[3];
++  glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, &work_group_cnt[0]);
++  glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, &work_group_cnt[1]);
++  glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, &work_group_cnt[2]);
++
++  fprintf (stderr, "GL_MAX_COMPUTE_SHADER_STORAGE_BLOCKS : %d\n", info.max_ssbo_bindings);
++  fprintf (stderr, "GL_MAX_COMPUTE_WORK_GROUP_SIZE[0]    : %d\n", info.max_work_group_size[0]);
++  fprintf (stderr, "GL_MAX_COMPUTE_WORK_GROUP_SIZE[1]    : %d\n", info.max_work_group_size[1]);
++  fprintf (stderr, "GL_MAX_COMPUTE_WORK_GROUP_SIZE[2]    : %d\n", info.max_work_group_size[2]);
++  fprintf (stderr, "GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS: %d\n", info.max_work_group_invocations);
++  fprintf (stderr, "GL_MAX_COMPUTE_WORK_GROUP_COUNT[0]   : %d\n", work_group_cnt[0]);
++  fprintf (stderr, "GL_MAX_COMPUTE_WORK_GROUP_COUNT[1]   : %d\n", work_group_cnt[1]);
++  fprintf (stderr, "GL_MAX_COMPUTE_WORK_GROUP_COUNT[2]   : %d\n", work_group_cnt[2]);
++
+   return OkStatus();
+ }
+ 
+diff --git a/tensorflow/lite/delegates/gpu/gl/kernels/conv.cc b/tensorflow/lite/delegates/gpu/gl/kernels/conv.cc
+index 1025bc9a61..e68f081ccb 100644
+--- a/tensorflow/lite/delegates/gpu/gl/kernels/conv.cc
++++ b/tensorflow/lite/delegates/gpu/gl/kernels/conv.cc
+@@ -260,13 +260,20 @@ class Convolution1x1 : public NodeShader {
+       if (dst_depth >= 64) {
+         workgroup = uint3(8, 4, 8);
+       }
++      //if (1 || dst_depth >= 128) {
++      //  workgroup = uint3(2, 2, 32);
++      // }
+     }
+     *generated_code = {
+         /*parameters=*/std::move(parameters),
+         /*objects=*/std::move(objects),
+         /*shared_variables=*/{},
+         /*workload=*/
++#if 1
+         uint3(output->tensor.shape.w / multiplier, output->tensor.shape.h,
++#else
++        uint3(IntegralDivideRoundUp(output->tensor.shape.w, multiplier), output->tensor.shape.h,
++#endif
+               IntegralDivideRoundUp(output->tensor.shape.c, 4)),
+         /*workgroup=*/
+         GetIdealWorkgroupIfPossible(
+diff --git a/tensorflow/lite/delegates/gpu/gl_delegate.cc b/tensorflow/lite/delegates/gpu/gl_delegate.cc
+index f624fb9920..0703ede1c3 100644
+--- a/tensorflow/lite/delegates/gpu/gl_delegate.cc
++++ b/tensorflow/lite/delegates/gpu/gl_delegate.cc
+@@ -52,6 +52,25 @@ limitations under the License.
+ #include "tensorflow/lite/schema/schema_generated.h"
+ #endif  // TFLITE_GPU_BINARY_RELEASE
+ 
++#include <time.h>
++
++int g_nDispatchCount = 0;
++int g_nInvokeCount = 0;
++
++double g_ttime_invoke_sum = 0;
++double g_ttime_input_sum  = 0;
++double g_ttime_output_sum = 0;
++double g_ttime_kernel_sum[128] = {0};
++
++double
++pmeter_get_time_ms ()
++{
++    struct timespec tv;
++    clock_gettime (CLOCK_MONOTONIC, &tv);
++    return  (tv.tv_sec*1000 + (float)tv.tv_nsec/1000000.0);
++}
++
++
+ namespace tflite {
+ namespace gpu {
+ namespace gl {
+@@ -276,6 +295,9 @@ class Delegate {
+   }
+ 
+   Status Invoke(TfLiteContext* context) {
++    double ttime0 = pmeter_get_time_ms ();
++    g_nDispatchCount = 0;
++
+     const EGLContext egl_context_at_delegate_init = env_->context().context();
+     const EGLContext egl_context_at_delegate_invoke = eglGetCurrentContext();
+     if (egl_context_at_delegate_init != egl_context_at_delegate_invoke) {
+@@ -283,6 +305,7 @@ class Delegate {
+           "Delegate should run on the same thread where it was initialized.");
+     }
+ 
++    double ttime_in0 = pmeter_get_time_ms ();
+     // Push input data from a tensor to GPU.
+     for (ValueId id : inputs_) {
+       const ValueRef& ref = tensors_[id];
+@@ -301,11 +324,13 @@ class Delegate {
+         RETURN_IF_ERROR(CopyToBufferHandle(id, &tensor));
+       }
+     }
++    double ttime_in1 = pmeter_get_time_ms ();
+ 
+     // Run inference.
+     RETURN_IF_ERROR(inference_context_->Reset());
+     RETURN_IF_ERROR(inference_context_->Execute());
+ 
++    double ttime_out0 = pmeter_get_time_ms ();
+     // Push output data from GPU to a tensor.
+     bool finished_gpu_processing = false;
+     for (ValueId id : outputs_) {
+@@ -332,6 +357,36 @@ class Delegate {
+         RETURN_IF_ERROR(CopyFromBufferHandle(id, &tensor));
+       }
+     }
++    double ttime_out1 = pmeter_get_time_ms ();
++
++    double ttime1 = pmeter_get_time_ms ();
++    g_ttime_invoke_sum += ttime1 - ttime0;
++    g_ttime_input_sum  += ttime_in1 - ttime_in0;
++    g_ttime_output_sum += ttime_out1 - ttime_out0;
++
++    g_nInvokeCount ++;
++
++    if ((g_nInvokeCount % 100) == 0)
++    {
++        float kernel_sum = 0.0f;
++        float fcnt = (float)g_nInvokeCount;
++
++        fprintf (stderr, "------------------------------------------\n");
++        fprintf (stderr, "Invoke[%4d]: %8.2f [ms]\n",
++            g_nInvokeCount, (float)(g_ttime_invoke_sum / fcnt));
++
++        for (int i = 0; i < g_nDispatchCount; i ++)
++        {
++            float ftime = (float)(g_ttime_kernel_sum[i] / fcnt);
++            fprintf (stderr, "    Kernel[%2d]: %8.2f [ms]\n", i, ftime);
++            kernel_sum += ftime;
++        }
++        fprintf (stderr, "    ----------------------\n");
++        fprintf (stderr, "    KERNEL_SUM : %8.2f\n", kernel_sum);
++        fprintf (stderr, "    INPUT  GPU : %8.2f\n", (float)(g_ttime_input_sum  / fcnt));
++        fprintf (stderr, "    OUTPUT GPU : %8.2f\n", (float)(g_ttime_output_sum / fcnt));
++    }
++
+     return OkStatus();
+   }
+ 
+diff --git a/tensorflow/lite/tools/make/Makefile b/tensorflow/lite/tools/make/Makefile
+index 73c50d3272..befa71f2d8 100644
+--- a/tensorflow/lite/tools/make/Makefile
++++ b/tensorflow/lite/tools/make/Makefile
+@@ -122,6 +122,7 @@ $(wildcard tensorflow/lite/kernels/internal/reference/*.cc) \
+ $(PROFILER_SRCS) \
+ tensorflow/lite/tools/make/downloads/farmhash/src/farmhash.cc \
+ tensorflow/lite/tools/make/downloads/fft2d/fftsg.c \
++tensorflow/lite/tools/make/downloads/fft2d/fftsg2d.c \
+ tensorflow/lite/tools/make/downloads/flatbuffers/src/util.cpp
+ endif
+ # Remove any duplicates.
+@@ -148,6 +149,169 @@ else
+ 	CORE_CC_EXCLUDE_SRCS += tensorflow/lite/mmap_allocation_disabled.cc
+ endif
+ 
++# -------------------------------------------------------------------------------------------
++# for GPU Delegate
++# -------------------------------------------------------------------------------------------
++CXXFLAGS += -Iexternal/FP16/include
++CXXFLAGS += -I$(MAKEFILE_DIR)/downloads/flatbuffers/grpc/
++CXXFLAGS += -DMESA_EGL_NO_X11_HEADERS
++CXXFLAGS += -DEGL_EGLEXT_PROTOTYPES
++
++#CXXFLAGS += -DUSE_DUMP_SSBO_AND_KERNEL
++#CXXFLAGS += -DUSE_VERBOSE_GLES_LOG
++#CXXFLAGS += -DUSE_WORKAROUND_FOR_CORAL_DEVBOARD
++
++CORE_CC_ALL_SRCS += external/flatbuffers/src/util.cpp
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_php.cpp
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_fbs.cpp
++CORE_CC_ALL_SRCS += external/flatbuffers/src/reflection.cpp
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_parser.cpp
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_text.cpp
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_lua.cpp
++CORE_CC_ALL_SRCS += external/flatbuffers/grpc/src/compiler/go_generator.cc
++CORE_CC_ALL_SRCS += external/flatbuffers/src/flatc.cpp
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_lobster.cpp
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_json_schema.cpp
++CORE_CC_ALL_SRCS += external/flatbuffers/src/code_generators.cpp
++CORE_CC_ALL_SRCS += external/flatbuffers/grpc/src/compiler/cpp_generator.cc
++CORE_CC_ALL_SRCS += external/flatbuffers/src/flatc_main.cpp
++CORE_CC_ALL_SRCS += external/flatbuffers/grpc/src/compiler/java_generator.cc
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_dart.cpp
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_grpc.cpp
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_go.cpp
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_cpp.cpp
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_python.cpp
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_rust.cpp
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_general.cpp
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_js_ts.cpp
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/depthwise_conv.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/conv.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/internal/ostringstream.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/mul.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/concat.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/transformations/fuse_mul_to_conv.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/lstm.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/add.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/substitute.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/transformations/fuse_add_to_conv.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/minimal_logging_default.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/compiler/compiled_node.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/compiler/object_accessor.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/types/bad_variant_access.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/convert.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/transformations/match_dilated_convolution.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/egl_context.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/reshape.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/float16_conversions.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/prelu.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/ascii.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/data_type.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/match.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/string_view.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/base/internal/thread_identity.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/max_unpooling.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/command_queue.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/compiler/preprocessor.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/internal/str_format/arg.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/gl_sync.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/transformations/make_padding.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/converters/bhwc_to_phwc4.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/upsampling_bilinear.cc
++CORE_CC_ALL_SRCS += external/flatbuffers/src/code_generators.cpp
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/gl_texture.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/gl_errors.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/egl_environment.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/base/internal/cycleclock.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/runtime.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/internal/str_format/bind.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/shape.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/minimal_logging.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/internal/str_format/output.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/internal/memutil.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/internal/charconv_bigint.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/types/bad_any_cast.cc
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_general.cpp
++CORE_CC_ALL_SRCS += external/flatbuffers/src/reflection.cpp
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/compiler.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/converters/phwc4_to_bhwc.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/transformations/make_fully_connected.cc
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_fbs.cpp
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/base/log_severity.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/kernels/internal/quantization_util.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/fully_connected.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/base/dynamic_annotations.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/base/internal/sysinfo.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/base/internal/raw_logging.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/internal/str_format/float_conversion.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/registry.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/elementwise.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/internal/utf8.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/compiler/shader_codegen.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/operations.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/model_transformer.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/types/bad_optional_access.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/hash/internal/city.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/relu.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/softmax.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/charconv.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/workgroups/default_calculator.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/workgroups/calculator.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/gpu_info.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/internal/str_format/extension.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/str_cat.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/transformations/merge_padding_with.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/c/c_api_internal.c
++CORE_CC_ALL_SRCS += tensorflow/lite/kernels/kernel_util.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/object_manager.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/slice.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/egl_surface.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/transformations/remove_noop.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/compiler/rename.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/hash/internal/hash.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/base/internal/unscaledcycleclock.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/base/internal/throw_delegate.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/pad.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/compiler/fuse_inline.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/compiler/fuse_inplace.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/compiler/variable_accessor.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/pooling.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/escaping.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/gl_program.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/base/internal/spinlock_wait.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/numbers.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/str_replace.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/util.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/gl_buffer.cc
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_parser.cpp
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/internal/str_format/parser.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/internal/charconv_parse.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/workgroups/ideal_workgroup_picker.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/compiler/fuse_auto_input.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/numeric/int128.cc
++## SUBCOMMAND: # @flatbuffers//:flatc [action 'Linking external/flatbuffers/flatc [for host]']
++## SUBCOMMAND: # //tensorflow/lite/schema:schema_fbs_srcs [action 'Generating flatbuffer files for schema_fbs_srcs: //tensorflow/lite/schema:schema_fbs_srcs']
++## SUBCOMMAND: # //tensorflow/lite/delegates/gpu/gl:workgroups_cc_fbs_srcs [action 'Generating flatbuffer files for workgroups_cc_fbs_srcs: //tensorflow/lite/delegates/gpu/gl:workgroups_cc_fbs_srcs']
++## SUBCOMMAND: # //tensorflow/lite/delegates/gpu/gl:metadata_cc_fbs_srcs [action 'Generating flatbuffer files for metadata_cc_fbs_srcs: //tensorflow/lite/delegates/gpu/gl:metadata_cc_fbs_srcs']
++## SUBCOMMAND: # //tensorflow/lite/delegates/gpu/gl:common_cc_fbs_srcs [action 'Generating flatbuffer files for common_cc_fbs_srcs: //tensorflow/lite/delegates/gpu/gl:common_cc_fbs_srcs']
++## SUBCOMMAND: # //tensorflow/lite/delegates/gpu/gl:compiled_model_cc_fbs_srcs [action 'Generating flatbuffer files for compiled_model_cc_fbs_srcs: //tensorflow/lite/delegates/gpu/gl:compiled_model_cc_fbs_srcs']
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/workgroups/calculator_from_metadata.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/api.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/model_builder.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl_delegate.cc
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_text.cpp
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/transpose_conv.cc
++CORE_CC_ALL_SRCS += external/flatbuffers/src/util.cpp
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/workgroups/best_effort_calculator.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/transformations/general_transformations.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/serialization.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/base/internal/spinlock.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/str_split.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/gl_shader.cc
++## SUBCOMMAND: # //tensorflow/lite/delegates/gpu:libtensorflowlite_gpu_gl.so [action 'Linking tensorflow/lite/delegates/gpu/libtensorflowlite_gpu_gl.so']
++
++
++
++
+ BUILD_WITH_NNAPI ?= true
+ ifeq ($(BUILD_TYPE),micro)
+ 	BUILD_WITH_NNAPI=false
