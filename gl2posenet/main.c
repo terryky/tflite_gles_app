@@ -347,7 +347,7 @@ main(int argc, char *argv[])
 
     init_tflite_posenet (ssbo);
 
-#if defined (USE_GL_DELEGATE)
+#if defined (USE_GL_DELEGATE) || defined (USE_GPU_DELEGATEV2)
     /* we need to recover framebuffer because GPU Delegate changes the context */
     glBindFramebuffer (GL_FRAMEBUFFER, 0);
     glViewport (0, 0, win_w, win_h);
