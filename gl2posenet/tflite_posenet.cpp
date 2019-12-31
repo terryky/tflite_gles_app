@@ -28,11 +28,19 @@ unique_ptr<FlatBufferModel> model;
 unique_ptr<Interpreter> interpreter;
 ops::builtin::BuiltinOpResolver resolver;
 
+#if defined (USE_QUANT_TFLITE_MODEL)
+static uint8_t *in_ptr;
+static uint8_t *heatmap_ptr;
+static uint8_t *offsets_ptr;
+static uint8_t *fw_disp_ptr;
+static uint8_t *bw_disp_ptr;
+#else
 static float   *in_ptr;
 static float   *heatmap_ptr;
 static float   *offsets_ptr;
 static float   *fw_disp_ptr;
 static float   *bw_disp_ptr;
+#endif
 static int     s_img_w = 0;
 static int     s_img_h = 0;
 static int     s_hmp_w = 0;
@@ -221,6 +229,7 @@ init_tflite_posenet(ssbo_t *ssbo)
     }
 #endif
 
+    interpreter->SetNumThreads(4);
     if (interpreter->AllocateTensors() != kTfLiteOk)
     {
         fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
@@ -231,11 +240,19 @@ init_tflite_posenet(ssbo_t *ssbo)
     print_tensor_info ();
 #endif
     
+#if defined (USE_QUANT_TFLITE_MODEL)
+    in_ptr      = interpreter->typed_input_tensor<uint8_t>(0);
+    heatmap_ptr = interpreter->typed_output_tensor<uint8_t>(2);
+    offsets_ptr = interpreter->typed_output_tensor<uint8_t>(3);
+    fw_disp_ptr = interpreter->typed_output_tensor<uint8_t>(0);
+    bw_disp_ptr = interpreter->typed_output_tensor<uint8_t>(1);
+#else
     in_ptr      = interpreter->typed_input_tensor<float>(0);
     heatmap_ptr = interpreter->typed_output_tensor<float>(0);
     offsets_ptr = interpreter->typed_output_tensor<float>(1);
     fw_disp_ptr = interpreter->typed_output_tensor<float>(2);
     bw_disp_ptr = interpreter->typed_output_tensor<float>(3);
+#endif
 
     /* input image dimention */
     int input_idx = interpreter->inputs()[0];
@@ -271,17 +288,28 @@ static float
 get_heatmap_score (int idx_y, int idx_x, int key_id)
 {
     int idx = (idx_y * s_hmp_w * kPoseKeyNum) + (idx_x * kPoseKeyNum) + key_id;
+#if defined (USE_QUANT_TFLITE_MODEL)
+    return heatmap_ptr[idx] * 0.00390625;
+#else
     return heatmap_ptr[idx];
+#endif
 }
 
 static void
-get_displacement_vector (float *disp_buf, float *dis_x, float *dis_y, int idx_y, int idx_x, int edge_id)
+get_displacement_vector (void *disp_buf, float *dis_x, float *dis_y, int idx_y, int idx_x, int edge_id)
 {
     int idx0 = (idx_y * s_hmp_w * s_edge_num*2) + (idx_x * s_edge_num*2) + (edge_id + s_edge_num);
     int idx1 = (idx_y * s_hmp_w * s_edge_num*2) + (idx_x * s_edge_num*2) + (edge_id);
 
-    *dis_x = disp_buf[idx0];
-    *dis_y = disp_buf[idx1];
+#if defined (USE_QUANT_TFLITE_MODEL)
+    uint8_t *disp_buf_ui8 = (uint8_t *)disp_buf;
+    *dis_x = (disp_buf_ui8[idx0] - 163) * 2.2850129f;   // (disp_buf_ui8[idx0] - 80) * 2.3249127f   [FIXME]
+    *dis_y = (disp_buf_ui8[idx1] - 163) * 2.2850129f;   // (disp_buf_ui8[idx1] - 80) * 2.3249127f
+#else
+    float *disp_buf_fp = (float *)disp_buf;
+    *dis_x = disp_buf_fp[idx0];
+    *dis_y = disp_buf_fp[idx1];
+#endif
 }
 
 static void
@@ -290,8 +318,15 @@ get_offset_vector (float *ofst_x, float *ofst_y, int idx_y, int idx_x, int pose_
     int idx0 = (idx_y * s_hmp_w * kPoseKeyNum*2) + (idx_x * kPoseKeyNum*2) + (pose_id + kPoseKeyNum);
     int idx1 = (idx_y * s_hmp_w * kPoseKeyNum*2) + (idx_x * kPoseKeyNum*2) + (pose_id);
 
+#if defined (USE_QUANT_TFLITE_MODEL)
+    uint8_t ofst_x8 = offsets_ptr[idx0];
+    uint8_t ofst_y8 = offsets_ptr[idx1];
+    *ofst_x = (ofst_x8 - 137) * 0.5732986927032471f;
+    *ofst_y = (ofst_y8 - 137) * 0.5732986927032471f;
+#else
     *ofst_x = offsets_ptr[idx0];
     *ofst_y = offsets_ptr[idx1];
+#endif
 }
 
 /* enqueue an item in descending order. */
@@ -414,7 +449,7 @@ get_index_to_pos (int idx_x, int idx_y, int key_id, float *pos_x, float *pos_y)
 
 
 static keypoint_t
-traverse_to_tgt_key(int edge, keypoint_t src_key, int tgt_key_id, float *disp)
+traverse_to_tgt_key(int edge, keypoint_t src_key, int tgt_key_id, void *disp)
 {
     float src_pos_x = src_key.pos_x;
     float src_pos_y = src_key.pos_y;

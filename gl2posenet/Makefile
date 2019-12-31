@@ -78,4 +78,11 @@ LDFLAGS  += -Wl,--allow-multiple-definition
 #SRCS     += ssbo_tensor.c
 
 
+# ---------------------
+#  for Quantized tflite model
+# ---------------------
+#CFLAGS   += -DUSE_QUANT_TFLITE_MODEL
+
+
+
 include ../Makefile.include

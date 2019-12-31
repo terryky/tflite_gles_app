@@ -47,7 +47,7 @@ typedef struct _pose_t
     pose_key_t key[kPoseKeyNum];
     float pose_score;
 
-    float *heatmap;
+    void *heatmap;
     int   heatmap_dims[2];  /* heatmap resolution. (9x9) */
 } pose_t;
 

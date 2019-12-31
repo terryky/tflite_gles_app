@@ -54,10 +54,13 @@ feed_posenet_image(int texid, ssbo_t *ssbo, int win_w, int win_h)
     resize_texture_to_ssbo (texid, ssbo);
 #else
     int x, y, w, h;
-    float *buf_fp32;
-    unsigned char *buf_ui8, *pui8;;
+#if defined (USE_QUANT_TFLITE_MODEL)
+    unsigned char *buf_u8 = (unsigned char *)get_posenet_input_buf (&w, &h);
+#else
+    float *buf_fp32 = (float *)get_posenet_input_buf (&w, &h);
+#endif
+    unsigned char *buf_ui8, *pui8;
 
-    buf_fp32 = (float *)get_posenet_input_buf (&w, &h);
     pui8 = buf_ui8 = (unsigned char *)malloc(w * h * 4);
 
     draw_2d_texture (texid, 0, win_h - h, w, h, 1);
@@ -76,10 +79,15 @@ feed_posenet_image(int texid, ssbo_t *ssbo, int win_w, int win_h)
             int g = *buf_ui8 ++;
             int b = *buf_ui8 ++;
             buf_ui8 ++;          /* skip alpha */
-            
+#if defined (USE_QUANT_TFLITE_MODEL)
+            *buf_u8 ++ = r;
+            *buf_u8 ++ = g;
+            *buf_u8 ++ = b;
+#else
             *buf_fp32 ++ = (float)(r - mean) / std;
             *buf_fp32 ++ = (float)(g - mean) / std;
             *buf_fp32 ++ = (float)(b - mean) / std;
+#endif
         }
     }
 
