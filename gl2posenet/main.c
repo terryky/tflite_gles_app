@@ -336,7 +336,7 @@ main(int argc, char *argv[])
     int texid;
     int texw, texh, draw_x, draw_y, draw_w, draw_h;
     ssbo_t *ssbo = NULL;
-    double ttime0 = 0, ttime1 = 0, interval;
+    double ttime[10] = {0}, interval, invoke_ms;
     UNUSED (argc);
     UNUSED (*argv);
 
@@ -383,21 +383,25 @@ main(int argc, char *argv[])
 
     for (count = 0; ; count ++)
     {
-        posenet_result_t pose_ret;
+        posenet_result_t pose_ret = {0};
         char strbuf[512];
 
         PMETER_RESET_LAP ();
         PMETER_SET_LAP ();
 
-        ttime1 = pmeter_get_time_ms ();
-        interval = (count > 0) ? ttime1 - ttime0 : 0;
-        ttime0 = ttime1;
+        ttime[1] = pmeter_get_time_ms ();
+        interval = (count > 0) ? ttime[1] - ttime[0] : 0;
+        ttime[0] = ttime[1];
 
         glClear (GL_COLOR_BUFFER_BIT);
 
         /* invoke pose estimation using TensorflowLite */
         feed_posenet_image (texid, ssbo, win_w, win_h);
+
+        ttime[2] = pmeter_get_time_ms ();
         invoke_posenet (&pose_ret);
+        ttime[3] = pmeter_get_time_ms ();
+        invoke_ms = ttime[3] - ttime[2];
 
         glClear (GL_COLOR_BUFFER_BIT);
 
@@ -415,7 +419,7 @@ main(int argc, char *argv[])
 
         draw_pmeter (0, 40);
 
-        sprintf (strbuf, "%.1f [ms]\n", interval);
+        sprintf (strbuf, "Interval:%5.1f [ms]\nTFLite  :%5.1f [ms]", interval, invoke_ms);
         draw_dbgstr (strbuf, 10, 10);
 
         egl_swap();
