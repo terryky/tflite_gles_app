@@ -84,5 +84,15 @@ LDFLAGS  += -Wl,--allow-multiple-definition
 #CFLAGS   += -DUSE_QUANT_TFLITE_MODEL
 
 
+# ---------------------
+#  for TensorRT
+# ---------------------
+#SRCS += tensorrt_posenet.cpp
+#SRCS += ./tensorrt_common/logger.cpp
+#INCLUDES += -I./tensorrt_common
+#INCLUDES += -I/usr/local/cuda/include
+#LDFLAGS  += -L/usr/local/cuda/lib64
+#LIBS     += -lnvinfer -lnvparsers -lnvinfer_plugin -lnvonnxparser
+#LIBS     += -lcudnn -lcublas -lcudart
 
 include ../Makefile.include
