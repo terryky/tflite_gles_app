@@ -2,6 +2,7 @@
 #include "buffers.h"
 #include "common.h"
 #include "logger.h"
+#include "parserOnnxConfig.h"
 
 #include "NvInfer.h"
 #include "NvUffParser.h"
@@ -35,14 +36,48 @@ IExecutionContext *context;
 //! \param builder Pointer to the engine builder
 //!
 void
-constructNetwork(
+constructNetworkONNX(SampleUniquePtr<nvinfer1::IBuilder>& builder,
+    SampleUniquePtr<nvinfer1::INetworkDefinition>& network, SampleUniquePtr<nvinfer1::IBuilderConfig>& config,
+    SampleUniquePtr<nvonnxparser::IParser>& parser)
+{
+    std::vector<std::string> inputTensorNames;
+    std::vector<std::string> outputTensorNames;
+    std::string uffFileName("posenet_model/model-mobilenet_v1_101_257.onnx"); //!< Filename of uff file of a network
+
+    auto parsed = parser->parseFromFile(uffFileName.c_str(), static_cast<int>(gLogger.getReportableSeverity()));
+    if (!parsed)
+    {
+        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        return;
+    }
+
+#if 0
+    inputTensorNames.push_back("in");
+    outputTensorNames.push_back("out");
+
+    // Register tensorflow input
+    parser->registerInput(inputTensorNames[0].c_str(),
+                          nvinfer1::Dims3(1, 28, 28),
+                          nvuffparser::UffInputOrder::kNCHW);
+    parser->registerOutput(outputTensorNames[0].c_str());
+
+    parser->parse(uffFileName.c_str(), *network, nvinfer1::DataType::kFLOAT);
+#endif
+
+#if 0 /* Run in Int8 mode */
+    samplesCommon::setAllTensorScales(network.get(), 127.0f, 127.0f);
+#endif
+}
+
+void
+constructNetworkUFF(
     SampleUniquePtr<nvuffparser::IUffParser>& parser,
     SampleUniquePtr<nvinfer1::INetworkDefinition>& network)
 {
     std::vector<std::string> inputTensorNames;
     std::vector<std::string> outputTensorNames;
     std::string uffFileName("posenet_model/model-mobilenet_v1_101_257.uff"); //!< Filename of uff file of a network
-    
+
     inputTensorNames.push_back("in");
     outputTensorNames.push_back("out");
     
@@ -58,9 +93,67 @@ constructNetwork(
     samplesCommon::setAllTensorScales(network.get(), 127.0f, 127.0f);
 #endif
 }
+
+static int
+build_tensorrt_network_onnx()
+{
+    auto builder = SampleUniquePtr<nvinfer1::IBuilder>(nvinfer1::createInferBuilder(gLogger.getTRTLogger()));
+    if (!builder)
+    {
+        return false;
+    }
+
+    auto network = SampleUniquePtr<nvinfer1::INetworkDefinition>(builder->createNetwork());
+    if (!network)
+    {
+        return false;
+    }
+
+    auto config = SampleUniquePtr<nvinfer1::IBuilderConfig>(builder->createBuilderConfig());
+    if (!config)
+    {
+        return false;
+    }
+
+    auto parser = SampleUniquePtr<nvonnxparser::IParser>(nvonnxparser::createParser(*network, gLogger.getTRTLogger()));
+    if (!parser)
+    {
+        return false;
+    }
+
+    constructNetworkONNX(builder, network, config, parser);
+    builder->setMaxBatchSize(1);
+    config->setMaxWorkspaceSize(16_MiB);
+    config->setFlag(BuilderFlag::kGPU_FALLBACK);
+
+#if 0 /* Run in fp16 mode */
+    config->setFlag(BuilderFlag::kFP16);
+#endif
     
-int
-build_tensorrt_network()
+#if 0 /* Run in Int8 mode */
+    config->setFlag(BuilderFlag::kINT8);
+#endif
+
+#if 0 /* use DLA core. */
+    samplesCommon::enableDLA(builder.get(), config.get(), mParams.dlaCore);
+#endif
+
+    mEngine = std::shared_ptr<nvinfer1::ICudaEngine>(
+        builder->buildEngineWithConfig(*network, *config), samplesCommon::InferDeleter());
+
+    if (!mEngine)
+    {
+        return false;
+    }
+    assert(network->getNbInputs() == 1);
+    mInputDims = network->getInput(0)->getDimensions();
+    assert(mInputDims.nbDims == 3);
+
+    return true;
+}
+
+static int
+build_tensorrt_network_uff()
 {
     auto builder = SampleUniquePtr<nvinfer1::IBuilder>(
         nvinfer1::createInferBuilder(gLogger.getTRTLogger()));
@@ -68,22 +161,26 @@ build_tensorrt_network()
     {
         return false;
     }
+
     auto network = SampleUniquePtr<nvinfer1::INetworkDefinition>(builder->createNetwork());
     if (!network)
     {
         return false;
     }
+
     auto config = SampleUniquePtr<nvinfer1::IBuilderConfig>(builder->createBuilderConfig());
     if (!config)
     {
         return false;
     }
+
     auto parser = SampleUniquePtr<nvuffparser::IUffParser>(nvuffparser::createUffParser());
     if (!parser)
     {
         return false;
     }
-    constructNetwork(parser, network);
+
+    constructNetworkUFF(parser, network);
     builder->setMaxBatchSize(1);
     config->setMaxWorkspaceSize(16_MiB);
     config->setFlag(BuilderFlag::kGPU_FALLBACK);
@@ -115,6 +212,18 @@ build_tensorrt_network()
 }
 
 
+int
+build_tensorrt_network()
+{
+    int ret;
+
+    if (1)
+        ret = build_tensorrt_network_onnx();
+    else
+        ret = build_tensorrt_network_uff();
+
+    return ret;
+}
 
 int
 infer_tensorrt()
