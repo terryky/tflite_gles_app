@@ -78,6 +78,41 @@ feed_blazeface_image(int texid, int win_w, int win_h)
 }
 
 
+static void
+render_detect_region (int ofstx, int ofsty, int texw, int texh, blazeface_result_t *detection)
+{
+    float col_red[]   = {1.0f, 0.0f, 0.0f, 1.0f};
+    float col_white[] = {1.0f, 1.0f, 1.0f, 1.0f};
+
+    for (int i = 0; i < detection->num; i ++)
+    {
+        face_t *face = &(detection->faces[i]);
+        float x1 = face->topleft.x  * texw + ofstx;
+        float y1 = face->topleft.y  * texh + ofsty;
+        float x2 = face->btmright.x * texw + ofstx;
+        float y2 = face->btmright.y * texh + ofsty;
+        float score = face->score;
+
+        /* rectangle region */
+        draw_2d_rect (x1, y1, x2-x1, y2-y1, col_red, 2.0f);
+
+        /* class name */
+        char buf[512];
+        sprintf (buf, "%d", (int)(score * 100));
+        draw_dbgstr_ex (buf, x1, y1, 1.0f, col_white, col_red);
+
+        /* key points */
+        for (int j = 0; j < kFaceKeyNum; j ++)
+        {
+            float x = face->keys[j].x * texw + ofstx;
+            float y = face->keys[j].y * texh + ofsty;
+
+            int r = 4;
+            draw_2d_fillrect (x - (r/2), y - (r/2), r, r, col_red);
+        }
+    }
+}
+
 
 /* Adjust the texture size to fit the window size
  *
@@ -129,7 +164,7 @@ adjust_texture (int win_w, int win_h, int texw, int texh,
 int
 main(int argc, char *argv[])
 {
-    char input_name_default[] = "pakutaso_person.jpg";
+    char input_name_default[] = "pakutaso_sotsugyou.jpg";
     char *input_name = input_name_default;
     int count;
     int win_w = 960;
@@ -199,7 +234,7 @@ main(int argc, char *argv[])
 
         /* visualize the object detection results. */
         draw_2d_texture (texid,  draw_x, draw_y, draw_w, draw_h, 0);
-        //render_posenet_result (draw_x, draw_y, draw_w, draw_h, &pose_ret);
+        render_detect_region (draw_x, draw_y, draw_w, draw_h, &face_ret);
 
         draw_pmeter (0, 40);
 
