@@ -132,6 +132,36 @@ create_interpreter(tflite_interpreter_t *p, const char *model_path)
         return -1;
     }
 
+#if defined (USE_GL_DELEGATE)
+    const TfLiteGpuDelegateOptions options = {
+        .metadata = NULL,
+        .compile_options = {
+            .precision_loss_allowed = 1,  // FP16
+            .preferred_gl_object_type = TFLITE_GL_OBJECT_TYPE_FASTEST,
+            .dynamic_batch_enabled = 0,   // Not fully functional yet
+        },
+    };
+    auto* delegate = TfLiteGpuDelegateCreate(&options);
+
+    if (p->interpreter->ModifyGraphWithDelegate(delegate) != kTfLiteOk)
+    {
+        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+#endif
+#if defined (USE_GPU_DELEGATEV2)
+    const TfLiteGpuDelegateOptionsV2 options = {
+        .is_precision_loss_allowed = 1, // FP16
+        .inference_preference = TFLITE_GPU_INFERENCE_PREFERENCE_FAST_SINGLE_ANSWER
+    };
+    auto* delegate = TfLiteGpuDelegateV2Create(&options);
+    if (p->interpreter->ModifyGraphWithDelegate(delegate) != kTfLiteOk)
+    {
+        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+#endif
+
     p->interpreter->SetNumThreads(4);
     if (p->interpreter->AllocateTensors() != kTfLiteOk)
     {
