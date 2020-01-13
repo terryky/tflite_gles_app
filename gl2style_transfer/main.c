@@ -60,9 +60,15 @@ feed_style_transfer_image(int is_predict, int texid, int win_w, int win_h)
     glPixelStorei (GL_PACK_ALIGNMENT, 1);
     glReadPixels (0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, buf_ui8);
 
+#if 0
     /* convert UI8 [0, 255] ==> FP32 [-1, 1] */
     float mean = 128.0f;
     float std  = 128.0f;
+#else
+    /* convert UI8 [0, 255] ==> FP32 [ 0, 1] */
+    float mean =   0.0f;
+    float std  = 255.0f;
+#endif
     for (y = 0; y < h; y ++)
     {
         for (x = 0; x < w; x ++)
@@ -212,16 +218,17 @@ adjust_texture (int win_w, int win_h, int texw, int texh,
 int
 main(int argc, char *argv[])
 {
-    char input_name_default[] = "pakutaso_sotsugyou.jpg";
+    char input_name_default[] = "pakutaso_famicom.jpg";
     char *input_name = input_name_default;
-    char input_style_name_default[] = "style_newspaper.jpg";
+    char input_style_name_default[] = "munch_scream.jpg";
     char *input_style_name = input_style_name_default;
     int count;
     int win_w = 960;
     int win_h = 540;
     int texid;
     int texw, texh, draw_x, draw_y, draw_w, draw_h;
-    float style_ratio = 0.0f;
+    int style_texid;
+    float style_ratio = -0.1f;
     double ttime[10] = {0}, interval, invoke_ms;
     UNUSED (argc);
     UNUSED (*argv);
@@ -269,7 +276,6 @@ main(int argc, char *argv[])
     style_predict_t style_predict[2] = {0};
     {
         int w, h;
-        int style_texid;
         load_jpg_texture (input_style_name, &style_texid, &w, &h);
 
         /* predict style of original image */
@@ -302,14 +308,18 @@ main(int argc, char *argv[])
 
         glClear (GL_COLOR_BUFFER_BIT);
 
+#if 1
         /* 
          *  update style parameter blend ratio.
          *      0.0: apply 100[%] style of original image.
          *      1.0: apply 100[%] style of target image.
          */
         style_ratio += 0.1f;
-        if (style_ratio > 1.0f)
-            style_ratio = 0.0f;
+        if (style_ratio > 1.01f)
+            style_ratio = -0.1f;
+#else
+        style_ratio = 1.0f;
+#endif
 
         /* feed style parameter and original image */
         feed_blend_style (&style_predict[0], &style_predict[1], style_ratio);
@@ -324,7 +334,18 @@ main(int argc, char *argv[])
         /* visualize the style transform results. */
         glClear (GL_COLOR_BUFFER_BIT);
         int transfered_texid = update_style_transfered_texture (&style_transfered);
-        draw_2d_texture (transfered_texid,  draw_x, draw_y, draw_w, draw_h, 0);
+
+        if (style_ratio < 0.0f)     /* render original content image */
+            draw_2d_texture (texid,  draw_x, draw_y, draw_w, draw_h, 0);
+        else                        /* render style transformed image */
+            draw_2d_texture (transfered_texid,  draw_x, draw_y, draw_w, draw_h, 0);
+
+        /* render the target style image */
+        {
+            float col_black[] = {1.0f, 1.0f, 1.0f, 1.0f};
+            draw_2d_texture (style_texid,  win_w - 200, 0, 200, 200, 0);
+            draw_2d_rect (win_w - 200, 0, 200, 200, col_black, 2.0f);
+        }
 
         draw_pmeter (0, 40);
 
