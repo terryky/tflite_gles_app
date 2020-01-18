@@ -5,6 +5,12 @@
 #include "tensorflow/lite/kernels/register.h"
 #include "tensorflow/lite/model.h"
 #include "tensorflow/lite/optional_debug_tools.h"
+#if defined (USE_GL_DELEGATE)
+#include "tensorflow/lite/delegates/gpu/gl_delegate.h"
+#endif
+#if defined (USE_GPU_DELEGATEV2)
+#include "tensorflow/lite/delegates/gpu/delegate.h"
+#endif
 #include "tflite_detect.h"
 #include "detect_postprocess.h"
 
@@ -283,6 +289,38 @@ init_tflite_detection()
         return -1;
     }
 
+#if defined (USE_GL_DELEGATE)
+    const TfLiteGpuDelegateOptions options = {
+        .metadata = NULL,
+        .compile_options = {
+            .precision_loss_allowed = 1,  // FP16
+            .preferred_gl_object_type = TFLITE_GL_OBJECT_TYPE_FASTEST,
+            .dynamic_batch_enabled = 0,   // Not fully functional yet
+        },
+    };
+    auto* delegate = TfLiteGpuDelegateCreate(&options);
+
+    if (interpreter->ModifyGraphWithDelegate(delegate) != kTfLiteOk)
+    {
+        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+#endif
+
+#if defined (USE_GPU_DELEGATEV2)
+    const TfLiteGpuDelegateOptionsV2 options = {
+        .is_precision_loss_allowed = 1, // FP16
+        .inference_preference = TFLITE_GPU_INFERENCE_PREFERENCE_FAST_SINGLE_ANSWER
+    };
+    auto* delegate = TfLiteGpuDelegateV2Create(&options);
+    if (interpreter->ModifyGraphWithDelegate(delegate) != kTfLiteOk)
+    {
+        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+#endif
+
+    interpreter->SetNumThreads(4);
     if (interpreter->AllocateTensors() != kTfLiteOk)
     {
         fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
