@@ -19,7 +19,7 @@
  */
 #define LABEL_MAP_PATH           "./detect_model/mscoco_label_map.pbtxt"
 
-#if 1       /* Mobilenet SSD V1 with PostProcess (quant) */
+#if 0       /* Mobilenet SSD V1 with PostProcess (quant) */
 #define MOBILNET_SSD_MODEL_PATH  "./detect_model/detect_regular_nms_quant.tflite"
 
 #elif 0     /* Mobilenet SSD V1 without PostProcess (quant) */
@@ -31,6 +31,14 @@
 #define MOBILNET_SSD_MODEL_PATH  "./detect_model/mobilenetv3_small/ssd_mobilenet_v3_small_coco_float.tflite"
 #define ANCHORS_FILE             "./detect_model/mobilenetv3_small/anchors.txt"
 #define INVOKE_POSTPROCESS_AFTER_TFLITE 1
+
+#elif 0     /* Mobilenet SSD V3 without PostProcess (float) */
+#define MOBILNET_SSD_MODEL_PATH  "./detect_model/mobilenetv3_large/ssd_mobilenet_v3_large_coco_float.tflite"
+#define ANCHORS_FILE             "./detect_model/mobilenetv3_large/anchors.txt"
+#define INVOKE_POSTPROCESS_AFTER_TFLITE 1
+
+#else
+#error "Please choose a TFLite Model."
 #endif
 
 
