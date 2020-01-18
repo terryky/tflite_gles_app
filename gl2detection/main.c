@@ -182,7 +182,7 @@ main(int argc, char *argv[])
     int win_h = 540;
     int texid;
     int texw, texh, draw_x, draw_y, draw_w, draw_h;
-    double ttime0 = 0, ttime1 = 0, interval;
+    double ttime[10] = {0}, interval, invoke_ms;
     UNUSED (argc);
     UNUSED (*argv);
 
@@ -215,15 +215,19 @@ main(int argc, char *argv[])
         PMETER_RESET_LAP ();
         PMETER_SET_LAP ();
 
-        ttime1 = pmeter_get_time_ms ();
-        interval = (count > 0) ? ttime1 - ttime0 : 0;
-        ttime0 = ttime1;
+        ttime[1] = pmeter_get_time_ms ();
+        interval = (count > 0) ? ttime[1] - ttime[0] : 0;
+        ttime[0] = ttime[1];
 
         glClear (GL_COLOR_BUFFER_BIT);
 
         /* invoke object detection using TensorflowLite */
         feed_detect_image (texid, win_w, win_h);
+
+        ttime[2] = pmeter_get_time_ms ();
         invoke_detect (&detection);
+        ttime[3] = pmeter_get_time_ms ();
+        invoke_ms = ttime[3] - ttime[2];
 
         /* visualize the object detection results. */
         draw_2d_texture (texid,  draw_x, draw_y, draw_w, draw_h, 0);
@@ -231,7 +235,7 @@ main(int argc, char *argv[])
 
         draw_pmeter (0, 40);
 
-        sprintf (strbuf, "%.1f [ms]\n", interval);
+        sprintf (strbuf, "Interval:%5.1f [ms]\nTFLite  :%5.1f [ms]", interval, invoke_ms);
         draw_dbgstr (strbuf, 10, 10);
 
         egl_swap();
