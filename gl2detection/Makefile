@@ -5,6 +5,7 @@ TARGET = gl2detection
 SRCS = 
 SRCS += main.c
 SRCS += tflite_detect.cpp
+SRCS += detect_postprocess.cpp
 SRCS += ../common/assertgl.c
 SRCS += ../common/assertegl.c
 SRCS += ../common/util_egl.c

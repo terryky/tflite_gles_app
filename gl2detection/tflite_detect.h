@@ -27,12 +27,13 @@ typedef struct _detect_result_t
 
 
 
-extern int init_tflite_detection();
-extern void  *get_detect_src_buf ();
-extern char  *get_detect_class_name (int class_idx);
-extern float *get_detect_class_color (int class_idx);
+int   init_tflite_detection();
+int   get_detect_input_type ();
+void  *get_detect_input_buf (int *w, int *h);
+char  *get_detect_class_name (int class_idx);
+float *get_detect_class_color (int class_idx);
 
-extern int invoke_detect(detect_result_t *detection);
+int invoke_detect(detect_result_t *detection);
     
 #ifdef __cplusplus
 }

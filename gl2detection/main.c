@@ -19,11 +19,10 @@
 
 /* resize image to (300x300) for input image of MobileNet SSD */
 void
-feed_detect_image(int texid, int win_w, int win_h)
+feed_detect_image_uint8 (int texid, int win_w, int win_h)
 {
-    int w = 300;
-    int h = 300;
-    void *buf = get_detect_src_buf ();
+    int w, h;
+    uint8_t *buf_u8 = (uint8_t *)get_detect_input_buf (&w, &h);
 
     draw_2d_texture (texid, 0, win_h - h, w, h, 1);
 
@@ -35,24 +34,69 @@ feed_detect_image(int texid, int win_w, int win_h)
         int x, y;
         unsigned char *bufRGBA = (unsigned char *)malloc (w * h * 4);
         unsigned char *pRGBA = bufRGBA;
-        unsigned char *pRGB  = (unsigned char *)buf;
         glPixelStorei (GL_PACK_ALIGNMENT, 4);
         glReadPixels (0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, bufRGBA);
+
         for (y = 0; y < h; y ++)
         {
             for (x = 0; x < w; x ++)
             {
-                *pRGB ++ = *pRGBA ++;  /* R */
-                *pRGB ++ = *pRGBA ++;  /* G */
-                *pRGB ++ = *pRGBA ++;  /* B */
-                pRGBA ++;              /* skip Alpha */
+                int r = *pRGBA ++;
+                int g = *pRGBA ++;
+                int b = *pRGBA ++;
+                pRGBA ++;          /* skip alpha */
+
+                *buf_u8 ++ = r;
+                *buf_u8 ++ = g;
+                *buf_u8 ++ = b;
             }
         }
         free (bufRGBA);
     }
 #endif
+}
 
-    return;
+void
+feed_detect_image_float (int texid, int win_w, int win_h)
+{
+    int w, h;
+    float *buf_fp32 = (float *)get_detect_input_buf (&w, &h);
+
+    draw_2d_texture (texid, 0, win_h - h, w, h, 1);
+
+    int x, y;
+    unsigned char *bufRGBA = (unsigned char *)malloc (w * h * 4);
+    unsigned char *pRGBA = bufRGBA;
+    glPixelStorei (GL_PACK_ALIGNMENT, 4);
+    glReadPixels (0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, bufRGBA);
+
+    /* convert UI8 [0, 255] ==> FP32 [-1, 1] */
+    float mean = 128.0f;
+    float std  = 128.0f;
+    for (y = 0; y < h; y ++)
+    {
+        for (x = 0; x < w; x ++)
+        {
+            int r = *pRGBA ++;
+            int g = *pRGBA ++;
+            int b = *pRGBA ++;
+            pRGBA ++;          /* skip alpha */
+            *buf_fp32 ++ = (float)(r - mean) / std;
+            *buf_fp32 ++ = (float)(g - mean) / std;
+            *buf_fp32 ++ = (float)(b - mean) / std;
+        }
+    }
+    free (bufRGBA);
+}
+
+void
+feed_detect_image(int texid, int win_w, int win_h)
+{
+    int type = get_detect_input_type ();
+    if (type)
+        feed_detect_image_uint8 (texid, win_w, win_h);
+    else
+        feed_detect_image_float (texid, win_w, win_h);
 }
 
 void

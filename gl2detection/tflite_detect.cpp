@@ -6,12 +6,27 @@
 #include "tensorflow/lite/model.h"
 #include "tensorflow/lite/optional_debug_tools.h"
 #include "tflite_detect.h"
+#include "detect_postprocess.h"
 
 /* 
  * https://github.com/tensorflow/models/blob/master/research/object_detection/data/mscoco_label_map.pbtxt
  */
 #define LABEL_MAP_PATH           "./detect_model/mscoco_label_map.pbtxt"
+
+#if 1       /* Mobilenet SSD V1 with PostProcess (quant) */
 #define MOBILNET_SSD_MODEL_PATH  "./detect_model/detect_regular_nms_quant.tflite"
+
+#elif 0     /* Mobilenet SSD V1 without PostProcess (quant) */
+#define MOBILNET_SSD_MODEL_PATH  "./detect_model/detect_no_nms_quant.tflite"
+#define ANCHORS_FILE             "./detect_model/anchors.txt"
+#define INVOKE_POSTPROCESS_AFTER_TFLITE 1
+
+#elif 1     /* Mobilenet SSD V3 without PostProcess (float) */
+#define MOBILNET_SSD_MODEL_PATH  "./detect_model/mobilenetv3_small/ssd_mobilenet_v3_small_coco_float.tflite"
+#define ANCHORS_FILE             "./detect_model/mobilenetv3_small/anchors.txt"
+#define INVOKE_POSTPROCESS_AFTER_TFLITE 1
+#endif
+
 
 using namespace std;
 using namespace tflite;
@@ -20,11 +35,36 @@ unique_ptr<FlatBufferModel> model;
 unique_ptr<Interpreter> interpreter;
 ops::builtin::BuiltinOpResolver resolver;
 
-static uint8_t *in_ptr;
+typedef struct tensor_info_t
+{
+    TfLiteType  type;        /* [1] kTfLiteFloat32, [2] kTfLiteInt32, [3] kTfLiteUInt8 */
+    float       scale;
+    int         zero_point;
+} tensor_info_t;
+
+
+static void   *in_ptr;
+
+#if defined (INVOKE_POSTPROCESS_AFTER_TFLITE)
+static uint8_t *boxes_u8_ptr;
+static uint8_t *scores_u8_ptr;
+static float   *boxes_ptr;
+static float   *scores_ptr;
+static tensor_info_t s_tensor_boxes;
+static tensor_info_t s_tensor_scores;
+static int     s_num_anchors = 0;
+static int     s_num_classes = 0;
+#else
 static float   *boxes_ptr;
 static float   *classes_ptr;
 static float   *scores_ptr;
 static float   *num_ptr;
+#endif
+
+static int     s_img_w = 0;
+static int     s_img_h = 0;
+
+static tensor_info_t s_tensor_input;
 
 static char  s_class_name [MAX_DETECT_CLASS + 1][128];
 static float s_class_color[MAX_DETECT_CLASS + 1][4];
@@ -211,6 +251,22 @@ print_tensor_info ()
 }
 
 int
+get_outtensor_idx_by_name (const char *key_name)
+{
+    int out_size = interpreter->outputs().size();
+
+    for (int i = 0; i < out_size; i ++)
+    {
+        int idx = interpreter->outputs()[i];
+        const char *tensor_name = interpreter->tensor(idx)->name;
+
+        if (strcmp (tensor_name, key_name) == 0)
+            return i;
+    }
+    return -1;
+}
+
+int
 init_tflite_detection()
 {
     model = FlatBufferModel::BuildFromFile(MOBILNET_SSD_MODEL_PATH);
@@ -236,22 +292,94 @@ init_tflite_detection()
 #if 1 /* for debug */
     print_tensor_info ();
 #endif
+
+    /* input image dimention */
+    int input_idx = interpreter->inputs()[0];
+    TfLiteTensor *input_tensor = interpreter->tensor(input_idx);
+    TfLiteIntArray *dim = input_tensor->dims;
+    s_img_w = dim->data[2];
+    s_img_h = dim->data[1];
+    fprintf (stderr, "input image size: (%d, %d)\n", s_img_w, s_img_h);
+    s_tensor_input.type = input_tensor->type;
     
-    in_ptr      = interpreter->typed_input_tensor<uint8_t>(0);
+    if (s_tensor_input.type == kTfLiteUInt8)
+        in_ptr = interpreter->typed_input_tensor<uint8_t>(0);
+    else
+        in_ptr = interpreter->typed_input_tensor<float>(0);
+
+
+#if defined (INVOKE_POSTPROCESS_AFTER_TFLITE)
+    int boxes_out_idx  = get_outtensor_idx_by_name ("raw_outputs/box_encodings");
+    int scores_out_idx = get_outtensor_idx_by_name ("raw_outputs/class_predictions");
+    fprintf (stderr, "boxes_out_idx  = %d\n", boxes_out_idx);
+    fprintf (stderr, "scores_out_idx = %d\n", scores_out_idx);
+
+    /* scores dimention [1, 1917, 91] */
+    int scores_idx = interpreter->outputs()[scores_out_idx];
+    TfLiteTensor *scores_tensor = interpreter->tensor(scores_idx);
+    TfLiteIntArray *scores_dim  = scores_tensor->dims;
+    s_num_anchors = scores_dim->data[1];
+    s_num_classes = scores_dim->data[2];
+    fprintf (stderr, "num_anchors = %d\n", s_num_anchors);
+    fprintf (stderr, "num_classes = %d\n", s_num_classes);
+
+    s_tensor_scores.type       = scores_tensor->type;
+    s_tensor_scores.scale      = scores_tensor->params.scale;
+    s_tensor_scores.zero_point = scores_tensor->params.zero_point;
+
+    /* boxes dimention [1, 1917, 4] */
+    int boxes_idx = interpreter->outputs()[boxes_out_idx];
+    TfLiteTensor *boxes_tensor = interpreter->tensor(boxes_idx);
+
+    s_tensor_boxes.type       = boxes_tensor->type;
+    s_tensor_boxes.scale      = boxes_tensor->params.scale;
+    s_tensor_boxes.zero_point = boxes_tensor->params.zero_point;
+
+    if (s_tensor_scores.type == kTfLiteUInt8)
+    {
+        scores_u8_ptr = interpreter->typed_output_tensor<uint8_t>(scores_out_idx);
+        boxes_u8_ptr  = interpreter->typed_output_tensor<uint8_t>(boxes_out_idx);
+
+        /* allocate buffers for float convertion */
+        scores_ptr = new float[s_num_anchors * s_num_classes];
+        boxes_ptr  = new float[s_num_anchors * 4]; /* float4 {x0, y0, x1, y1} */
+    }
+    else
+    {
+        scores_ptr = interpreter->typed_output_tensor<float>(scores_out_idx);
+        boxes_ptr  = interpreter->typed_output_tensor<float>(boxes_out_idx);
+    }
+#else
     boxes_ptr   = interpreter->typed_output_tensor<float>(0);
     classes_ptr = interpreter->typed_output_tensor<float>(1);
     scores_ptr  = interpreter->typed_output_tensor<float>(2);
     num_ptr     = interpreter->typed_output_tensor<float>(3);
+#endif
 
     load_label_map ();
     init_class_color ();
 
+#if defined (INVOKE_POSTPROCESS_AFTER_TFLITE)
+    init_detect_postprocess (ANCHORS_FILE);
+#endif
+
     return 0;
 }
 
-void *
-get_detect_src_buf ()
+int
+get_detect_input_type ()
 {
+    if (s_tensor_input.type == kTfLiteUInt8)
+        return 1;
+    else
+        return 0;
+}
+
+void *
+get_detect_input_buf (int *w, int *h)
+{
+    *w = s_img_w;
+    *h = s_img_h;
     return in_ptr;
 }
 
@@ -337,6 +465,50 @@ invoke_detect (detect_result_t *detection)
         return -1;
     }
 
+#if defined (INVOKE_POSTPROCESS_AFTER_TFLITE)
+    std::vector<DetectionBox> detection_boxes = {};
+
+    if (s_tensor_scores.type == kTfLiteUInt8)
+    {
+        for (int i = 0; i < s_num_anchors * s_num_classes; i ++)
+        {
+            scores_ptr[i] = (scores_u8_ptr[i] - s_tensor_scores.zero_point) * s_tensor_scores.scale;
+        }
+    }
+
+    if (s_tensor_boxes.type == kTfLiteUInt8)
+    {
+        for (int i = 0; i < s_num_anchors * 4; i ++)
+        {
+            boxes_ptr[i] = (boxes_u8_ptr[i] - s_tensor_boxes.zero_point) * s_tensor_boxes.scale;
+        }
+    }
+
+    invoke_detection_postprocess (detection_boxes, boxes_ptr, scores_ptr);
+
+    int num = detection_boxes.size();
+    num = min (num, MAX_DETECT_OBJS);
+    detection->num = num;
+
+    for (int i = 0; i < num; i ++)
+    {
+        float x1 = detection_boxes[i].x1;
+        float y1 = detection_boxes[i].y1;
+        float x2 = detection_boxes[i].x2;
+        float y2 = detection_boxes[i].y2;
+        float score = detection_boxes[i].score;
+        int detected_class = detection_boxes[i].class_id;
+
+        detection->obj[i].x1 = x1;
+        detection->obj[i].y1 = y1;
+        detection->obj[i].x2 = x2;
+        detection->obj[i].y2 = y2;
+        detection->obj[i].score = score;
+        detection->obj[i].det_class = detected_class;
+
+        //fprintf (stderr, "[%2d] (%f, %f, %f, %f) %f %d\n", i, x1, y1, x2, y2, score, detected_class);
+    }
+#else
     float *boxes   = boxes_ptr;
     float *classes = classes_ptr;
     float *scores  = scores_ptr;
@@ -367,6 +539,7 @@ invoke_detect (detect_result_t *detection)
                     get_detect_class_name (detected_class));
 #endif
     }
+#endif
 
     return 0;
 }
