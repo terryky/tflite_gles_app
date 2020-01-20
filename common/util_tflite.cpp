@@ -209,8 +209,83 @@ create_tflite_inferer (const char *model_path)
 
 
 
+int
+get_tflite_tensor_by_name (tflite_obj_t tobj, int io, const char *name, tflite_tensor_t *ptensor)
+{
+    tflite_obj_in_t *pobj = (tflite_obj_in_t *)tobj;
+    unique_ptr<Interpreter> &interpreter = pobj->interpreter;
+
+    memset (ptensor, 0, sizeof (*ptensor));
+
+    int tensor_idx;
+    int io_idx = -1;
+    int num_tensor = (io == 0) ? interpreter->inputs ().size() :
+                                 interpreter->outputs().size();
+
+    for (int i = 0; i < num_tensor; i ++)
+    {
+        tensor_idx = (io == 0) ? interpreter->inputs ()[i] :
+                                 interpreter->outputs()[i];
+
+        const char *tensor_name = interpreter->tensor(tensor_idx)->name;
+        if (strcmp (tensor_name, name) == 0)
+        {
+            io_idx = i;
+            break;
+        }
+    }
+
+    if (io_idx < 0)
+        return -1;
+
+    void *ptr = NULL;
+    TfLiteTensor *tensor = interpreter->tensor(tensor_idx);
+    switch (tensor->type)
+    {
+    case kTfLiteUInt8:
+        ptr = (io == 0) ? interpreter->typed_input_tensor <uint8_t>(io_idx) :
+                          interpreter->typed_output_tensor<uint8_t>(io_idx);
+        break;
+    case kTfLiteFloat32:
+        ptr = (io == 0) ? interpreter->typed_input_tensor <float>(io_idx) :
+                          interpreter->typed_output_tensor<float>(io_idx);
+        break;
+    default:
+        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+
+    ptensor->idx    = tensor_idx;
+    ptensor->io     = io;
+    ptensor->io_idx = io_idx;
+    ptensor->type   = tensor->type;
+    ptensor->ptr    = ptr;
+    ptensor->quant_scale = tensor->params.scale;
+    ptensor->quant_zerop = tensor->params.zero_point;
+
+    for (int i = 0; (i < 4) && (i < tensor->dims->size); i ++)
+    {
+        ptensor->dims[i] = tensor->dims->data[i];
+    }
+
+    return 0;
+}
 
 
+int
+invoke_tflite (tflite_obj_t tobj)
+{
+    tflite_obj_in_t *pobj = (tflite_obj_in_t *)tobj;
+    unique_ptr<Interpreter> &interpreter = pobj->interpreter;
+
+    if (interpreter->Invoke() != kTfLiteOk)
+    {
+        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+
+    return 0;
+}
 
 
 

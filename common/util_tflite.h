@@ -21,6 +21,18 @@ extern "C" {
 #endif
 
 
+typedef struct tflite_tensor_t
+{
+    int         idx;        /* whole  tensor index */
+    int         io;         /* [0] input_tensor, [1] output_tensor */
+    int         io_idx;     /* in/out tensor index */
+    TfLiteType  type;       /* [1] kTfLiteFloat32, [2] kTfLiteInt32, [3] kTfLiteUInt8 */
+    void        *ptr;
+    int         dims[4];
+    float       quant_scale;
+    int         quant_zerop;
+} tflite_tensor_t;
+
 
 
 
@@ -29,9 +41,9 @@ typedef void *tflite_obj_t;
 tflite_obj_t create_tflite_inferer (const char *model_fname);
 void dump_tflite_model (tflite_obj_t tflite_obj);
 
+int get_tflite_tensor_by_name (tflite_obj_t tobj, int io, const char *name, tflite_tensor_t *ptensor);
 
-
-
+int invoke_tflite (tflite_obj_t tobj);
 
 #ifdef __cplusplus
 }
