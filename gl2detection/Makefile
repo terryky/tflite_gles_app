@@ -16,6 +16,7 @@ SRCS += ../common/util_image_jpg.c
 SRCS += ../common/util_render2d.c
 SRCS += ../common/util_debugstr.c
 SRCS += ../common/util_pmeter.c
+SRCS += ../common/util_tflite.cpp
 SRCS += ../common/winsys/$(WINSYS_SRC).c
 
 OBJS += $(patsubst %.cpp,%.o,$(patsubst %.c,%.o,$(SRCS)))
