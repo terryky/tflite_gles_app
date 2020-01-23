@@ -41,7 +41,7 @@ cp bazel-out/k8-opt/bin/tensorflow/lite/delegates/gpu/cl/compiled_program_cache_
 
 
 # build TensorFlow Lite library (libtensorflow-lite.a)
-make -j 4  -f ./tensorflow/lite/tools/make/Makefile BUILD_WITH_NNAPI=false EXTRA_CXXFLAGS="-march=native" 2>&1 | tee -a log_build_libtflite_gpu_delegate.txt
+make -j 4  -f ./tensorflow/lite/tools/make/Makefile BUILD_WITH_NNAPI=false TARGET=aarch64 2>&1 | tee -a log_build_libtflite_gpu_delegate.txt
 
 
 echo "----------------------------------------------------"
@@ -49,7 +49,7 @@ echo " build success."
 echo "----------------------------------------------------"
 
 cd ${TENSORFLOW_DIR}
-ls -l tensorflow/lite/tools/make/gen/linux_x86_64/lib/
+ls -l tensorflow/lite/tools/make/gen/aarch64_armv8-a/lib/
 ls -l bazel-bin/tensorflow/lite/delegates/gpu/
 
 
