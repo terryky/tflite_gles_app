@@ -17,6 +17,11 @@ PATCH_FILE=${SCRIPT_DIR}/tensorflow_tf20_enable_gpu_delegate.diff
 patch -p1 < ${PATCH_FILE}
 
 
+# install Bazel 0.26.1
+#wget https://github.com/bazelbuild/bazel/releases/download/0.26.1/bazel-0.26.1-installer-linux-x86_64.sh
+#chmod 755 bazel-0.26.1-installer-linux-x86_64.sh
+#sudo ./bazel-0.26.1-installer-linux-x86_64.sh
+
 # clean up bazel cache, just in case.
 bazel clean
 
