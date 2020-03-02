@@ -28,6 +28,12 @@ int egl_show_current_config_attrib ();
 int egl_show_current_surface_attrib ();
 int egl_show_gl_info ();
 
+
+void egl_set_motion_func (void (*func)(int x, int y));
+void egl_set_button_func (void (*func)(int button, int state, int x, int y));
+void egl_set_key_func (void (*func)(int key, int state, int x, int y));
+
+
 EGLDisplay egl_get_display ();
 EGLContext egl_get_context ();
 EGLSurface egl_get_surface ();
