@@ -13,8 +13,8 @@ git checkout ${TENSORFLOW_VER}
 
 
 # apply patch for GPU Delegate
-PATCH_FILE=${SCRIPT_DIR}/tensorflow_tf21_tflite_download_dependencies.diff
-patch -p1 < ${PATCH_FILE}
+#PATCH_FILE=${SCRIPT_DIR}/tensorflow_tf21_tflite_download_dependencies.diff
+#patch -p1 < ${PATCH_FILE}
 
 # download all the build dependencies.
 ./tensorflow/lite/tools/make/download_dependencies.sh
