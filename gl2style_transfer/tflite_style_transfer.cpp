@@ -15,7 +15,8 @@
 #include <float.h>
 
 #define STYLE_PREDICT_MODEL_PATH  "./style_transfer_model/style_predict_quantized_256.tflite"
-#define STYLE_TRANSFER_MODEL_PATH "./style_transfer_model/style_transfer_quantized_dynamic.tflite"
+//#define STYLE_TRANSFER_MODEL_PATH "./style_transfer_model/style_transfer_quantized_dynamic.tflite"
+#define STYLE_TRANSFER_MODEL_PATH "./style_transfer_model/style_transfer_quantized_384.tflite"
 
 using namespace std;
 using namespace tflite;
@@ -169,7 +170,7 @@ create_interpreter(tflite_interpreter_t *p, const char *model_path)
         return -1;
     }
 
-#if 1 /* for debug */
+#if 0 /* for debug */
     print_tensor_info (p->interpreter);
 #endif
 
