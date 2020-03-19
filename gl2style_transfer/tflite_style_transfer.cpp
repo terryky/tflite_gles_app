@@ -14,9 +14,14 @@
 #include "tflite_style_transfer.h"
 #include <float.h>
 
+#if 1
 #define STYLE_PREDICT_MODEL_PATH  "./style_transfer_model/style_predict_quantized_256.tflite"
 //#define STYLE_TRANSFER_MODEL_PATH "./style_transfer_model/style_transfer_quantized_dynamic.tflite"
 #define STYLE_TRANSFER_MODEL_PATH "./style_transfer_model/style_transfer_quantized_384.tflite"
+#else
+#define STYLE_PREDICT_MODEL_PATH  "./style_transfer_model/style_predict_f16_256.tflite"
+#define STYLE_TRANSFER_MODEL_PATH "./style_transfer_model/style_transfer_f16_384.tflite"
+#endif
 
 using namespace std;
 using namespace tflite;
