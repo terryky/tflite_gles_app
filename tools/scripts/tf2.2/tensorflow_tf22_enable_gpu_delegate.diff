@@ -1,0 +1,307 @@
+diff --git a/tensorflow/lite/delegates/gpu/cl/egl_sync.cc b/tensorflow/lite/delegates/gpu/cl/egl_sync.cc
+old mode 100644
+new mode 100755
+index 8493fbb049..fb3cf6a950
+--- a/tensorflow/lite/delegates/gpu/cl/egl_sync.cc
++++ b/tensorflow/lite/delegates/gpu/cl/egl_sync.cc
+@@ -21,6 +21,11 @@ namespace tflite {
+ namespace gpu {
+ namespace cl {
+ 
++#define eglCreateSyncKHR  eglCreateSync
++#define eglDestroySyncKHR eglDestroySync
++#define eglWaitSyncKHR    eglWaitSync
++#define eglClientWaitSyncKHR eglClientWaitSync
++
+ Status EglSync::NewFence(EGLDisplay display, EglSync* sync) {
+   EGLSyncKHR egl_sync;
+   RETURN_IF_ERROR(TFLITE_GPU_CALL_EGL(eglCreateSyncKHR, &egl_sync, display,
+diff --git a/tensorflow/lite/tools/make/Makefile b/tensorflow/lite/tools/make/Makefile
+old mode 100644
+new mode 100755
+index b78fb14b78..161f919062
+--- a/tensorflow/lite/tools/make/Makefile
++++ b/tensorflow/lite/tools/make/Makefile
+@@ -191,6 +191,282 @@ else
+ 	CORE_CC_EXCLUDE_SRCS += tensorflow/lite/minimal_logging_ios.cc
+ endif
+ 
++
++# -------------------------------------------------------------------------------------------
++# for GPU Delegate
++# -------------------------------------------------------------------------------------------
++CXXFLAGS += -Iexternal/flatbuffers/grpc
++CXXFLAGS += -DMESA_EGL_NO_X11_HEADERS
++
++
++CORE_CC_ALL_SRCS += tensorflow/lite/minimal_logging_default.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/tensor_type.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/c/common.c
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_parser.cpp 
++CORE_CC_ALL_SRCS += external/flatbuffers/grpc/src/compiler/java_generator.cc 
++CORE_CC_ALL_SRCS += tensorflow/lite/minimal_logging.cc
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_grpc.cpp 
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_swift.cpp 
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_lua.cpp 
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_php.cpp 
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_json_schema.cpp 
++CORE_CC_ALL_SRCS += external/flatbuffers/src/flatc_main.cpp 
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_cpp.cpp 
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_js_ts.cpp 
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_dart.cpp 
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_java.cpp 
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_go.cpp 
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_csharp.cpp 
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_text.cpp 
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_lobster.cpp 
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_rust.cpp 
++CORE_CC_ALL_SRCS += external/flatbuffers/src/util.cpp 
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_python.cpp 
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_kotlin.cpp 
++CORE_CC_ALL_SRCS += external/flatbuffers/grpc/src/compiler/go_generator.cc 
++CORE_CC_ALL_SRCS += external/flatbuffers/src/flatc.cpp 
++CORE_CC_ALL_SRCS += external/flatbuffers/src/code_generators.cpp 
++CORE_CC_ALL_SRCS += external/flatbuffers/src/util.cpp 
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_fbs.cpp 
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_text.cpp 
++CORE_CC_ALL_SRCS += external/flatbuffers/grpc/src/compiler/cpp_generator.cc 
++CORE_CC_ALL_SRCS += external/flatbuffers/grpc/src/compiler/python_generator.cc 
++CORE_CC_ALL_SRCS += external/flatbuffers/src/reflection.cpp 
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/str_replace.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/time/internal/cctz/src/time_zone_info.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/base/internal/throw_delegate.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/base/internal/sysinfo.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/time/internal/cctz/src/time_zone_lookup.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/base/internal/spinlock.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/types/bad_variant_access.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/str_cat.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/time/internal/cctz/src/time_zone_impl.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/numbers.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/time/internal/cctz/src/time_zone_format.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/softmax.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/relu.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/mean.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/base/internal/spinlock_wait.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/match.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/time/internal/cctz/src/civil_time_detail.cc
++## SUBCOMMAND: # @flatbuffers//:flatc [action 'Linking external/flatbuffers/flatc [for host]', configuration: 80fe1c79880d5a869eb6b9858d641b8881066077e7d3e2d7ae3ae0a52e760626]
++## SUBCOMMAND: # //tensorflow/lite/delegates/gpu/cl:compiled_program_cache_cc_fbs_srcs [action 'Generating flatbuffer files for compiled_program_cache_cc_fbs_srcs: //tensorflow/lite/delegates/gpu/cl:compiled_program_cache_cc_fbs_srcs', configuration: 1250b7db481b762af362d075907d4db1d4fa51a342c132173bcb1e31e4047f23]
++## SUBCOMMAND: # //tensorflow/lite/schema:schema_fbs_srcs [action 'Generating flatbuffer files for schema_fbs_srcs: //tensorflow/lite/schema:schema_fbs_srcs', configuration: 1250b7db481b762af362d075907d4db1d4fa51a342c132173bcb1e31e4047f23]
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/add.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/concat_z.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/concat_xy.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/depth_wise_conv_3x3.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/selectors/simple_selectors.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/fully_connected.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/selectors/fully_connected_selector.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/delegate.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/time/time.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/depthwise_conv.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/elementwise.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/pad.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/convolution_transposed_thin.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/time/internal/cctz/src/time_zone_posix.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/conv.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/internal/memutil.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/time/format.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/convolution_transposed_3x3.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/converter.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/convolution_transposed.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/memory_management/greedy_by_breadth_assignment.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/base/internal/raw_logging.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/base/dynamic_annotations.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/internal/charconv_parse.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/time/clock.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/conv_powervr.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/egl_environment.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/conv_constants.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/time/civil_time.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/types/bad_any_cast.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/compiler/fuse_auto_input.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/internal/charconv_bigint.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/precision.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/texture2d.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/compiler/rename.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/linear_storage.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/flt_type.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/conv_buffer_1x1.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/base/log_severity.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/escaping.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/cl_program.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/selectors/operation_selector.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/kernels/kernel_util.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/workgroup_selection.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/cl_kernel.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/work_group_picking.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/transformations/make_fully_connected.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/charconv.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/cl_event.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/gpu_operation.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/util.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/storage_type_util.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/cl_image_format.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/softmax.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/debugging/stacktrace.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/ascii.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/types/bad_optional_access.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/gl_shader.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/debugging/internal/demangle.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/gl_program.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/hash/internal/city.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/synchronization/mutex.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/util.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/opencl_wrapper.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/gl_interop.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/synchronization/internal/create_thread_identity.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/synchronization/blocking_counter.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/hash/internal/hash.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/data_type.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/container/internal/raw_hash_set.cc
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_parser.cpp
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/internal/str_format/extension.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/base/internal/cycleclock.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/internal/utf8.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/base/internal/unscaledcycleclock.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/container/internal/hashtablez_sampler_force_weak_definition.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/memory_management/internal.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/tensor.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/winograd.cc
++CORE_CC_ALL_SRCS += external/flatbuffers/src/reflection.cpp
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/memory_management/greedy_by_size_assignment.cc
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_text.cpp
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/memory_management.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/memory_management/min_cost_flow_assignment.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/space_to_depth.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/string_view.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/substitute.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/cl_command_queue.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/environment.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/relu.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/softmax1x1.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/egl_sync.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/fully_connected.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/mul.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/pooling.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/prelu.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/time/internal/cctz/src/time_zone_if.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/reshape.cc
++## SUBCOMMAND: # //tensorflow/lite/delegates/gpu:delegate [action 'Linking tensorflow/lite/delegates/gpu/libdelegate.so', configuration: 1250b7db481b762af362d075907d4db1d4fa51a342c132173bcb1e31e4047f23]
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/resize.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/delegate.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/lstm.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/max_unpooling.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/custom_registry.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/padding.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/program_cache.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/reshapex4.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/max_unpooling.cc
++## SUBCOMMAND: # //tensorflow/lite/delegates/gpu:delegate [action 'Linking tensorflow/lite/delegates/gpu/libdelegate.a', configuration: 1250b7db481b762af362d075907d4db1d4fa51a342c132173bcb1e31e4047f23]
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/selectors/dw_convolution_selector.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/resize.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/concat.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/registry.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/convert.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/gl_texture.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/request_gpu_info.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/egl_context.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/compiler/shader_codegen.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/compiler/fuse_inline.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/compiler/variable_accessor.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/compiler/object_accessor.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/compiler/compiled_node.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/compiler.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/command_queue.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/kernels/internal/quantization_util.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/transformations/remove_noop.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/transformations/make_padding.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/transformations/fuse_mul_to_conv.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/transformations/general_transformations.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/custom_parsers.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/converter.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/transformations/merge_padding_with.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/model_transformer.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/debugging/symbolize.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/synchronization/internal/graphcycles.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/synchronization/notification.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/synchronization/internal/per_thread_sem.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/gl_buffer.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/debugging/internal/vdso_support.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/cl_memory.cc
++CORE_CC_ALL_SRCS += external/flatbuffers/src/util.cpp
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/debugging/internal/address_is_readable.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/memory_management/types.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/cl_context.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/internal/str_format/arg.cc
++CORE_CC_ALL_SRCS += external/farmhash_archive/src/farmhash.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/internal/str_format/bind.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/api.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/internal/str_format/output.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/gl_errors.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/time/internal/cctz/src/time_zone_libc.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/prelu.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/base/internal/thread_identity.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/workgroups/calculator.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/time/duration.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/convolution_transposed_4x4.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/strided_slice.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/selectors/convolution_transposed_selector.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/slice.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/lstm.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/workgroups/ideal_workgroup_picker.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/runtime.cc
++## SUBCOMMAND: # //tensorflow/lite/delegates/gpu:delegate [action 'Linking tensorflow/lite/delegates/gpu/libdelegate.pic.a', configuration: 1250b7db481b762af362d075907d4db1d4fa51a342c132173bcb1e31e4047f23]
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/mean.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/convolution_transposed_3x3_thin.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/operations.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/gpu_info.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/selectors/convolution_selector.cc
++CORE_CC_ALL_SRCS += external/flatbuffers/src/idl_gen_fbs.cpp
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/transformations/match_dilated_convolution.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/util.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/inference_context.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/float16_conversions.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/gl_sync.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/debugging/internal/elf_mem_image.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/shape.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/transformations/add_bias.cc
++CORE_CC_ALL_SRCS += external/flatbuffers/src/code_generators.cpp
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/transpose.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/cl_device.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/synchronization/barrier.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/str_split.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/space_to_depth.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/api.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/internal/ostringstream.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/conv_texture.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/pooling.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/time/internal/cctz/src/zone_info_source.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/workgroups/default_calculator.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/model_builder.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/buffer.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/compiler/fuse_inplace.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/tensor_type_util.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/internal/str_format/parser.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/numeric/int128.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/base/internal/low_level_alloc.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/elementwise.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/multiply_add.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/depth_wise_conv.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/transpose_conv.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/object_manager.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/compiler/preprocessor.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/common/transformations/fuse_add_to_conv.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/synchronization/internal/waiter.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/strings/internal/str_format/float_conversion.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/time/internal/cctz/src/time_zone_fixed.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/kernels/add.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/api2.cc
++CORE_CC_ALL_SRCS += external/com_google_absl/absl/container/internal/hashtablez_sampler.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/gl/egl_surface.cc
++CORE_CC_ALL_SRCS += tensorflow/lite/delegates/gpu/cl/kernels/reshape.cc
++
++
++
++
+ # Filter out all the excluded files.
+ TF_LITE_CC_SRCS := $(filter-out $(CORE_CC_EXCLUDE_SRCS), $(CORE_CC_ALL_SRCS))
+ 
