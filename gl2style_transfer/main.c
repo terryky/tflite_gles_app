@@ -223,7 +223,7 @@ main(int argc, char *argv[])
     char input_style_name_default[] = "munch_scream.jpg";
     char *input_style_name = input_style_name_default;
     int count;
-    int win_w = 960;
+    int win_w = 720 * 2;
     int win_h = 540;
     int texid;
     int texw, texh, draw_x, draw_y, draw_w, draw_h;
@@ -308,7 +308,7 @@ main(int argc, char *argv[])
 
         glClear (GL_COLOR_BUFFER_BIT);
 
-#if 1
+#if 0
         /* 
          *  update style parameter blend ratio.
          *      0.0: apply 100[%] style of original image.
@@ -334,12 +334,15 @@ main(int argc, char *argv[])
         /* visualize the style transform results. */
         glClear (GL_COLOR_BUFFER_BIT);
         int transfered_texid = update_style_transfered_texture (&style_transfered);
-
+#if 0
         if (style_ratio < 0.0f)     /* render original content image */
             draw_2d_texture (texid,  draw_x, draw_y, draw_w, draw_h, 0);
         else                        /* render style transformed image */
             draw_2d_texture (transfered_texid,  draw_x, draw_y, draw_w, draw_h, 0);
-
+#else
+        draw_2d_texture (texid, 0, 0, 750, 540, 0);
+        draw_2d_texture (transfered_texid, 720, 0, 720, 540, 0);
+#endif        
         /* render the target style image */
         {
             float col_black[] = {1.0f, 1.0f, 1.0f, 1.0f};

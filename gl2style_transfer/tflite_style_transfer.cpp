@@ -14,7 +14,7 @@
 #include "tflite_style_transfer.h"
 #include <float.h>
 
-#if 1
+#if 0
 #define STYLE_PREDICT_MODEL_PATH  "./style_transfer_model/style_predict_quantized_256.tflite"
 //#define STYLE_TRANSFER_MODEL_PATH "./style_transfer_model/style_transfer_quantized_dynamic.tflite"
 #define STYLE_TRANSFER_MODEL_PATH "./style_transfer_model/style_transfer_quantized_384.tflite"
@@ -160,7 +160,8 @@ create_interpreter(tflite_interpreter_t *p, const char *model_path)
         .is_precision_loss_allowed = 1, // FP16
         .inference_preference = TFLITE_GPU_INFERENCE_PREFERENCE_FAST_SINGLE_ANSWER
     };
-    auto* delegate = TfLiteGpuDelegateV2Create(&options);
+    //auto* delegate = TfLiteGpuDelegateV2Create(&options);
+    auto* delegate = TfLiteGpuDelegateV2Create(NULL);
     if (p->interpreter->ModifyGraphWithDelegate(delegate) != kTfLiteOk)
     {
         fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
