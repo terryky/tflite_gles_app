@@ -12,6 +12,7 @@
 #include "tensorflow/lite/delegates/gpu/delegate.h"
 #endif
 #include "tflite_posenet.h"
+#include <list>
 #include <float.h>
 #include "ssbo_tensor.h"
 
@@ -219,7 +220,10 @@ init_tflite_posenet(ssbo_t *ssbo)
 #if defined (USE_GPU_DELEGATEV2)
     const TfLiteGpuDelegateOptionsV2 options = {
         .is_precision_loss_allowed = 1, // FP16
-        .inference_preference = TFLITE_GPU_INFERENCE_PREFERENCE_FAST_SINGLE_ANSWER
+        .inference_preference = TFLITE_GPU_INFERENCE_PREFERENCE_FAST_SINGLE_ANSWER,
+        .inference_priority1  = TFLITE_GPU_INFERENCE_PRIORITY_MIN_LATENCY,
+        .inference_priority2  = TFLITE_GPU_INFERENCE_PRIORITY_AUTO,
+        .inference_priority3  = TFLITE_GPU_INFERENCE_PRIORITY_AUTO,
     };
     auto* delegate = TfLiteGpuDelegateV2Create(&options);
     if (interpreter->ModifyGraphWithDelegate(delegate) != kTfLiteOk)
