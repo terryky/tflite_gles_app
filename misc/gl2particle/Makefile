@@ -21,15 +21,9 @@ OBJS += $(SRCS:%.c=./%.o)
 
 INCLUDES += -I../../common/
 INCLUDES += -I../../common/winsys/
+INCLUDES += -I../../third_party/
 
 CFLAGS   +=
-
-
-# for PNG texture
-SRCS     += ../../common/util_image_png.c
-CFLAGS   += -DUSE_PNG_TEXTURE
-LIBS     += -lpthread
-LIBS     += -lpng
 
 
 LDFLAGS  +=

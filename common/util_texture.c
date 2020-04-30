@@ -7,13 +7,8 @@
 #include <GLES2/gl2.h>
 #include "assertgl.h"
 
-#if defined (USE_PNG_TEXTURE)
-#include "util_image_png.h"
-#endif
-
-#if defined (USE_JPEG_TEXTURE)
-#include "util_image_jpg.h"
-#endif
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb/stb_image.h>
 
 
 GLuint
@@ -47,83 +42,59 @@ create_2d_texture (void *imgbuf, int width, int height)
 int
 load_png_texture (char *name, int *lpTexID, int *lpWidth, int *lpHeight)
 {
-#if defined (USE_PNG_TEXTURE)
-    unsigned int  width, height;
-    int           ctype, mem_size;
-    void          *imgbuf;
-    GLuint        texid;
+    int32_t width, height, channel_count;
+    uint8_t *imgbuf;
+    GLuint texid;
 
-    open_png_from_file (name, &width, &height, &ctype);
-
-    mem_size = width * height * 4;
-    imgbuf = malloc (mem_size);
+    /* decode image data to RGBA8888 */
+    imgbuf = stbi_load (name, &width, &height, &channel_count, 4);
     if (imgbuf == NULL)
     {
         fprintf (stderr, "Failed to load PNG: %s\n", name);
         return -1;
     }
 
-    decode_png_from_file (name, imgbuf);
-
     texid = create_2d_texture (imgbuf, width, height);
 
     if (lpTexID)  *lpTexID  = texid;
     if (lpWidth)  *lpWidth  = width;
     if (lpHeight) *lpHeight = height;
-    free (imgbuf);
+    stbi_image_free (imgbuf);
 
     GLASSERT();
     return 0;
-#else
-    fprintf (stderr, "please enable compile option: \"USE_PNG_TEXTURE\"\n");
-    return -1;
-#endif
 }
 
 int
 load_jpg_texture (char *name, int *lpTexID, int *lpWidth, int *lpHeight)
 {
-#if defined (USE_JPEG_TEXTURE)
-    unsigned int width, height;
-    int          mem_size;
-    void         *imgbuf;
-    GLuint       texid;
+    int32_t width, height, channel_count;
+    uint8_t *imgbuf;
+    GLuint texid;
 
-    open_jpeg_from_file (name, &width, &height);
-
-    mem_size = width * height * 4;
-    imgbuf = malloc (mem_size);
+    /* decode image data to RGBA8888 */
+    imgbuf = stbi_load (name, &width, &height, &channel_count, 4);
     if (imgbuf == NULL)
     {
         fprintf (stderr, "Failed to load JPG: %s\n", name);
         return -1;
     }
 
-    decode_jpeg_from_file (name, imgbuf);
-
     texid = create_2d_texture (imgbuf, width, height);
 
     if (lpTexID)  *lpTexID  = texid;
     if (lpWidth)  *lpWidth  = width;
     if (lpHeight) *lpHeight = height;
-    free (imgbuf);
+    stbi_image_free (imgbuf);
 
     GLASSERT();
     return 0;
-#else
-    fprintf (stderr, "please enable compile option: \"USE_JPEG_TEXTURE\"\n");
-    return -1;
-#endif
 }
 
 
 int
 load_png_cube_texture (char *name[], int *lpTexID)
 {
-#if defined (USE_PNG_TEXTURE)
-    unsigned int  width, height;
-    int           ctype, mem_size;
-    unsigned char *lpBuf;
     unsigned int  texID;
     int i;
     GLenum target[] = { 
@@ -142,30 +113,23 @@ load_png_cube_texture (char *name[], int *lpTexID)
 
     for(i = 0; i < 6; i++)
     {
-        open_png_from_file (name[i], &width, &height, &ctype);
-        mem_size = width * height * 4;
+        int32_t width, height, channel_count;
+        uint8_t *imgbuf;
 
-        lpBuf = malloc (mem_size);
-        if (lpBuf == NULL)
+        /* decode image data to RGBA8888 */
+        imgbuf = stbi_load (name[i], &width, &height, &channel_count, 4);
+        if (imgbuf == NULL)
         {
             fprintf (stderr, "Failed to load PNG: %s\n", name[i]);
-            return -1;
-        }
-        
-        decode_png_from_file (name[i], lpBuf);
-
-        if (lpBuf == NULL)
-        {
-            fprintf(stderr, "%s is not found!!\n", name[i]);
             return -1;
         }
 
         glTexImage2D (target[i], 0, GL_RGBA,
             width, height, 0, GL_RGBA,
             GL_UNSIGNED_BYTE,
-            lpBuf);
+            imgbuf);
 
-        free( lpBuf );
+        stbi_image_free (imgbuf);
         GLASSERT();
     }
 
@@ -180,8 +144,4 @@ load_png_cube_texture (char *name[], int *lpTexID)
 
     GLASSERT();
     return 0;
-#else
-    fprintf (stderr, "please enable compile option: \"USE_PNG_TEXTURE\"\n");
-    return -1;
-#endif
 }

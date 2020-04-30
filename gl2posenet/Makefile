@@ -12,7 +12,6 @@ SRCS += ../common/util_egl.c
 SRCS += ../common/util_shader.c
 SRCS += ../common/util_matrix.c
 SRCS += ../common/util_texture.c
-SRCS += ../common/util_image_jpg.c
 SRCS += ../common/util_render2d.c
 SRCS += ../common/util_debugstr.c
 SRCS += ../common/util_pmeter.c
@@ -23,19 +22,10 @@ OBJS += $(patsubst %.cc,%.o,$(patsubst %.cpp,%.o,$(patsubst %.c,%.o,$(SRCS))))
 
 INCLUDES += -I../common/
 INCLUDES += -I../common/winsys/
-
+INCLUDES += -I../third_party/
 
 LDFLAGS  +=
-
-# for JEPG texture
-CFLAGS   += -DUSE_JPEG_TEXTURE
-LIBS     += -lpthread
-LIBS     += -ljpeg
-
-# for PNG texture
-CFLAGS   += -DUSE_PNG_TEXTURE
-SRCS     += ../common/util_image_png.c
-LIBS     += -lpng
+LIBS     += -pthread
 
 # for V4L2 camera capture
 CFLAGS   += -DUSE_INPUT_CAMERA_CAPTURE

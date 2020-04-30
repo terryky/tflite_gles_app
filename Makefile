@@ -3,17 +3,17 @@
 # > make TARGET_ENV=raspi
 #
 all:
-	make -C list_egl_configs
-	make -C gl2tri
-	make -C gl2teapot
+	make -C gl2blazeface
 	make -C gl2detection
+	make -C gl2handpose
 	make -C gl2posenet
 	make -C gl2segmentation
+	make -C gl2style_transfer
 
 clean:
-	make -C list_egl_configs clean
-	make -C gl2tri clean
-	make -C gl2teapot clean
+	make -C gl2blazeface clean
 	make -C gl2detection clean
+	make -C gl2handpose clean
 	make -C gl2posenet clean
 	make -C gl2segmentation clean
+	make -C gl2style_transfer clean
