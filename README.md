@@ -15,9 +15,12 @@ This repository contains several applications which invoke DNN inference with **
 
 ## How to Build & Run
 
+- [Build for x86_64 Linux](#build_for_x86_64)
+- [Build for Jetson Nano](#build_for_jetson_nano)
+- [Build for Raspberry Pi 4](#build_for_raspi4)
 
 
-### Build for x86_64 Linux
+### <a name="build_for_x86_64">Build for x86_64 Linux</a>
 
 ##### 1.setup environment
 ```
@@ -52,7 +55,7 @@ $ ./gl2handpose
 
 
 
-### Build for Jetson Nano
+### <a name="build_for_jetson_nano">Build for Jetson Nano</a>
 
 ##### 1.build TensorFlow Lite library on **Host PC**.
 
@@ -98,7 +101,7 @@ $ ./gl2handpose
 
 
 
-### Build for Raspberry Pi 4
+### <a name="build_for_raspi4">Build for Raspberry Pi 4</a>
 
 ##### 1.build TensorFlow Lite library on **Host PC**.
 
