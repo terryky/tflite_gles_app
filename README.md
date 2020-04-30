@@ -1,7 +1,7 @@
-# gles_app
-This repository contains several applications which invoke DNN inference with **TensorFlow Lite** and visualizes its result with **OpenGLES**.
+# GPU accelerated TensorFlow Lite applications.
+This repository contains several applications which invoke DNN inference with **TensorFlow Lite with GPU Delegate** and visualizes its result with **OpenGLES**.
 
-### applications
+## applications
 | App name    | Descriptions |
 |:-----------:|:------------:|
 | [gl2blazeface](https://github.com/terryky/tflite_gles_app/tree/master/gl2blazeface)| ![img](gl2blazeface/gl2blazeface.png " image") <br> lightweight face detection.|
@@ -11,7 +11,154 @@ This repository contains several applications which invoke DNN inference with **
 | [gl2segmentation](https://github.com/terryky/tflite_gles_app/tree/master/gl2segmentation)| ![img](gl2segmentation/gl2segmentation.gif " image") <br> Semantic image segmentation using Deeplab.|
 | [gl2style_transfer](https://github.com/terryky/tflite_gles_app/tree/master/gl2style_transfer)| ![img](gl2style_transfer/gl2style_transfer.png " image") <br> Artistic Style Transfer.|
 
-### tested platforms
+
+
+## How to Build & Run
+
+
+
+### Build for x86_64 Linux
+
+##### 1.setup environment
+```
+$ sudo apt install libgles2-mesa-dev 
+$
+$ wget https://github.com/bazelbuild/bazel/releases/download/2.0.0/bazel-2.0.0-installer-linux-x86_64.sh
+$ chmod 755 bazel-2.0.0-installer-linux-x86_64.sh
+$ sudo ./bazel-2.0.0-installer-linux-x86_64.sh
+```
+
+##### 2.build TensorFlow Lite library.
+
+```
+$ cd ~/work 
+$ git clone https://github.com/terryky/tflite_gles_app.git
+$ ./tflite_gles_app/tools/scripts/tf2.2/build_libtflite_r2.2.sh
+```
+
+##### 3.build an application.
+
+```
+$ cd ~/work/tflite_gles_app/gl2handpose
+$ make TFLITE_DELEGATE=GPU_DELEGATEV2
+```
+
+##### 4.run an application.
+
+```
+$ cd ~/work/tflite_gles_app/gl2handpose
+$ ./gl2handpose
+```
+
+
+
+### Build for Jetson Nano
+
+##### 1.build TensorFlow Lite library on **Host PC**.
+
+```
+(HostPC)$ cd ~/work 
+(HostPC)$ git clone https://github.com/terryky/tflite_gles_app.git
+(HostPC)$ ./tflite_gles_app/tools/scripts/tf2.2/build_libtflite_r2.2_with_gpu_delegate_aarch64.sh
+```
+
+##### 2.copy libtensorflow-lite.a to target Jetson.
+
+```
+(HostPC)scp ~/work/tensorflow_r2.2/tensorflow/lite/tools/make/gen/linux_aarch64/lib/libtensorflow-lite.a jetson@192.168.11.11:/home/jetson/
+```
+
+##### 3.clone Tensorflow repository on **target Jetson**.
+
+```
+(Jetson)$ cd ~/work
+(Jetson)$ cd git clone https://github.com/tensorflow/tensorflow.git
+(Jetson)$ cd tensorflow
+(Jetson)$ git checkout r2.2
+(Jetson)$ ./tensorflow/lite/tools/make/download_dependencies.sh
+```
+
+
+##### 4.build an application.
+
+```
+(Jetson)$ cd ~/work 
+(Jetson)$ git clone https://github.com/terryky/tflite_gles_app.git
+(Jetson)$ cd ~/work/tflite_gles_app/gl2handpose
+(Jetson)$ cp ~/libtensorflow-lite.a .
+(Jetson)$ make TARGET_ENV=jetson_nano TFLITE_DELEGATE=GPU_DELEGATEV2
+```
+
+##### 5.run an application.
+
+```
+(Jetson)$ cd ~/work/tflite_gles_app/gl2handpose
+(Jetson)$ ./gl2handpose
+```
+
+
+
+### Build for Raspberry Pi 4
+
+##### 1.build TensorFlow Lite library on **Host PC**.
+
+```
+(HostPC)$ cd ~/work 
+(HostPC)$ git clone https://github.com/terryky/tflite_gles_app.git
+(HostPC)$ ./tflite_gles_app/tools/scripts/tf2.0/build_libtflite_r2.0_with_gpu_delegate_rpi.sh
+```
+
+##### 2.copy libtensorflow-lite.a to target Jetson.
+
+```
+(HostPC)scp ~/work/tensorflow_r2.0/tensorflow/lite/tools/make/gen/rpi_armv7l/lib/libtensorflow-lite.a pi@192.168.11.11:/home/pi/
+```
+
+##### 3.setup environment on **target Raspi**.
+
+```
+(Raspi)$ sudo apt install libgles2-mesa-dev libegl1-mesa-dev xorg-dev
+(Raspi)$ sudo apt update
+(Raspi)$ sudo apt upgrade
+```
+
+
+##### 4.clone Tensorflow repository on **target Raspi**.
+
+```
+(Raspi)$ cd ~/work
+(Raspi)$ cd git clone https://github.com/tensorflow/tensorflow.git
+(Raspi)$ cd tensorflow
+(Raspi)$ git checkout r2.0
+(Raspi)$ ./tensorflow/lite/tools/make/download_dependencies.sh
+```
+
+
+##### 5.build an application on **target Raspi**..
+
+```
+(Raspi)$ cd ~/work 
+(Raspi)$ git clone https://github.com/terryky/tflite_gles_app.git
+(Raspi)$ cd ~/work/tflite_gles_app/gl2handpose
+(Raspi)$ cp ~/libtensorflow-lite.a .
+(Raspi)$ make TARGET_ENV=raspi4 TFLITE_DELEGATE=GL_DELEGATE
+```
+
+
+##### 6.run an application on **target Raspi**..
+
+```
+(Raspi)$ cd ~/work/tflite_gles_app/gl2handpose
+(Raspi)$ ./gl2handpose
+```
+
+
+for more detail infomation, please refer [this article](https://qiita.com/terryky/items/fa18bd10cfead076b39f).
+
+
+
+
+## tested platforms
 You can select the platform by editing [Makefile.env](Makefile.env).
 - Linux PC (X11)
 - NVIDIA Jetson Nano (X11)
@@ -19,28 +166,3 @@ You can select the platform by editing [Makefile.env](Makefile.env).
 - RaspberryPi4 (X11)
 - RaspberryPi3 (Dispmanx)
 - Coral EdgeTPU Devboard (Wayland)
-
-### How to Build & Run
-For Linux X11:
-```
-> sudo apt install libgles2-mesa-dev 
-> make TARGET_ENV=x11
-> cd gl2detection
-> ./gl2detection
-```
-
-For Jetson Nano (native build on Jetson Nano)
-```
-> make TARGET_ENV=jetson_nano
-> cd gl2detection
-> ./gl2detection
-```
-
-For Raspberry Pi 4 (native build on RaaspberryPi)
-```
-> sudo apt install libgles2-mesa-dev 
-> sudo apt-get install libdrm-dev
-> make TARGET_ENV=raspi4
-> cd gl2detection
-> ./gl2detection
-```
