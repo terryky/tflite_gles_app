@@ -43,7 +43,7 @@ $ ./tflite_gles_app/tools/scripts/tf2.2/build_libtflite_r2.2.sh
 
 ```
 $ cd ~/work/tflite_gles_app/gl2handpose
-$ make TFLITE_DELEGATE=GPU_DELEGATEV2
+$ make
 ```
 
 ##### 4.run an application.
@@ -60,6 +60,10 @@ $ ./gl2handpose
 ##### 1.build TensorFlow Lite library on **Host PC**.
 
 ```
+(HostPC)$ wget https://github.com/bazelbuild/bazel/releases/download/2.0.0/bazel-2.0.0-installer-linux-x86_64.sh
+(HostPC)$ chmod 755 bazel-2.0.0-installer-linux-x86_64.sh
+(HostPC)$ sudo ./bazel-2.0.0-installer-linux-x86_64.sh
+(HostPC)$
 (HostPC)$ cd ~/work 
 (HostPC)$ git clone https://github.com/terryky/tflite_gles_app.git
 (HostPC)$ ./tflite_gles_app/tools/scripts/tf2.2/build_libtflite_r2.2_with_gpu_delegate_aarch64.sh
@@ -75,7 +79,7 @@ $ ./gl2handpose
 
 ```
 (Jetson)$ cd ~/work
-(Jetson)$ cd git clone https://github.com/tensorflow/tensorflow.git
+(Jetson)$ git clone https://github.com/tensorflow/tensorflow.git
 (Jetson)$ cd tensorflow
 (Jetson)$ git checkout r2.2
 (Jetson)$ ./tensorflow/lite/tools/make/download_dependencies.sh
@@ -130,7 +134,7 @@ $ ./gl2handpose
 
 ```
 (Raspi)$ cd ~/work
-(Raspi)$ cd git clone https://github.com/tensorflow/tensorflow.git
+(Raspi)$ git clone https://github.com/tensorflow/tensorflow.git
 (Raspi)$ cd tensorflow
 (Raspi)$ git checkout r2.0
 (Raspi)$ ./tensorflow/lite/tools/make/download_dependencies.sh
