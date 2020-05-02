@@ -42,7 +42,7 @@ update_capture_texture (int texid)
 
 /* resize image to DNN network input size and convert to fp32. */
 void
-feed_blazeface_image(int texid, int win_w, int win_h)
+feed_hand_landmark_image(int texid, int win_w, int win_h)
 {
 #if defined (USE_INPUT_CAMERA_CAPTURE)
     update_capture_texture (texid);
@@ -286,7 +286,7 @@ main(int argc, char *argv[])
         glViewport (0, 0, win_w, win_h);
 
         /* invoke hand pose estimation using TensorflowLite */
-        feed_blazeface_image (texid, win_w, win_h);
+        feed_hand_landmark_image (texid, win_w, win_h);
 
         ttime[2] = pmeter_get_time_ms ();
         invoke_hand_landmark (&hand_ret);
