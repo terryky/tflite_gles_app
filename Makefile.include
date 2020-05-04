@@ -1,4 +1,7 @@
-INCLUDES +=
+INCLUDES += -I$(MAKETOP)/common/
+INCLUDES += -I$(MAKETOP)/common/winsys/
+INCLUDES += -I$(MAKETOP)/third_party/
+
 
 CFLAGS   += -Wall
 CFLAGS   += -O2
