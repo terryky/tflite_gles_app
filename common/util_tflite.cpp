@@ -3,18 +3,9 @@
  * Copyright (c) 2019 terryky1220@gmail.com
  * ------------------------------------------------ */
 #include "util_tflite.h"
+#include "util_debug.h"
 
-
-using namespace std;
 using namespace tflite;
-
-
-typedef struct tflite_obj_in_t
-{
-    unique_ptr<FlatBufferModel>     model;
-    unique_ptr<Interpreter>         interpreter;
-    ops::builtin::BuiltinOpResolver resolver;
-} tflite_obj_in_t;
 
 
 
@@ -23,14 +14,14 @@ print_tensor_dim (TfLiteTensor *tensor)
 {
     TfLiteIntArray *dim = tensor->dims;
 
-    fprintf (stderr, "[");
+    DBG_LOG ("[");
     for (int i = 0; i < dim->size; i ++)
     {
         if (i > 0)
-            fprintf (stderr, "x");
-        fprintf (stderr, "%d", dim->data[i]);
+            DBG_LOG ("x");
+        DBG_LOG ("%d", dim->data[i]);
     }
-    fprintf (stderr, "]");
+    DBG_LOG ("]");
 }
 
 static const char *
@@ -57,7 +48,7 @@ get_tflite_type_str (TfLiteType type)
 static void
 print_tensor (TfLiteTensor *tensor, int idx)
 {
-    fprintf (stderr, "Tensor[%3d] %8zu, %2d(%s), (%3d, %8.6f) %-32s ", idx,
+    DBG_LOG ("Tensor[%3d] %8zu, %2d(%s), (%3d, %8.6f) %-32s ", idx,
         tensor->bytes,
         tensor->type,
         get_tflite_type_str (tensor->type),
@@ -66,32 +57,29 @@ print_tensor (TfLiteTensor *tensor, int idx)
         tensor->name);
     
     print_tensor_dim (tensor);
-    fprintf (stderr, "\n");
+    DBG_LOG ("\n");
 }
 
 void
-dump_tflite_model (tflite_obj_t tflite_obj)
+tflite_print_tensor_info (std::unique_ptr<Interpreter> &interpreter)
 {
-    tflite_obj_in_t *pobj = (tflite_obj_in_t *)tflite_obj;
-    unique_ptr<Interpreter> &interpreter = pobj->interpreter;
-
     int i, idx;
     int in_size  = interpreter->inputs().size();
     int out_size = interpreter->outputs().size();
 
-    fprintf (stderr, "\n");
-    fprintf (stderr, "-----------------------------------------------------------------------------\n");
-    fprintf (stderr, "       T E N S O R S\n");
-    fprintf (stderr, "-----------------------------------------------------------------------------\n");
-    fprintf (stderr, "tensors size     : %zu\n", interpreter->tensors_size());
-    fprintf (stderr, "nodes   size     : %zu\n", interpreter->nodes_size());
-    fprintf (stderr, "number of inputs : %d\n", in_size);
-    fprintf (stderr, "number of outputs: %d\n", out_size);
+    DBG_LOG ("\n");
+    DBG_LOG ("-----------------------------------------------------------------------------\n");
+    DBG_LOG ("       T E N S O R S\n");
+    DBG_LOG ("-----------------------------------------------------------------------------\n");
+    DBG_LOG ("tensors size     : %zu\n", interpreter->tensors_size());
+    DBG_LOG ("nodes   size     : %zu\n", interpreter->nodes_size());
+    DBG_LOG ("number of inputs : %d\n", in_size);
+    DBG_LOG ("number of outputs: %d\n", out_size);
 
-    fprintf (stderr, "\n");
-    fprintf (stderr, "-----------------------------------------------------------------------------\n");
-    fprintf (stderr, "               bytes,   type  , (quant params),     name,                dimention \n");
-    fprintf (stderr, "-----------------------------------------------------------------------------\n");
+    DBG_LOG ("\n");
+    DBG_LOG ("-----------------------------------------------------------------------------\n");
+    DBG_LOG ("                     name                     bytes  type  scale   zero_point\n");
+    DBG_LOG ("-----------------------------------------------------------------------------\n");
     int t_size = interpreter->tensors_size();
     for (i = 0; i < t_size; i++) 
     {
@@ -99,10 +87,10 @@ dump_tflite_model (tflite_obj_t tflite_obj)
         print_tensor (tensor, i);
     }
 
-    fprintf (stderr, "\n");
-    fprintf (stderr, "-----------------------------------------------------------------------------\n");
-    fprintf (stderr, " Input Tensor Dimension\n");
-    fprintf (stderr, "-----------------------------------------------------------------------------\n");
+    DBG_LOG ("\n");
+    DBG_LOG ("-----------------------------------------------------------------------------\n");
+    DBG_LOG (" Input Tensor Dimension\n");
+    DBG_LOG ("-----------------------------------------------------------------------------\n");
     for (i = 0; i < in_size; i ++)
     {
         idx = interpreter->inputs()[i];
@@ -110,50 +98,43 @@ dump_tflite_model (tflite_obj_t tflite_obj)
         print_tensor (tensor, idx);
     }
 
-    fprintf (stderr, "\n");
-    fprintf (stderr, "-----------------------------------------------------------------------------\n");
-    fprintf (stderr, " Output Tensor Dimension\n");
-    fprintf (stderr, "-----------------------------------------------------------------------------\n");
+    DBG_LOG ("\n");
+    DBG_LOG ("-----------------------------------------------------------------------------\n");
+    DBG_LOG (" Output Tensor Dimension\n");
+    DBG_LOG ("-----------------------------------------------------------------------------\n");
     for (i = 0; i < out_size; i ++)
     {
         idx = interpreter->outputs()[i];
         TfLiteTensor *tensor = interpreter->tensor(idx);
         print_tensor (tensor, idx);
     }
-    fprintf (stderr, "\n");
+    DBG_LOG ("\n");
 
 #if 0
-    fprintf (stderr, "\n");
-    fprintf (stderr, "-----------------------------------------------------------------------------\n");
+    DBG_LOG ("\n");
+    DBG_LOG ("-----------------------------------------------------------------------------\n");
     PrintInterpreterState(interpreter.get());
-    fprintf (stderr, "-----------------------------------------------------------------------------\n");
+    DBG_LOG ("-----------------------------------------------------------------------------\n");
 #endif
 }
 
 
 
-
-
-tflite_obj_t
-create_tflite_inferer (const char *model_path)
+int
+tflite_create_interpreter_from_file (tflite_interpreter_t *p, const char *model_path)
 {
-    unique_ptr<FlatBufferModel>     model;
-    unique_ptr<Interpreter>         interpreter;
-    ops::builtin::BuiltinOpResolver resolver;
-
-    fprintf (stderr, "MODEL_PATH: %s\n", model_path);
-    model = FlatBufferModel::BuildFromFile (model_path);
-    if (!model)
+    p->model = FlatBufferModel::BuildFromFile (model_path);
+    if (!p->model)
     {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
-        return NULL;
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
     }
 
-    InterpreterBuilder (*model, resolver)(&interpreter);
-    if (!interpreter)
+    InterpreterBuilder(*(p->model), p->resolver)(&(p->interpreter));
+    if (!p->interpreter)
     {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
-        return NULL;
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
     }
 
 #if defined (USE_GL_DELEGATE)
@@ -167,56 +148,85 @@ create_tflite_inferer (const char *model_path)
     };
     auto* delegate = TfLiteGpuDelegateCreate(&options);
 
-    if (interpreter->ModifyGraphWithDelegate(delegate) != kTfLiteOk)
+    if (p->interpreter->ModifyGraphWithDelegate(delegate) != kTfLiteOk)
     {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
-        return NULL;
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
     }
 #endif
+
 #if defined (USE_GPU_DELEGATEV2)
     const TfLiteGpuDelegateOptionsV2 options = {
         .is_precision_loss_allowed = 1, // FP16
         .inference_preference = TFLITE_GPU_INFERENCE_PREFERENCE_FAST_SINGLE_ANSWER,
-        .inference_priority1  = TFLITE_GPU_INFERENCE_PRIORITY_MIN_LATENCY,
-        .inference_priority2  = TFLITE_GPU_INFERENCE_PRIORITY_AUTO,
-        .inference_priority3  = TFLITE_GPU_INFERENCE_PRIORITY_AUTO,
+        .inference_priority1 = TFLITE_GPU_INFERENCE_PRIORITY_MIN_LATENCY,
+        .inference_priority2 = TFLITE_GPU_INFERENCE_PRIORITY_AUTO,
+        .inference_priority3 = TFLITE_GPU_INFERENCE_PRIORITY_AUTO,
     };
     auto* delegate = TfLiteGpuDelegateV2Create(&options);
-    if (interpreter->ModifyGraphWithDelegate(delegate) != kTfLiteOk)
+    if (p->interpreter->ModifyGraphWithDelegate(delegate) != kTfLiteOk)
     {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
-        return NULL;
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
     }
 #endif
 
-    interpreter->SetNumThreads(4);
-    if (interpreter->AllocateTensors() != kTfLiteOk)
+#if defined (USE_NNAPI_DELEGATE)
+    auto *delegate = tflite::NnApiDelegate ();
+    if (p->interpreter->ModifyGraphWithDelegate(delegate) != kTfLiteOk)
     {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
-        return NULL;
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+#endif
+
+
+#if defined (USE_HEXAGON_DELEGATE)
+    // Assuming shared libraries are under "/data/local/tmp/"
+    // If files are packaged with native lib in android App then it
+    // will typically be equivalent to the path provided by
+    // "getContext().getApplicationInfo().nativeLibraryDir"
+
+    //const char library_directory_path[] = "/data/local/tmp/";
+    //TfLiteHexagonInitWithPath(library_directory_path);  // Needed once at startup.
+
+    TfLiteHexagonInit();  // Needed once at startup.
+    TfLiteHexagonDelegateOptions params = {0};
+
+    // 'delegate_ptr' Need to outlive the interpreter. For example,
+    // If use case will need to resize input or anything that can trigger
+    // re-applying delegates then 'delegate_ptr' need to outlive the interpreter.
+    auto* delegate_ptr = TfLiteHexagonDelegateCreate(&params);
+    tflite::Interpreter::TfLiteDelegatePtr delegate(delegate_ptr,
+        [](TfLiteDelegate* delegate) {
+            TfLiteHexagonDelegateDelete(delegate);
+        });
+    if (p->interpreter->ModifyGraphWithDelegate(delegate.get()) != kTfLiteOk)
+    {
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+#endif
+
+    p->interpreter->SetNumThreads(4);
+    if (p->interpreter->AllocateTensors() != kTfLiteOk)
+    {
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
     }
 
-    tflite_obj_in_t *pobj = new tflite_obj_in_t;
-    if (pobj == NULL)
-    {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
-        return NULL;
-    }
+#if 1 /* for debug */
+    tflite_print_tensor_info (p->interpreter);
+#endif
 
-    pobj->model       = std::move (model);
-    pobj->interpreter = std::move (interpreter);
-    pobj->resolver    = resolver;
-
-    return (tflite_obj_t)pobj;
+    return 0;
 }
 
 
-
 int
-get_tflite_tensor_by_name (tflite_obj_t tobj, int io, const char *name, tflite_tensor_t *ptensor)
+tflite_get_tensor_by_name (tflite_interpreter_t *p, int io, const char *name, tflite_tensor_t *ptensor)
 {
-    tflite_obj_in_t *pobj = (tflite_obj_in_t *)tobj;
-    unique_ptr<Interpreter> &interpreter = pobj->interpreter;
+    std::unique_ptr<Interpreter> &interpreter = p->interpreter;
 
     memset (ptensor, 0, sizeof (*ptensor));
 
@@ -254,7 +264,7 @@ get_tflite_tensor_by_name (tflite_obj_t tobj, int io, const char *name, tflite_t
                           interpreter->typed_output_tensor<float>(io_idx);
         break;
     default:
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
         return -1;
     }
 
@@ -273,22 +283,4 @@ get_tflite_tensor_by_name (tflite_obj_t tobj, int io, const char *name, tflite_t
 
     return 0;
 }
-
-
-int
-invoke_tflite (tflite_obj_t tobj)
-{
-    tflite_obj_in_t *pobj = (tflite_obj_in_t *)tobj;
-    unique_ptr<Interpreter> &interpreter = pobj->interpreter;
-
-    if (interpreter->Invoke() != kTfLiteOk)
-    {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
-        return -1;
-    }
-
-    return 0;
-}
-
-
 

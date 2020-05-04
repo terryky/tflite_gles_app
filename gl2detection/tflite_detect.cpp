@@ -3,6 +3,7 @@
  * Copyright (c) 2019 terryky1220@gmail.com
  * ------------------------------------------------ */
 #include "util_tflite.h"
+#include "util_debug.h"
 #include "tflite_detect.h"
 #include "detect_postprocess.h"
 
@@ -34,7 +35,7 @@
 #endif
 
 
-static tflite_obj_t     s_tflite_obj;
+static tflite_interpreter_t s_interpreter;
 static tflite_tensor_t  s_tensor_input;
 
 #if defined (INVOKE_POSTPROCESS_AFTER_TFLITE)
@@ -138,7 +139,7 @@ load_label_map ()
 
             while ( *p != '"')
                 *q ++ = *p ++;
-            fprintf (stderr, "ID[%d] %s\n", id, s_class_name[id]);
+            LOG ("ID[%d] %s\n", id, s_class_name[id]);
         }
     }
 
@@ -165,16 +166,15 @@ init_class_color ()
 int
 init_tflite_detection()
 {
-    s_tflite_obj = create_tflite_inferer (MOBILNET_SSD_MODEL_PATH);
-    dump_tflite_model (s_tflite_obj);
+    tflite_create_interpreter_from_file (&s_interpreter, MOBILNET_SSD_MODEL_PATH);
 
     /* get input tensor */
-    get_tflite_tensor_by_name (s_tflite_obj, 0, "normalized_input_image_tensor",  &s_tensor_input);
+    tflite_get_tensor_by_name (&s_interpreter, 0, "normalized_input_image_tensor",  &s_tensor_input);
 
 #if defined (INVOKE_POSTPROCESS_AFTER_TFLITE)
     /* get output tensor */
-    get_tflite_tensor_by_name (s_tflite_obj, 1, "raw_outputs/box_encodings",     &s_tensor_boxes);
-    get_tflite_tensor_by_name (s_tflite_obj, 1, "raw_outputs/class_predictions", &s_tensor_scores);
+    tflite_get_tensor_by_name (&s_interpreter, 1, "raw_outputs/box_encodings",     &s_tensor_boxes);
+    tflite_get_tensor_by_name (&s_interpreter, 1, "raw_outputs/class_predictions", &s_tensor_scores);
 
     /* if it's a quantized model, allocate buffers for (uint8 -> float) convertion */
     if (s_tensor_scores.type == kTfLiteUInt8)
@@ -189,10 +189,10 @@ init_tflite_detection()
     init_detect_postprocess (ANCHORS_FILE);
 #else
     /* get output tensor */
-    get_tflite_tensor_by_name (s_tflite_obj, 1, "TFLite_Detection_PostProcess",   &s_tensor_boxes);
-    get_tflite_tensor_by_name (s_tflite_obj, 1, "TFLite_Detection_PostProcess:1", &s_tensor_classes);
-    get_tflite_tensor_by_name (s_tflite_obj, 1, "TFLite_Detection_PostProcess:2", &s_tensor_scores);
-    get_tflite_tensor_by_name (s_tflite_obj, 1, "TFLite_Detection_PostProcess:3", &s_tensor_num);
+    tflite_get_tensor_by_name (&s_interpreter, 1, "TFLite_Detection_PostProcess",   &s_tensor_boxes);
+    tflite_get_tensor_by_name (&s_interpreter, 1, "TFLite_Detection_PostProcess:1", &s_tensor_classes);
+    tflite_get_tensor_by_name (&s_interpreter, 1, "TFLite_Detection_PostProcess:2", &s_tensor_scores);
+    tflite_get_tensor_by_name (&s_interpreter, 1, "TFLite_Detection_PostProcess:3", &s_tensor_num);
 #endif
 
     load_label_map ();
@@ -234,7 +234,11 @@ get_detect_class_color (int class_idx)
 int
 invoke_detect (detect_result_t *detection)
 {
-    invoke_tflite (s_tflite_obj);
+    if (s_interpreter.interpreter->Invoke() != kTfLiteOk)
+    {
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
 
 #if defined (INVOKE_POSTPROCESS_AFTER_TFLITE)
     std::vector<DetectionBox> detection_boxes = {};

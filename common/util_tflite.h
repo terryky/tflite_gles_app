@@ -15,10 +15,24 @@
 #include "tensorflow/lite/delegates/gpu/delegate.h"
 #endif
 
+#if defined (USE_NNAPI_DELEGATE)
+#include "tensorflow/lite/delegates/nnapi/nnapi_delegate.h"
+#endif
+
+#if defined (USE_HEXAGON_DELEGATE)
+#include "tensorflow/lite/experimental/delegates/hexagon/hexagon_delegate.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+typedef struct tflite_interpreter_t
+{
+    std::unique_ptr<tflite::FlatBufferModel> model;
+    std::unique_ptr<tflite::Interpreter>     interpreter;
+    tflite::ops::builtin::BuiltinOpResolver  resolver;
+} tflite_interpreter_t;
 
 
 typedef struct tflite_tensor_t
@@ -35,15 +49,12 @@ typedef struct tflite_tensor_t
 
 
 
+int tflite_create_interpreter (tflite_interpreter_t *p, const char *model_buf, size_t model_size);
+int tflite_get_tensor_by_name (tflite_interpreter_t *p, int io, const char *name, tflite_tensor_t *ptensor);
 
-typedef void *tflite_obj_t;
+int tflite_create_interpreter_from_file (tflite_interpreter_t *p, const char *model_path);
 
-tflite_obj_t create_tflite_inferer (const char *model_fname);
-void dump_tflite_model (tflite_obj_t tflite_obj);
 
-int get_tflite_tensor_by_name (tflite_obj_t tobj, int io, const char *name, tflite_tensor_t *ptensor);
-
-int invoke_tflite (tflite_obj_t tobj);
 
 #ifdef __cplusplus
 }
