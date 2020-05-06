@@ -119,23 +119,10 @@ tflite_print_tensor_info (std::unique_ptr<Interpreter> &interpreter)
 }
 
 
-
-int
-tflite_create_interpreter_from_file (tflite_interpreter_t *p, const char *model_path)
+static int
+modify_graph_with_delegate (tflite_interpreter_t *p)
 {
-    p->model = FlatBufferModel::BuildFromFile (model_path);
-    if (!p->model)
-    {
-        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
-        return -1;
-    }
-
-    InterpreterBuilder(*(p->model), p->resolver)(&(p->interpreter));
-    if (!p->interpreter)
-    {
-        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
-        return -1;
-    }
+    TfLiteDelegate *delegate = NULL;
 
 #if defined (USE_GL_DELEGATE)
     const TfLiteGpuDelegateOptions options = {
@@ -146,13 +133,7 @@ tflite_create_interpreter_from_file (tflite_interpreter_t *p, const char *model_
             .dynamic_batch_enabled = 0,   // Not fully functional yet
         },
     };
-    auto* delegate = TfLiteGpuDelegateCreate(&options);
-
-    if (p->interpreter->ModifyGraphWithDelegate(delegate) != kTfLiteOk)
-    {
-        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
-        return -1;
-    }
+    delegate = TfLiteGpuDelegateCreate(&options);
 #endif
 
 #if defined (USE_GPU_DELEGATEV2)
@@ -163,21 +144,11 @@ tflite_create_interpreter_from_file (tflite_interpreter_t *p, const char *model_
         .inference_priority2 = TFLITE_GPU_INFERENCE_PRIORITY_AUTO,
         .inference_priority3 = TFLITE_GPU_INFERENCE_PRIORITY_AUTO,
     };
-    auto* delegate = TfLiteGpuDelegateV2Create(&options);
-    if (p->interpreter->ModifyGraphWithDelegate(delegate) != kTfLiteOk)
-    {
-        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
-        return -1;
-    }
+    delegate = TfLiteGpuDelegateV2Create(&options);
 #endif
 
 #if defined (USE_NNAPI_DELEGATE)
-    auto *delegate = tflite::NnApiDelegate ();
-    if (p->interpreter->ModifyGraphWithDelegate(delegate) != kTfLiteOk)
-    {
-        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
-        return -1;
-    }
+    delegate = tflite::NnApiDelegate ();
 #endif
 
 
@@ -197,16 +168,49 @@ tflite_create_interpreter_from_file (tflite_interpreter_t *p, const char *model_
     // If use case will need to resize input or anything that can trigger
     // re-applying delegates then 'delegate_ptr' need to outlive the interpreter.
     auto* delegate_ptr = TfLiteHexagonDelegateCreate(&params);
-    tflite::Interpreter::TfLiteDelegatePtr delegate(delegate_ptr,
-        [](TfLiteDelegate* delegate) {
-            TfLiteHexagonDelegateDelete(delegate);
+    tflite::Interpreter::TfLiteDelegatePtr delegatep(delegate_ptr,
+        [](TfLiteDelegate* delegatep) {
+            TfLiteHexagonDelegateDelete(delegatep);
         });
-    if (p->interpreter->ModifyGraphWithDelegate(delegate.get()) != kTfLiteOk)
+
+    delegate = delegatep.get();
+#endif
+
+    if (!delegate)
+        return 0;
+
+    if (p->interpreter->ModifyGraphWithDelegate(delegate) != kTfLiteOk)
     {
         DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
         return -1;
     }
-#endif
+
+    return 0;
+}
+
+
+int
+tflite_create_interpreter_from_file (tflite_interpreter_t *p, const char *model_path)
+{
+    p->model = FlatBufferModel::BuildFromFile (model_path);
+    if (!p->model)
+    {
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+
+    InterpreterBuilder(*(p->model), p->resolver)(&(p->interpreter));
+    if (!p->interpreter)
+    {
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+
+    if (modify_graph_with_delegate (p) < 0)
+    {
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
 
     p->interpreter->SetNumThreads(4);
     if (p->interpreter->AllocateTensors() != kTfLiteOk)
