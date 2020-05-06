@@ -156,7 +156,7 @@ void main(void)                                             \n\
 
 
 int
-draw_cube (float *mtxGlobal)
+draw_cube (float *mtxGlobal, float *color)
 {
     int i;
     float matMV[16], matPMV[16], matMVI4x4[16], matMVI3x3[9];
@@ -192,10 +192,11 @@ draw_cube (float *mtxGlobal)
     glUniformMatrix4fv (s_loc_mtx_mv,   1, GL_FALSE, matMV );
     glUniformMatrix4fv (s_loc_mtx_pmv,  1, GL_FALSE, matPMV);
     glUniformMatrix3fv (s_loc_mtx_nrm,  1, GL_FALSE, matMVI3x3);
-    glUniform3f (s_loc_color, 1.0f, 0.0f, 0.0f);
-    glUniform1f (s_loc_alpha, 1.0f);
+    glUniform3f (s_loc_color, color[0], color[1], color[2]);
+    glUniform1f (s_loc_alpha, color[3]);
 
     glEnable (GL_BLEND);
+    glEnable (GL_DEPTH_TEST);
 
     for (i = 0; i < 6; i ++)
     {
@@ -222,7 +223,7 @@ init_cube (float aspect)
     s_loc_color   = glGetUniformLocation(s_sobj.program, "u_color" );
     s_loc_alpha   = glGetUniformLocation(s_sobj.program, "u_alpha" );
 
-    matrix_proj_perspective (s_matPrj, 30.0f, aspect, 1.f, 1000.f);
+    matrix_proj_perspective (s_matPrj, 30.0f, aspect, 1.f, 10000.f);
 
     int texw, texh;
     load_png_texture ("floortile.png", &s_texid_floor, &texw, &texh);
@@ -307,7 +308,7 @@ draw_floor (float *mtxGlobal)
 
 
 int
-draw_line (float *mtxGlobal, float *p0, float *p1)
+draw_line (float *mtxGlobal, float *p0, float *p1, float *color)
 {
     float matMV[16], matPMV[16], matMVI4x4[16], matMVI3x3[9];
     GLfloat floor_vtx [6];
@@ -350,17 +351,75 @@ draw_line (float *mtxGlobal, float *p0, float *p1)
     glUniformMatrix4fv (s_loc_mtx_mv,   1, GL_FALSE, matMV );
     glUniformMatrix4fv (s_loc_mtx_pmv,  1, GL_FALSE, matPMV);
     glUniformMatrix3fv (s_loc_mtx_nrm,  1, GL_FALSE, matMVI3x3);
-    glUniform3f (s_loc_color, 0.0f, 0.0f, 1.0f);
-    glUniform1f (s_loc_alpha, 1.0f);
+    glUniform3f (s_loc_color, color[0], color[1], color[2]);
+    glUniform1f (s_loc_alpha, color[3]);
 
     glDisable (GL_BLEND);
 
     glLineWidth(3.0f);
+    glEnable (GL_BLEND);
 
     glBindTexture (GL_TEXTURE_2D, s_texid_dummy);
     glDrawArrays (GL_LINES, 0, 2);
 
+    glDisable (GL_BLEND);
     glLineWidth(1.0f);
+    return 0;
+}
+
+int
+draw_triangle (float *mtxGlobal, float *p0, float *p1, float *p2, float *color)
+{
+    float matMV[16], matPMV[16], matMVI4x4[16], matMVI3x3[9];
+    GLfloat floor_vtx [9];
+
+    for (int i = 0; i < 3; i ++)
+    {
+        floor_vtx[0 + i] = p0[i];
+        floor_vtx[3 + i] = p1[i];
+        floor_vtx[6 + i] = p2[i];
+    }
+
+    glEnable (GL_DEPTH_TEST);
+    glDisable (GL_CULL_FACE);
+
+    glUseProgram( s_sobj.program );
+
+    glEnableVertexAttribArray (s_sobj.loc_vtx);
+    glEnableVertexAttribArray (s_sobj.loc_uv );
+    glDisableVertexAttribArray(s_sobj.loc_nrm);
+    glVertexAttribPointer (s_sobj.loc_vtx, 3, GL_FLOAT, GL_FALSE, 0, floor_vtx);
+    glVertexAttribPointer (s_sobj.loc_uv , 2, GL_FLOAT, GL_FALSE, 0, s_uv );
+    glVertexAttrib4fv (s_sobj.loc_nrm, s_nrm);
+
+    matrix_identity (matMV);
+    matrix_mult (matMV, matMV, mtxGlobal);
+
+    matrix_identity (matMVI4x4);
+    matMVI3x3[0] = matMVI4x4[0];
+    matMVI3x3[1] = matMVI4x4[1];
+    matMVI3x3[2] = matMVI4x4[2];
+    matMVI3x3[3] = matMVI4x4[4];
+    matMVI3x3[4] = matMVI4x4[5];
+    matMVI3x3[5] = matMVI4x4[6];
+    matMVI3x3[6] = matMVI4x4[8];
+    matMVI3x3[7] = matMVI4x4[9];
+    matMVI3x3[8] = matMVI4x4[10];
+
+    matrix_mult (matPMV, s_matPrj, matMV);
+    glUniformMatrix4fv (s_loc_mtx_mv,   1, GL_FALSE, matMV );
+    glUniformMatrix4fv (s_loc_mtx_pmv,  1, GL_FALSE, matPMV);
+    glUniformMatrix3fv (s_loc_mtx_nrm,  1, GL_FALSE, matMVI3x3);
+    glUniform3f (s_loc_color, color[0], color[1], color[2]);
+    glUniform1f (s_loc_alpha, color[3]);
+
+    glEnable (GL_BLEND);
+
+    glBindTexture (GL_TEXTURE_2D, s_texid_dummy);
+    glDrawArrays (GL_TRIANGLES, 0, 3);
+
+    glDisable (GL_BLEND);
+
     return 0;
 }
 

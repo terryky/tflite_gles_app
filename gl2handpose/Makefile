@@ -6,6 +6,7 @@ SRCS =
 SRCS += main.c
 SRCS += render_handpose.c
 SRCS += tflite_handpose.cpp
+SRCS += custom_ops/transpose_conv_bias.cc
 SRCS += ../common/assertgl.c
 SRCS += ../common/assertegl.c
 SRCS += ../common/util_egl.c
@@ -15,6 +16,7 @@ SRCS += ../common/util_texture.c
 SRCS += ../common/util_render2d.c
 SRCS += ../common/util_debugstr.c
 SRCS += ../common/util_pmeter.c
+SRCS += ../common/util_tflite.cpp
 SRCS += ../common/winsys/$(WINSYS_SRC).c
 
 OBJS += $(patsubst %.cc,%.o,$(patsubst %.cpp,%.o,$(patsubst %.c,%.o,$(SRCS))))
