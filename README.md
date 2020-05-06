@@ -43,7 +43,7 @@ $ ./tflite_gles_app/tools/scripts/tf2.2/build_libtflite_r2.2.sh
 
 ```
 $ cd ~/work/tflite_gles_app/gl2handpose
-$ make
+$ make -j4
 ```
 
 ##### 4.run an application.
@@ -93,7 +93,7 @@ $ ./gl2handpose
 (Jetson)$ git clone https://github.com/terryky/tflite_gles_app.git
 (Jetson)$ cd ~/work/tflite_gles_app/gl2handpose
 (Jetson)$ cp ~/libtensorflow-lite.a .
-(Jetson)$ make TARGET_ENV=jetson_nano TFLITE_DELEGATE=GPU_DELEGATEV2
+(Jetson)$ make -j4 TARGET_ENV=jetson_nano TFLITE_DELEGATE=GPU_DELEGATEV2
 ```
 
 ##### 5.run an application.
@@ -148,7 +148,7 @@ $ ./gl2handpose
 (Raspi)$ git clone https://github.com/terryky/tflite_gles_app.git
 (Raspi)$ cd ~/work/tflite_gles_app/gl2handpose
 (Raspi)$ cp ~/libtensorflow-lite.a .
-(Raspi)$ make TARGET_ENV=raspi4 TFLITE_DELEGATE=GL_DELEGATE
+(Raspi)$ make -j4 TARGET_ENV=raspi4 TFLITE_DELEGATE=GL_DELEGATE
 ```
 
 
