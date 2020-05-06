@@ -213,6 +213,7 @@ typedef struct _texparam
     float        rot;               /* degree */
     int          blendfunc_en;
     unsigned int blendfunc[4];      /* src_rgb, dst_rgb, src_alpha, dst_alpha */
+    float        *user_texcoord;
 } texparam_t;
 
 
@@ -247,6 +248,11 @@ draw_2d_texture_in (texparam_t *tparam)
         break;
     default:
         break;
+    }
+
+    if (tparam->user_texcoord)
+    {
+        uv = tparam->user_texcoord;
     }
 
     if (sobj->loc_uv >= 0)
@@ -313,6 +319,27 @@ draw_2d_texture (int texid, int x, int y, int w, int h, int upsidedown)
     tparam.color[2]= 1.0f;
     tparam.color[3]= 1.0f;
     tparam.upsidedown = upsidedown;
+    draw_2d_texture_in (&tparam);
+
+    return 0;
+}
+
+int
+draw_2d_texture_texcoord (int texid, int x, int y, int w, int h, float *user_texcoord)
+{
+    texparam_t tparam = {0};
+    tparam.x       = x;
+    tparam.y       = y;
+    tparam.w       = w;
+    tparam.h       = h;
+    tparam.texid   = texid;
+    tparam.textype = 1;
+    tparam.color[0]= 1.0f;
+    tparam.color[1]= 1.0f;
+    tparam.color[2]= 1.0f;
+    tparam.color[3]= 1.0f;
+    tparam.upsidedown = 0;
+    tparam.user_texcoord = user_texcoord;
     draw_2d_texture_in (&tparam);
 
     return 0;

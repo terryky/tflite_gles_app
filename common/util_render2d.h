@@ -9,6 +9,7 @@ int init_2d_renderer (int w, int h);
 
 int draw_2d_fillrect (int x, int y, int w, int h, float *color);
 int draw_2d_texture (int texid, int x, int y, int w, int h, int upsidedown);
+int draw_2d_texture_texcoord (int texid, int x, int y, int w, int h, float *user_texcoord);
 int draw_2d_texture_blendfunc (int texid, int x, int y, int w, int h,
                            int upsidedown, unsigned int *blendfunc);
 int draw_2d_texture_modulate (int texid, int x, int y, int w, int h,
