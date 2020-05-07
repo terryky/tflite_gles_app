@@ -9,10 +9,16 @@
 #define M_PId180f     (3.1415926f / 180.0f)
 #include "util_matrix.h"
 
-static float
+float
 vec3_length (float *v)
 {
     return (float) sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+}
+
+static float
+vec2_length (float *v)
+{
+    return (float) sqrt(v[0] * v[0] + v[1] * v[1]);
 }
 
 static void
@@ -30,6 +36,24 @@ vec3_normalize (float *v)
     v[0] *= invLen;
     v[1] *= invLen;
     v[2] *= invLen;
+}
+
+static float
+vec2_normalize (float *v)
+{
+    float len, invLen;
+
+    len = vec2_length (v);
+    if (len == 0.0f)
+    {
+        return len;
+    }
+    invLen = 1.0f / len;
+
+    v[0] *= invLen;
+    v[1] *= invLen;
+
+    return len;
 }
 
 static void
@@ -558,6 +582,87 @@ matrix_skew (float *m, float x, float y)
     m[ 6] = m06;
     m[ 7] = m07;
 }
+
+/******************************************
+   Model Lookat Matrix
+*******************************************/
+void
+matrix_modellookat (float *m, float *src_pos, float *tgt_pos, float twist)
+{
+    float deltaV[2];
+    float cosA, sinA, cosB, sinB;
+
+    deltaV[0] = tgt_pos[0] - src_pos[0];    // dx
+    deltaV[1] = tgt_pos[2] - src_pos[2];    // dz
+
+    if (deltaV[0] != 0.0f || deltaV[1] != 0.0f)
+    {
+        float lenXZ = vec2_normalize (deltaV);
+        cosA = deltaV[1];
+        sinA = deltaV[0];
+
+        deltaV[0] = lenXZ;
+        deltaV[1] = tgt_pos[1] - src_pos[1];
+        vec2_normalize (deltaV);
+        cosB = deltaV[0];
+        sinB = deltaV[1];
+    }
+    else /* if ((dx == 0) && (dz == 0)) */
+    {
+        cosA = -1.0f;
+        sinA =  0.0f;
+
+        cosB =  0.0f;
+        sinB = (tgt_pos[1] < 0.0f) ? -1.0f : 1.0f;
+    }
+
+    if (twist == 0.0f)
+    {
+        m[0] = cosA;            // m00
+        m[4] = sinA * (-sinB);  // m01
+        m[8] = sinA *   cosB;   // m02
+
+        m[1] = 0.0f;            // m10
+        m[5] = cosB;            // m11
+        m[9] = sinB;            // m12
+
+        m[2] = -sinA;           // m20
+        m[6] = cosA * (-sinB);  // m21
+        m[10]= cosA *   cosB;   // m22
+    }
+    else /* if (twist != 0) */
+    {
+        float cosC, sinC, mSinAsinB, mCosAsinB;
+
+        cosC = (float)cos(twist);
+        sinC = (float)sin(twist);
+
+        mSinAsinB = sinA * (-sinB);
+        mCosAsinB = cosA * (-sinB);
+
+        m[0] =  cosA * cosC + mSinAsinB * sinC;
+        m[4] = -cosA * sinC + mSinAsinB * cosC;
+        m[8] =  sinA * cosB;
+
+        m[1] =  cosB * sinC;
+        m[5] =  cosB * cosC;
+        m[9] =  sinB;
+
+        m[2] = -sinA * cosC + mCosAsinB * sinC;
+        m[6] =  sinA * sinC + mCosAsinB * cosC;
+        m[10]=  cosA * cosB;
+    }
+
+    m[12] = src_pos[0]; // m03
+    m[13] = src_pos[1]; // m13
+    m[14] = src_pos[2]; // m23
+
+    m[ 3] = 0.0f;       // m30
+    m[ 7] = 0.0f;       // m31
+    m[11] = 0.0f;       // m32
+    m[15] = 1.0f;       // m33
+}
+
 
 
 /******************************************
