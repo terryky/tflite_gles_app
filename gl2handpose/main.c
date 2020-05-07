@@ -205,10 +205,11 @@ compute_3d_hand_pos (hand_landmark_result_t *dst_hand, int texw, int texh, hand_
 {
     float xoffset   = palm->hand_cx - 0.5f;
     float yoffset   = palm->hand_cy - 0.5f;
-    float zoffset   = 100.0f * (1.0f / palm->hand_w);
+    float zoffset   = 1000 * (1.0f / palm->hand_w);
 
     xoffset *= (1.0f / palm->hand_w);
 
+    //fprintf (stderr, "------------------------------\n");
     for (int i = 0; i < HAND_JOINT_NUM; i ++)
     {
         float x = src_hand->joint[i].x;
@@ -220,12 +221,13 @@ compute_3d_hand_pos (hand_landmark_result_t *dst_hand, int texw, int texh, hand_
         z = (z + zoffset);
         y = -y;
         z = -z;
-        x = x * texw * 0.1;
-        y = y * texh * 0.1;
+        x = x * texw;
+        y = y * texh;
 
         dst_hand->joint[i].x = x;
         dst_hand->joint[i].y = y;
         dst_hand->joint[i].z = z;
+        //fprintf (stderr, "(%8.1f, %8.1f, %8.1f)\n", x, y, z);
     }
 }
 
@@ -234,7 +236,7 @@ render_node (float *mtxGlobal, hand_landmark_result_t *hand_landmark, int idx0, 
 {
     float *pos0 = (float *)&hand_landmark->joint[idx0];
     float *pos1 = (float *)&hand_landmark->joint[idx1];
-    draw_line (mtxGlobal, pos0, pos1, color);
+    draw_bone (mtxGlobal, pos0, pos1, 4.0f, color);
 }
 
 static void
@@ -261,6 +263,7 @@ render_hand_landmark3d (int ofstx, int ofsty, int texw, int texh,
     float col_blue[]   = {0.0f, 0.0f, 1.0f, 1.0f};
     float col_palm[]   = {0.0f, 0.0f, 1.0f, 0.7f};
     float col_gray[]   = {0.0f, 0.0f, 0.0f, 0.5f};
+    float col_node[]   = {0.9f, 0.9f, 1.0f, 1.0f};
 
     /* transform to 3D coordinate */
     hand_landmark_result_t hand_draw;
@@ -277,6 +280,7 @@ render_hand_landmark3d (int ofstx, int ofsty, int texw, int texh,
         matrix_identity (mtxGlobal);
         matrix_rotate    (mtxGlobal, rotation, 0.0f, 0.0f, 1.0f);
         matrix_translate (mtxGlobal, tx, ty, tz);
+        matrix_scale     (mtxGlobal, 10, 10, 10);
 
         if      (i >= 17) col = col_violet;
         else if (i >= 13) col = col_cyan;
@@ -289,13 +293,13 @@ render_hand_landmark3d (int ofstx, int ofsty, int texw, int texh,
     /* joint node */
     for (int is_shadow = 0; is_shadow < 2; is_shadow ++)
     {
-        float *col = col_blue;
+        float *col = col_node;
         float *colp= col_palm;
         matrix_identity (mtxGlobal);
 
         if (is_shadow)
         {
-            matrix_translate (mtxGlobal, 0.0f, -40.0f, 0.0f);
+            matrix_translate (mtxGlobal, 0.0f, -200.0f, 0.0f);
             matrix_scale     (mtxGlobal, 1.0f, 0.0f, 1.0f);
             col  = col_gray;
             colp = col_gray;
@@ -304,9 +308,9 @@ render_hand_landmark3d (int ofstx, int ofsty, int texw, int texh,
         matrix_rotate    (mtxGlobal, rotation, 0.0f, 0.0f, 1.0f);
 
         render_node (mtxGlobal, &hand_draw, 0,  1, col);
-        render_node (mtxGlobal, &hand_draw, 0,  5, col);
-        render_node (mtxGlobal, &hand_draw, 0,  9, col);
-        render_node (mtxGlobal, &hand_draw, 0, 13, col);
+        //render_node (mtxGlobal, &hand_draw, 0,  5, col);
+        //render_node (mtxGlobal, &hand_draw, 0,  9, col);
+        //render_node (mtxGlobal, &hand_draw, 0, 13, col);
         render_node (mtxGlobal, &hand_draw, 0, 17, col);
 
         render_node (mtxGlobal, &hand_draw,  2,  5, col);
@@ -314,11 +318,11 @@ render_hand_landmark3d (int ofstx, int ofsty, int texw, int texh,
         render_node (mtxGlobal, &hand_draw,  9, 13, col);
         render_node (mtxGlobal, &hand_draw, 13, 17, col);
 
-        render_palm_tri (mtxGlobal, &hand_draw, 0,  1,  5, colp);
-        render_palm_tri (mtxGlobal, &hand_draw, 0,  5,  9, colp);
-        render_palm_tri (mtxGlobal, &hand_draw, 0,  9, 13, colp);
-        render_palm_tri (mtxGlobal, &hand_draw, 0, 13, 17, colp);
-        render_palm_tri (mtxGlobal, &hand_draw, 1,  2,  5, colp);
+        //render_palm_tri (mtxGlobal, &hand_draw, 0,  1,  5, colp);
+        //render_palm_tri (mtxGlobal, &hand_draw, 0,  5,  9, colp);
+        //render_palm_tri (mtxGlobal, &hand_draw, 0,  9, 13, colp);
+        //render_palm_tri (mtxGlobal, &hand_draw, 0, 13, 17, colp);
+        //render_palm_tri (mtxGlobal, &hand_draw, 1,  2,  5, colp);
 
         for (int i = 0; i < 5; i ++)
         {
@@ -337,18 +341,13 @@ render_3d_scene (int ofstx, int ofsty, int texw, int texh,
                  palm_detection_result_t *detection)
 {
     float mtxGlobal[16];
-    float floor_size_x = 1000.0f;
-    float floor_size_y = 1000.0f;
-    float floor_size_z = 1000.0f;
+    float floor_size_x = texw/2; //100.0f;
+    float floor_size_y = texw/2; //100.0f;
+    float floor_size_z = texw/2; //100.0f;
 
     /* background */
     matrix_identity (mtxGlobal);
-
-    matrix_translate (mtxGlobal, 0, -floor_size_y * 0.1f, -floor_size_z * 2.5f);
-    matrix_rotate (mtxGlobal, 10.0f, 1.0f, 0.0f, 0.0f);
-    matrix_rotate (mtxGlobal, 30.0f, 0.0f, 1.0f, 0.0f);
-
-    matrix_translate (mtxGlobal, 0, floor_size_y * 0.5f, 0);
+    matrix_translate (mtxGlobal, 0, floor_size_y * 0.9f, 0);
     matrix_scale  (mtxGlobal, floor_size_x, floor_size_y, floor_size_z);
     draw_floor (mtxGlobal);
 
@@ -367,7 +366,7 @@ render_cropped_hand_image (int texid, int ofstx, int ofsty, int texw, int texh, 
 
     if (detection->num <= hand_id)
         return;
-    
+
     palm_t *palm = &(detection->palms[hand_id]);
     float x0 = palm->hand_pos[0].x;
     float y0 = palm->hand_pos[0].y;

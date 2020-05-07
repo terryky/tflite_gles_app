@@ -10,6 +10,7 @@ int draw_cube (float *mtxGlobal, float *color);
 int draw_floor (float *mtxGlobal);
 int draw_line (float *mtxGlobal, float *p0, float *p1, float *color);
 int draw_triangle (float *mtxGlobal, float *p0, float *p1, float *p2, float *color);
+int draw_bone (float *mtxGlobal, float *p0, float *p1, float radius, float *color);
 
 #endif /* _RENDER_HANDPOSE_H_ */
  

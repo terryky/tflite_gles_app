@@ -29,7 +29,7 @@ static GLint        s_loc_mtx_pmv;
 static GLint        s_loc_mtx_nrm;
 static GLint        s_loc_color;
 static GLint        s_loc_alpha;
-
+static GLint        s_loc_lightpos;
 
 
 static GLfloat s_vtx[] =
@@ -75,6 +75,17 @@ static GLfloat s_nrm[] =
      0.0f, -1.0f,  0.0f,
 };
 
+static GLfloat s_nrm_inv[] =
+{
+     0.0f,  0.0f, -1.0f,
+     0.0f,  0.0f,  1.0f,
+    -1.0f,  0.0f,  0.0f,
+     1.0f,  0.0f,  0.0f,
+     0.0f, -1.0f,  0.0f,
+     0.0f,  1.0f,  0.0f,
+};
+
+
 static GLfloat s_uv [] =
 {
 #if 0
@@ -103,13 +114,13 @@ varying   vec3  v_diffuse;                                  \n\
 varying   vec3  v_specular;                                 \n\
 varying   vec2  v_texcoord;                                 \n\
 const     float shiness = 16.0;                             \n\
-const     vec3  LightPos = vec3(4.0, 4.0, 4.0);             \n\
+uniform   vec3  u_LightPos;                                 \n\
 const     vec3  LightCol = vec3(1.0, 1.0, 1.0);             \n\
                                                             \n\
 void DirectionalLight (vec3 normal, vec3 eyePos)            \n\
 {                                                           \n\
-    vec3  lightDir = normalize (LightPos);                  \n\
-    vec3  halfV    = normalize (LightPos - eyePos);         \n\
+    vec3  lightDir = normalize (u_LightPos);                \n\
+    vec3  halfV    = normalize (u_LightPos - eyePos);       \n\
     float dVP      = max(dot(normal, lightDir), 0.0);       \n\
     float dHV      = max(dot(normal, halfV   ), 0.0);       \n\
                                                             \n\
@@ -127,10 +138,11 @@ void main(void)                                             \n\
     vec3 normal = normalize(u_ModelViewIT * a_Normal);      \n\
     vec3 eyePos = vec3(u_MVMatrix * a_Vertex);              \n\
                                                             \n\
-    v_diffuse  = vec3(0.0);                                 \n\
+    v_diffuse  = vec3(0.5);                                 \n\
     v_specular = vec3(0.0);                                 \n\
     DirectionalLight(normal, eyePos);                       \n\
                                                             \n\
+    v_diffuse = clamp(v_diffuse, 0.0, 1.0);                 \n\
     v_texcoord  = a_TexCoord;                               \n\
 }                                                           ";
 
@@ -147,33 +159,17 @@ uniform sampler2D u_sampler;                                \n\
 void main(void)                                             \n\
 {                                                           \n\
     vec3 color;                                             \n\
-    color = vec3(texture2D(u_sampler,  v_texcoord));        \n\
-    color += (u_color * v_diffuse);                         \n\
-    color += v_specular;                                    \n\
+    color = vec3(texture2D(u_sampler, v_texcoord));         \n\
+    color *= (u_color * v_diffuse);                         \n\
+    //color += v_specular;                                  \n\
     gl_FragColor = vec4(color, u_alpha);                    \n\
 }                                                           ";
 
 
-
-int
-draw_cube (float *mtxGlobal, float *color)
+static void
+compute_invmat3x3 (float *matMVI3x3, float *matMV)
 {
-    int i;
-    float matMV[16], matPMV[16], matMVI4x4[16], matMVI3x3[9];
-
-    glEnable (GL_DEPTH_TEST);
-    glEnable (GL_CULL_FACE);
-    
-    glUseProgram( s_sobj.program );
-
-    glEnableVertexAttribArray (s_sobj.loc_vtx);
-    glEnableVertexAttribArray (s_sobj.loc_uv );
-    glDisableVertexAttribArray(s_sobj.loc_nrm);
-    glVertexAttribPointer (s_sobj.loc_vtx, 3, GL_FLOAT, GL_FALSE, 0, s_vtx);
-    glVertexAttribPointer (s_sobj.loc_uv , 2, GL_FLOAT, GL_FALSE, 0, s_uv );
-
-    matrix_identity (matMV);
-    matrix_mult (matMV, matMV, mtxGlobal);
+    float matMVI4x4[16];
 
     matrix_copy (matMVI4x4, matMV);
     matrix_invert   (matMVI4x4);
@@ -187,11 +183,35 @@ draw_cube (float *mtxGlobal, float *color)
     matMVI3x3[6] = matMVI4x4[8];
     matMVI3x3[7] = matMVI4x4[9];
     matMVI3x3[8] = matMVI4x4[10];
+}
 
+int
+draw_cube (float *mtxGlobal, float *color)
+{
+    int i;
+    float matMV[16], matPMV[16], matMVI3x3[9];
+
+    glEnable (GL_DEPTH_TEST);
+    glEnable (GL_CULL_FACE);
+
+    glUseProgram( s_sobj.program );
+
+    glEnableVertexAttribArray (s_sobj.loc_vtx);
+    glEnableVertexAttribArray (s_sobj.loc_uv );
+    glDisableVertexAttribArray(s_sobj.loc_nrm);
+    glVertexAttribPointer (s_sobj.loc_vtx, 3, GL_FLOAT, GL_FALSE, 0, s_vtx);
+    glVertexAttribPointer (s_sobj.loc_uv , 2, GL_FLOAT, GL_FALSE, 0, s_uv );
+
+    matrix_identity (matMV);
+    matrix_mult (matMV, mtxGlobal, matMV);
     matrix_mult (matPMV, s_matPrj, matMV);
+
+    compute_invmat3x3 (matMVI3x3, matMV);
+
     glUniformMatrix4fv (s_loc_mtx_mv,   1, GL_FALSE, matMV );
     glUniformMatrix4fv (s_loc_mtx_pmv,  1, GL_FALSE, matPMV);
     glUniformMatrix3fv (s_loc_mtx_nrm,  1, GL_FALSE, matMVI3x3);
+    glUniform3f (s_loc_lightpos, 1.0f, 1.0f, 1.0f);
     glUniform3f (s_loc_color, color[0], color[1], color[2]);
     glUniform1f (s_loc_alpha, color[3]);
 
@@ -222,6 +242,7 @@ init_cube (float aspect)
     s_loc_mtx_nrm = glGetUniformLocation(s_sobj.program, "u_ModelViewIT" );
     s_loc_color   = glGetUniformLocation(s_sobj.program, "u_color" );
     s_loc_alpha   = glGetUniformLocation(s_sobj.program, "u_alpha" );
+    s_loc_lightpos= glGetUniformLocation(s_sobj.program, "u_LightPos" );
 
     matrix_proj_perspective (s_matPrj, 30.0f, aspect, 1.f, 10000.f);
 
@@ -234,29 +255,94 @@ init_cube (float aspect)
     glTexParameterf (GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameterf (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 
+    unsigned char imgbuf[] = {255, 255, 255, 255};
+    s_texid_dummy = create_2d_texture (imgbuf, 1, 1);
+
     GLASSERT ();
     return 0;
 }
 
+
+int
+draw_bone (float *mtxGlobal, float *p0, float *p1, float radius, float *color)
+{
+    int i;
+    float matMV[16], matPMV[16], matMVI3x3[9];
+
+    glEnable (GL_DEPTH_TEST);
+    glEnable (GL_CULL_FACE);
+
+    glUseProgram( s_sobj.program );
+
+    glEnableVertexAttribArray (s_sobj.loc_vtx);
+    glEnableVertexAttribArray (s_sobj.loc_uv );
+    glDisableVertexAttribArray(s_sobj.loc_nrm);
+    glVertexAttribPointer (s_sobj.loc_vtx, 3, GL_FLOAT, GL_FALSE, 0, s_vtx);
+    glVertexAttribPointer (s_sobj.loc_uv , 2, GL_FLOAT, GL_FALSE, 0, s_uv );
+
+    matrix_identity (matMV);
+    {
+        float dp[3];
+        dp[0] = p1[0] - p0[0];
+        dp[1] = p1[1] - p0[1];
+        dp[2] = p1[2] - p0[2];
+
+        float len = vec3_length (dp);
+        matrix_scale     (matMV, radius, radius, 0.5f * len);
+        matrix_translate (matMV, 0.0f, 0.0f, 1.0f);
+
+        float matLook[16];
+        matrix_modellookat (matLook, p0, p1, 0.0f);
+        matrix_mult (matMV, matLook, matMV);
+    }
+
+    matrix_mult (matMV, mtxGlobal, matMV);
+    matrix_mult (matPMV, s_matPrj, matMV);
+
+    compute_invmat3x3 (matMVI3x3, matMV);
+
+    glUniformMatrix4fv (s_loc_mtx_mv,   1, GL_FALSE, matMV );
+    glUniformMatrix4fv (s_loc_mtx_pmv,  1, GL_FALSE, matPMV);
+    glUniformMatrix3fv (s_loc_mtx_nrm,  1, GL_FALSE, matMVI3x3);
+    glUniform3f (s_loc_lightpos, 1.0f, 1.0f, 1.0f);
+    glUniform3f (s_loc_color, color[0], color[1], color[2]);
+    glUniform1f (s_loc_alpha, color[3]);
+
+    glEnable (GL_BLEND);
+    glEnable (GL_DEPTH_TEST);
+
+    for (i = 0; i < 6; i ++)
+    {
+        glBindTexture (GL_TEXTURE_2D, s_texid_dummy);
+
+        glVertexAttribPointer (s_sobj.loc_vtx, 3, GL_FLOAT, GL_FALSE, 0, &s_vtx[4 * 3 * i]);
+        glVertexAttrib4fv (s_sobj.loc_nrm, &s_nrm[3 * i]);
+        glDrawArrays (GL_TRIANGLE_STRIP, 0, 4);
+    }
+
+    glDisable (GL_BLEND);
+
+    return 0;
+}
 
 
 int
 draw_floor (float *mtxGlobal)
 {
     int i;
-    float matMV[16], matPMV[16], matMVI4x4[16], matMVI3x3[9];
+    float matMV[16], matPMV[16], matMVI3x3[9];
     GLfloat floor_uv [] =
     {
-         0.0f, 0.0f,
-         0.0f, 5.0f,
-         5.0f, 0.0f,
-         5.0f, 5.0f,
+          0.0f,  0.0f,
+          0.0f, 20.0f,
+         20.0f,  0.0f,
+         20.0f, 20.0f,
     };
-    
+
     glDisable (GL_DEPTH_TEST);
     glEnable (GL_CULL_FACE);
     glFrontFace (GL_CW);
-        
+
     glUseProgram( s_sobj.program );
 
     glEnableVertexAttribArray (s_sobj.loc_vtx);
@@ -266,36 +352,26 @@ draw_floor (float *mtxGlobal)
     glVertexAttribPointer (s_sobj.loc_uv , 2, GL_FLOAT, GL_FALSE, 0, floor_uv );
 
     matrix_identity (matMV);
-    matrix_mult (matMV, matMV, mtxGlobal);
-
-    matrix_copy (matMVI4x4, matMV);
-    matrix_invert   (matMVI4x4);
-    matrix_transpose(matMVI4x4);
-    matMVI3x3[0] = matMVI4x4[0];
-    matMVI3x3[1] = matMVI4x4[1];
-    matMVI3x3[2] = matMVI4x4[2];
-    matMVI3x3[3] = matMVI4x4[4];
-    matMVI3x3[4] = matMVI4x4[5];
-    matMVI3x3[5] = matMVI4x4[6];
-    matMVI3x3[6] = matMVI4x4[8];
-    matMVI3x3[7] = matMVI4x4[9];
-    matMVI3x3[8] = matMVI4x4[10];
-
+    matrix_mult (matMV, mtxGlobal, matMV);
     matrix_mult (matPMV, s_matPrj, matMV);
+
+    compute_invmat3x3 (matMVI3x3, matMV);
+
     glUniformMatrix4fv (s_loc_mtx_mv,   1, GL_FALSE, matMV );
     glUniformMatrix4fv (s_loc_mtx_pmv,  1, GL_FALSE, matPMV);
     glUniformMatrix3fv (s_loc_mtx_nrm,  1, GL_FALSE, matMVI3x3);
-    glUniform3f (s_loc_color, 0.5f, 0.5f, 0.5f);
-    glUniform1f (s_loc_alpha, 0.9f);
+    glUniform3f (s_loc_lightpos, 0.0f, 5.0f, 1.0f);
+    glUniform3f (s_loc_color, 0.9f, 0.9f, 0.9f);
+    glUniform1f (s_loc_alpha, 1.0f);
 
-    glEnable (GL_BLEND);
+    glDisable (GL_BLEND);
 
     for (i = 0; i < 6; i ++)
     {
         glBindTexture (GL_TEXTURE_2D, s_texid_floor);
 
         glVertexAttribPointer (s_sobj.loc_vtx, 3, GL_FLOAT, GL_FALSE, 0, &s_vtx[4 * 3 * i]);
-        glVertexAttrib4fv (s_sobj.loc_nrm, &s_nrm[3 * i]);
+        glVertexAttrib4fv (s_sobj.loc_nrm, &s_nrm_inv[3 * i]);
         glDrawArrays (GL_TRIANGLE_STRIP, 0, 4);
     }
 
@@ -310,7 +386,7 @@ draw_floor (float *mtxGlobal)
 int
 draw_line (float *mtxGlobal, float *p0, float *p1, float *color)
 {
-    float matMV[16], matPMV[16], matMVI4x4[16], matMVI3x3[9];
+    float matMV[16], matPMV[16], matMVI3x3[9];
     GLfloat floor_vtx [6];
 
     floor_vtx[0] = p0[0];
@@ -334,23 +410,15 @@ draw_line (float *mtxGlobal, float *p0, float *p1, float *color)
     glVertexAttrib4fv (s_sobj.loc_nrm, s_nrm);
 
     matrix_identity (matMV);
-    matrix_mult (matMV, matMV, mtxGlobal);
-
-    matrix_identity (matMVI4x4);
-    matMVI3x3[0] = matMVI4x4[0];
-    matMVI3x3[1] = matMVI4x4[1];
-    matMVI3x3[2] = matMVI4x4[2];
-    matMVI3x3[3] = matMVI4x4[4];
-    matMVI3x3[4] = matMVI4x4[5];
-    matMVI3x3[5] = matMVI4x4[6];
-    matMVI3x3[6] = matMVI4x4[8];
-    matMVI3x3[7] = matMVI4x4[9];
-    matMVI3x3[8] = matMVI4x4[10];
-
+    matrix_mult (matMV, mtxGlobal, matMV);
     matrix_mult (matPMV, s_matPrj, matMV);
+
+    compute_invmat3x3 (matMVI3x3, matMV);
+
     glUniformMatrix4fv (s_loc_mtx_mv,   1, GL_FALSE, matMV );
     glUniformMatrix4fv (s_loc_mtx_pmv,  1, GL_FALSE, matPMV);
     glUniformMatrix3fv (s_loc_mtx_nrm,  1, GL_FALSE, matMVI3x3);
+    glUniform3f (s_loc_lightpos, 0.0f, 5.0f, 1.0f);
     glUniform3f (s_loc_color, color[0], color[1], color[2]);
     glUniform1f (s_loc_alpha, color[3]);
 
@@ -370,7 +438,7 @@ draw_line (float *mtxGlobal, float *p0, float *p1, float *color)
 int
 draw_triangle (float *mtxGlobal, float *p0, float *p1, float *p2, float *color)
 {
-    float matMV[16], matPMV[16], matMVI4x4[16], matMVI3x3[9];
+    float matMV[16], matPMV[16], matMVI3x3[9];
     GLfloat floor_vtx [9];
 
     for (int i = 0; i < 3; i ++)
@@ -393,23 +461,15 @@ draw_triangle (float *mtxGlobal, float *p0, float *p1, float *p2, float *color)
     glVertexAttrib4fv (s_sobj.loc_nrm, s_nrm);
 
     matrix_identity (matMV);
-    matrix_mult (matMV, matMV, mtxGlobal);
-
-    matrix_identity (matMVI4x4);
-    matMVI3x3[0] = matMVI4x4[0];
-    matMVI3x3[1] = matMVI4x4[1];
-    matMVI3x3[2] = matMVI4x4[2];
-    matMVI3x3[3] = matMVI4x4[4];
-    matMVI3x3[4] = matMVI4x4[5];
-    matMVI3x3[5] = matMVI4x4[6];
-    matMVI3x3[6] = matMVI4x4[8];
-    matMVI3x3[7] = matMVI4x4[9];
-    matMVI3x3[8] = matMVI4x4[10];
-
+    matrix_mult (matMV, mtxGlobal, matMV);
     matrix_mult (matPMV, s_matPrj, matMV);
+
+    compute_invmat3x3 (matMVI3x3, matMV);
+
     glUniformMatrix4fv (s_loc_mtx_mv,   1, GL_FALSE, matMV );
     glUniformMatrix4fv (s_loc_mtx_pmv,  1, GL_FALSE, matPMV);
     glUniformMatrix3fv (s_loc_mtx_nrm,  1, GL_FALSE, matMVI3x3);
+    glUniform3f (s_loc_lightpos, 0.0f, 5.0f, 1.0f);
     glUniform3f (s_loc_color, color[0], color[1], color[2]);
     glUniform1f (s_loc_alpha, color[3]);
 
