@@ -37,6 +37,8 @@ $ sudo ./bazel-2.0.0-installer-linux-x86_64.sh
 $ cd ~/work 
 $ git clone https://github.com/terryky/tflite_gles_app.git
 $ ./tflite_gles_app/tools/scripts/tf2.2/build_libtflite_r2.2.sh
+
+(Tensorflow configure will start after a while. Please enter according to your environment)
 ```
 
 ##### 3.build an application.
@@ -67,6 +69,8 @@ $ ./gl2handpose
 (HostPC)$ cd ~/work 
 (HostPC)$ git clone https://github.com/terryky/tflite_gles_app.git
 (HostPC)$ ./tflite_gles_app/tools/scripts/tf2.2/build_libtflite_r2.2_with_gpu_delegate_aarch64.sh
+
+(Tensorflow configure will start after a while. Please enter according to your environment)
 ```
 
 ##### 2.copy libtensorflow-lite.a to target Jetson.
@@ -110,18 +114,24 @@ $ ./gl2handpose
 ##### 1.build TensorFlow Lite library on **Host PC**.
 
 ```
+(HostPC)$ wget https://github.com/bazelbuild/bazel/releases/download/2.0.0/bazel-2.0.0-installer-linux-x86_64.sh
+(HostPC)$ chmod 755 bazel-2.0.0-installer-linux-x86_64.sh
+(HostPC)$ sudo ./bazel-2.0.0-installer-linux-x86_64.sh
+(HostPC)$
 (HostPC)$ cd ~/work 
 (HostPC)$ git clone https://github.com/terryky/tflite_gles_app.git
-(HostPC)$ ./tflite_gles_app/tools/scripts/tf2.0/build_libtflite_r2.0_with_gpu_delegate_rpi.sh
+(HostPC)$ ./tflite_gles_app/tools/scripts/tf2.2/build_libtflite_r2.2_with_gpu_delegate_rpi.sh
+
+(Tensorflow configure will start after a while. Please enter according to your environment)
 ```
 
 ##### 2.copy libtensorflow-lite.a to target Jetson.
 
 ```
-(HostPC)scp ~/work/tensorflow_r2.0/tensorflow/lite/tools/make/gen/rpi_armv7l/lib/libtensorflow-lite.a pi@192.168.11.11:/home/pi/
+(HostPC)scp ~/work/tensorflow_r2.2/tensorflow/lite/tools/make/gen/rpi_armv7l/lib/libtensorflow-lite.a pi@192.168.11.11:/home/pi/
 ```
 
-##### 3.setup environment on **target Raspi**.
+##### 3.setup environment on **Raspberry Pi 4**.
 
 ```
 (Raspi)$ sudo apt install libgles2-mesa-dev libegl1-mesa-dev xorg-dev
@@ -136,7 +146,7 @@ $ ./gl2handpose
 (Raspi)$ cd ~/work
 (Raspi)$ git clone https://github.com/tensorflow/tensorflow.git
 (Raspi)$ cd tensorflow
-(Raspi)$ git checkout r2.0
+(Raspi)$ git checkout r2.2
 (Raspi)$ ./tensorflow/lite/tools/make/download_dependencies.sh
 ```
 
@@ -148,7 +158,10 @@ $ ./gl2handpose
 (Raspi)$ git clone https://github.com/terryky/tflite_gles_app.git
 (Raspi)$ cd ~/work/tflite_gles_app/gl2handpose
 (Raspi)$ cp ~/libtensorflow-lite.a .
-(Raspi)$ make -j4 TARGET_ENV=raspi4 TFLITE_DELEGATE=GL_DELEGATE
+(Raspi)$ make -j4 TARGET_ENV=raspi4  #disable GPUDelegate. (recommended)
+
+#enable GPUDelegate. but it cause low performance on Raspi4.
+(Raspi)$ make -j4 TARGET_ENV=raspi4 TFLITE_DELEGATE=GPU_DELEGATEV2
 ```
 
 
