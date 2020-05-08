@@ -16,6 +16,7 @@
 #include "util_pmeter.h"
 #include "util_debug.h"
 #include "util_texture.h"
+#include "shapes.h"
 
 #define UNUSED(x) (void)(x)
 
@@ -31,6 +32,8 @@ static GLint        s_loc_color;
 static GLint        s_loc_alpha;
 static GLint        s_loc_lightpos;
 
+static shape_obj_t  s_sphere;
+static shape_obj_t  s_cylinder;
 
 static GLfloat s_vtx[] =
 {
@@ -244,7 +247,7 @@ init_cube (float aspect)
     s_loc_alpha   = glGetUniformLocation(s_sobj.program, "u_alpha" );
     s_loc_lightpos= glGetUniformLocation(s_sobj.program, "u_LightPos" );
 
-    matrix_proj_perspective (s_matPrj, 30.0f, aspect, 1.f, 10000.f);
+    matrix_proj_perspective (s_matPrj, 30.0f, aspect, 10.f, 10000.f);
 
     int texw, texh;
     load_png_texture ("floortile.png", &s_texid_floor, &texw, &texh);
@@ -258,6 +261,10 @@ init_cube (float aspect)
     unsigned char imgbuf[] = {255, 255, 255, 255};
     s_texid_dummy = create_2d_texture (imgbuf, 1, 1);
 
+    /* sphere, cylinder */
+    shape_create (SHAPE_SPHERE,   20, 20, &s_sphere);
+    shape_create (SHAPE_CYLINDER, 20, 20, &s_cylinder);
+
     GLASSERT ();
     return 0;
 }
@@ -266,21 +273,20 @@ init_cube (float aspect)
 int
 draw_bone (float *mtxGlobal, float *p0, float *p1, float radius, float *color)
 {
-    int i;
     float matMV[16], matPMV[16], matMVI3x3[9];
 
     glEnable (GL_DEPTH_TEST);
     glEnable (GL_CULL_FACE);
+    glFrontFace (GL_CW);
 
     glUseProgram( s_sobj.program );
 
     glEnableVertexAttribArray (s_sobj.loc_vtx);
     glEnableVertexAttribArray (s_sobj.loc_uv );
-    glDisableVertexAttribArray(s_sobj.loc_nrm);
-    glVertexAttribPointer (s_sobj.loc_vtx, 3, GL_FLOAT, GL_FALSE, 0, s_vtx);
-    glVertexAttribPointer (s_sobj.loc_uv , 2, GL_FLOAT, GL_FALSE, 0, s_uv );
+    glEnableVertexAttribArray (s_sobj.loc_nrm);
 
     matrix_identity (matMV);
+
     {
         float dp[3];
         dp[0] = p1[0] - p0[0];
@@ -288,8 +294,8 @@ draw_bone (float *mtxGlobal, float *p0, float *p1, float radius, float *color)
         dp[2] = p1[2] - p0[2];
 
         float len = vec3_length (dp);
-        matrix_scale     (matMV, radius, radius, 0.5f * len);
-        matrix_translate (matMV, 0.0f, 0.0f, 1.0f);
+        matrix_scale     (matMV, radius * 2, radius * 2, 0.5f * len);
+        matrix_translate (matMV, 0, 0, 1.0f);
 
         float matLook[16];
         matrix_modellookat (matLook, p0, p1, 0.0f);
@@ -311,16 +317,82 @@ draw_bone (float *mtxGlobal, float *p0, float *p1, float radius, float *color)
     glEnable (GL_BLEND);
     glEnable (GL_DEPTH_TEST);
 
-    for (i = 0; i < 6; i ++)
-    {
-        glBindTexture (GL_TEXTURE_2D, s_texid_dummy);
+    glBindTexture (GL_TEXTURE_2D, s_texid_dummy);
 
-        glVertexAttribPointer (s_sobj.loc_vtx, 3, GL_FLOAT, GL_FALSE, 0, &s_vtx[4 * 3 * i]);
-        glVertexAttrib4fv (s_sobj.loc_nrm, &s_nrm[3 * i]);
-        glDrawArrays (GL_TRIANGLE_STRIP, 0, 4);
-    }
+    glBindBuffer (GL_ARRAY_BUFFER, s_cylinder.vbo_vtx);
+    glVertexAttribPointer (s_sobj.loc_vtx, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    glBindBuffer (GL_ARRAY_BUFFER, s_cylinder.vbo_nrm);
+    glVertexAttribPointer (s_sobj.loc_nrm, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    glBindBuffer (GL_ARRAY_BUFFER, s_cylinder.vbo_uv);
+    glVertexAttribPointer (s_sobj.loc_uv,  2, GL_FLOAT, GL_FALSE, 0, 0);
+
+    glBindBuffer (GL_ELEMENT_ARRAY_BUFFER, s_cylinder.vbo_idx);
+    glDrawElements (GL_TRIANGLES, s_cylinder.num_faces * 3, GL_UNSIGNED_SHORT, 0);
+
+    glBindBuffer (GL_ARRAY_BUFFER, 0);
+    glBindBuffer (GL_ELEMENT_ARRAY_BUFFER, 0);
 
     glDisable (GL_BLEND);
+    glFrontFace (GL_CCW);
+
+    return 0;
+}
+
+
+int
+draw_sphere (float *mtxGlobal, float *p0, float radius, float *color)
+{
+    float matMV[16], matPMV[16], matMVI3x3[9];
+
+    glEnable (GL_DEPTH_TEST);
+    glEnable (GL_CULL_FACE);
+    glFrontFace (GL_CW);
+
+    glUseProgram( s_sobj.program );
+
+    glEnableVertexAttribArray (s_sobj.loc_vtx);
+    glEnableVertexAttribArray (s_sobj.loc_nrm);
+    glEnableVertexAttribArray (s_sobj.loc_uv );
+
+    matrix_identity (matMV);
+    matrix_translate (matMV, p0[0], p0[1], p0[2]);
+    matrix_scale     (matMV, radius, radius, radius);
+
+    matrix_mult (matMV, mtxGlobal, matMV);
+    matrix_mult (matPMV, s_matPrj, matMV);
+
+    compute_invmat3x3 (matMVI3x3, matMV);
+
+    glUniformMatrix4fv (s_loc_mtx_mv,   1, GL_FALSE, matMV );
+    glUniformMatrix4fv (s_loc_mtx_pmv,  1, GL_FALSE, matPMV);
+    glUniformMatrix3fv (s_loc_mtx_nrm,  1, GL_FALSE, matMVI3x3);
+    glUniform3f (s_loc_lightpos, 1.0f, 1.0f, 5.0f);
+    glUniform3f (s_loc_color, color[0], color[1], color[2]);
+    glUniform1f (s_loc_alpha, color[3]);
+
+    glDisable (GL_BLEND);
+
+    glBindTexture (GL_TEXTURE_2D, s_texid_dummy);
+
+    glBindBuffer (GL_ARRAY_BUFFER, s_sphere.vbo_vtx);
+    glVertexAttribPointer (s_sobj.loc_vtx, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    glBindBuffer (GL_ARRAY_BUFFER, s_sphere.vbo_nrm);
+    glVertexAttribPointer (s_sobj.loc_nrm, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    glBindBuffer (GL_ARRAY_BUFFER, s_sphere.vbo_uv);
+    glVertexAttribPointer (s_sobj.loc_uv,  2, GL_FLOAT, GL_FALSE, 0, 0);
+
+    glBindBuffer (GL_ELEMENT_ARRAY_BUFFER, s_sphere.vbo_idx);
+    glDrawElements (GL_TRIANGLES, s_sphere.num_faces * 3, GL_UNSIGNED_SHORT, 0);
+
+    glBindBuffer (GL_ARRAY_BUFFER, 0);
+    glBindBuffer (GL_ELEMENT_ARRAY_BUFFER, 0);
+
+    glDisable (GL_BLEND);
+    glFrontFace (GL_CCW);
 
     return 0;
 }
@@ -334,9 +406,9 @@ draw_floor (float *mtxGlobal)
     GLfloat floor_uv [] =
     {
           0.0f,  0.0f,
-          0.0f, 20.0f,
-         20.0f,  0.0f,
-         20.0f, 20.0f,
+          0.0f, 40.0f,
+         40.0f,  0.0f,
+         40.0f, 40.0f,
     };
 
     glDisable (GL_DEPTH_TEST);
@@ -469,7 +541,7 @@ draw_triangle (float *mtxGlobal, float *p0, float *p1, float *p2, float *color)
     glUniformMatrix4fv (s_loc_mtx_mv,   1, GL_FALSE, matMV );
     glUniformMatrix4fv (s_loc_mtx_pmv,  1, GL_FALSE, matPMV);
     glUniformMatrix3fv (s_loc_mtx_nrm,  1, GL_FALSE, matMVI3x3);
-    glUniform3f (s_loc_lightpos, 0.0f, 5.0f, 1.0f);
+    glUniform3f (s_loc_lightpos, 1.0f, 1.0f, 1.0f);
     glUniform3f (s_loc_color, color[0], color[1], color[2]);
     glUniform1f (s_loc_alpha, color[3]);
 

@@ -6,6 +6,7 @@ SRCS =
 SRCS += main.c
 SRCS += render_handpose.c
 SRCS += tflite_handpose.cpp
+SRCS += shapes.c
 SRCS += custom_ops/transpose_conv_bias.cc
 SRCS += ../common/assertgl.c
 SRCS += ../common/assertegl.c
