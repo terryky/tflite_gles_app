@@ -21,7 +21,7 @@ vec2_length (float *v)
     return (float) sqrt(v[0] * v[0] + v[1] * v[1]);
 }
 
-static void
+void
 vec3_normalize (float *v)
 {
     float len, invLen;

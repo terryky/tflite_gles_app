@@ -42,6 +42,7 @@ void matrix_transpose (float *m);
 void matrix_invert (float *m);
 
 float vec3_length (float *v);
+void  vec3_normalize (float *v);
 
 void quaternion_mult(float *lpR, float *lpP, float *lpQ);
 void quaternion_to_matrix(float *lpM, float *lpQ);
