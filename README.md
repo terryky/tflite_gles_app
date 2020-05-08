@@ -125,7 +125,7 @@ $ ./gl2handpose
 (Tensorflow configure will start after a while. Please enter according to your environment)
 ```
 
-##### 2.copy libtensorflow-lite.a to target Jetson.
+##### 2.copy libtensorflow-lite.a to target Raspberry Pi 4.
 
 ```
 (HostPC)scp ~/work/tensorflow_r2.2/tensorflow/lite/tools/make/gen/rpi_armv7l/lib/libtensorflow-lite.a pi@192.168.11.11:/home/pi/
