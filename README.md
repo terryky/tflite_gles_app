@@ -8,7 +8,7 @@ This repository contains several applications which invoke DNN inference with **
 | [gl2detection](https://github.com/terryky/tflite_gles_app/tree/master/gl2detection)| ![img](gl2detection/gl2detection.png " image") <br> Object Detection using MobileNet SSD.|
 | [gl2handpose](https://github.com/terryky/tflite_gles_app/tree/master/gl2handpose)| ![img](gl2handpose/gl2handpose.png " image") <br> 3D Handpose Estimation from single RGB images.|
 | [gl2posenet](https://github.com/terryky/tflite_gles_app/tree/master/gl2posenet)| ![img](gl2posenet/gl2posenet.png " image") <br> Pose Estimation.|
-| [gl2segmentation](https://github.com/terryky/tflite_gles_app/tree/master/gl2segmentation)| ![img](gl2segmentation/gl2segmentation.gif " image") <br> Semantic image segmentation using Deeplab.|
+| [gl2segmentation](https://github.com/terryky/tflite_gles_app/tree/master/gl2segmentation)| ![img](gl2segmentation/gl2segmentation.png " image") <br> Semantic image segmentation using Deeplab.|
 | [gl2style_transfer](https://github.com/terryky/tflite_gles_app/tree/master/gl2style_transfer)| ![img](gl2style_transfer/gl2style_transfer.png " image") <br> Artistic Style Transfer.|
 
 

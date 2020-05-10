@@ -4,7 +4,7 @@ TensorflowLite Semantic image segmentation application.
  - Invoke Tensorflow Lite with [Deeplab](https://www.tensorflow.org/lite/models/segmentation/overview).
  - visualize the result of detection.
 
- ![capture image](gl2segmentation.gif "capture image")
+ ![capture image](gl2segmentation.png "capture image")
 
 ## How to build
 Before you build this application, you need to build the TensorFlow Lite C++ static library.
