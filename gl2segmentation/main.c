@@ -18,8 +18,6 @@
 
 #define UNUSED(x) (void)(x)
 
-//#undef USE_INPUT_CAMERA_CAPTURE
-
 #if defined (USE_INPUT_CAMERA_CAPTURE)
 static void
 update_capture_texture (int texid)
@@ -42,15 +40,10 @@ update_capture_texture (int texid)
 void
 feed_deeplab_image(int texid, int win_w, int win_h)
 {
-#if defined (USE_INPUT_CAMERA_CAPTURE)
-    update_capture_texture (texid);
-#endif
-
     int x, y, w, h;
-    float *buf_fp32;
-    unsigned char *buf_ui8, *pui8;;
+    float *buf_fp32 = (float *)get_deeplab_input_buf (&w, &h);
+    unsigned char *buf_ui8, *pui8;
 
-    buf_fp32 = (float *)get_deeplab_input_buf (&w, &h);
     pui8 = buf_ui8 = (unsigned char *)malloc(w * h * 4);
 
     draw_2d_texture (texid, 0, win_h - h, w, h, 1);
@@ -69,7 +62,6 @@ feed_deeplab_image(int texid, int win_w, int win_h)
             int g = *buf_ui8 ++;
             int b = *buf_ui8 ++;
             buf_ui8 ++;          /* skip alpha */
-            
             *buf_fp32 ++ = (float)(r - mean) / std;
             *buf_fp32 ++ = (float)(g - mean) / std;
             *buf_fp32 ++ = (float)(b - mean) / std;
@@ -272,25 +264,44 @@ main(int argc, char *argv[])
     char input_name_default[] = "ride_horse.jpg";
     char *input_name = input_name_default;
     int count;
-    int win_w = 1280;
-    int win_h =  480;
+    int win_w = 800;
+    int win_h = 600;
     int texid;
     int texw, texh, draw_x, draw_y, draw_w, draw_h;
-    double ttime0 = 0, ttime1 = 0, interval;
+    double ttime[10] = {0}, interval, invoke_ms;
+    int enable_camera = 1;
     UNUSED (argc);
     UNUSED (*argv);
 
-    if (argc > 1)
-        input_name = argv[1];
+    {
+        int c;
+        const char *optstring = "x";
 
-    egl_init_with_platform_window_surface (2, 0, 0, 0, win_w, win_h);
+        while ((c = getopt (argc, argv, optstring)) != -1) 
+        {
+            switch (c)
+            {
+            case 'x':
+                enable_camera = 0;
+                break;
+            }
+        }
+
+        while (optind < argc) 
+        {
+            input_name = argv[optind];
+            optind++;
+        }
+    }
+
+    egl_init_with_platform_window_surface (2, 0, 0, 0, win_w * 2, win_h);
 
     init_2d_renderer (win_w, win_h);
     init_pmeter (win_w, win_h, 500);
     init_dbgstr (win_w, win_h);
     init_tflite_deeplab ();
 
-#if defined (USE_GL_DELEGATE)
+#if defined (USE_GL_DELEGATE) || defined (USE_GPU_DELEGATEV2)
     /* we need to recover framebuffer because GPU Delegate changes the context */
     glBindFramebuffer (GL_FRAMEBUFFER, 0);
     glViewport (0, 0, win_w, win_h);
@@ -298,7 +309,7 @@ main(int argc, char *argv[])
 
 #if defined (USE_INPUT_CAMERA_CAPTURE)
     /* initialize V4L2 capture function */
-    if (init_capture () == 0)
+    if (enable_camera && init_capture () == 0)
     {
         /* allocate texture buffer for captured image */
         get_capture_dimension (&texw, &texh);
@@ -308,7 +319,7 @@ main(int argc, char *argv[])
     else
 #endif
     load_jpg_texture (input_name, &texid, &texw, &texh);
-    adjust_texture (win_w/2, win_h, texw, texh, &draw_x, &draw_y, &draw_w, &draw_h);
+    adjust_texture (win_w, win_h, texw, texh, &draw_x, &draw_y, &draw_w, &draw_h);
 
     glClearColor (0.7f, 0.7f, 0.7f, 1.0f);
 
@@ -320,27 +331,43 @@ main(int argc, char *argv[])
         PMETER_RESET_LAP ();
         PMETER_SET_LAP ();
 
-        ttime1 = pmeter_get_time_ms ();
-        interval = (count > 0) ? ttime1 - ttime0 : 0;
-        ttime0 = ttime1;
+        ttime[1] = pmeter_get_time_ms ();
+        interval = (count > 0) ? ttime[1] - ttime[0] : 0;
+        ttime[0] = ttime[1];
 
         glClear (GL_COLOR_BUFFER_BIT);
+        glViewport (0, 0, win_w, win_h);
+
+#if defined (USE_INPUT_CAMERA_CAPTURE)
+        if (enable_camera)
+        {
+            update_capture_texture (texid);
+        }
+#endif
 
         /* invoke pose estimation using TensorflowLite */
         feed_deeplab_image (texid, win_w, win_h);
-        invoke_deeplab (&deeplab_result);
 
-        /* visualize the object detection results. */
+        ttime[2] = pmeter_get_time_ms ();
+        invoke_deeplab (&deeplab_result);
+        ttime[3] = pmeter_get_time_ms ();
+        invoke_ms = ttime[3] - ttime[2];
+
+        /* draw original image. */
         draw_2d_texture (texid,  draw_x, draw_y, draw_w, draw_h, 0);
-        render_deeplab_result (draw_x+draw_w, draw_y, draw_w, draw_h, &deeplab_result);
+
+        /* visualize the segmentation results. */
+        glViewport (win_w, 0, win_w, win_h);
+        render_deeplab_result (draw_x, draw_y, draw_w, draw_h, &deeplab_result);
 
 #if 0
-        render_deeplab_heatmap (draw_x+draw_w, draw_y, draw_w, draw_h, &deeplab_result);
+        render_deeplab_heatmap (draw_x, draw_y, draw_w, draw_h, &deeplab_result);
 #endif
 
+        glViewport (0, 0, win_w, win_h);
         draw_pmeter (0, 40);
 
-        sprintf (strbuf, "%.1f [ms]\n", interval);
+        sprintf (strbuf, "Interval:%5.1f [ms]\nTFLite :%5.1f [ms]", interval, invoke_ms);
         draw_dbgstr (strbuf, 10, 10);
 
         egl_swap();
