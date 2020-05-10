@@ -372,7 +372,8 @@ draw_sphere (float *mtxGlobal, float *p0, float radius, float *color)
     glUniform3f (s_loc_color, color[0], color[1], color[2]);
     glUniform1f (s_loc_alpha, color[3]);
 
-    glDisable (GL_BLEND);
+    if (color[3] < 1.0f)
+        glEnable (GL_BLEND);
 
     glBindTexture (GL_TEXTURE_2D, s_texid_dummy);
 

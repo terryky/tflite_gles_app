@@ -303,30 +303,15 @@ render_hand_landmark3d (int ofstx, int ofsty, int texw, int texh,
     hand_landmark_result_t hand_draw;
     compute_3d_hand_pos (&hand_draw, texw, texh, hand_landmark, palm);
 
-    /* joint point */
-    matrix_identity (mtxGlobal);
-    matrix_rotate   (mtxGlobal, rotation, 0.0f, 0.0f, 1.0f);
 
-    for (int i = 0; i < HAND_JOINT_NUM; i ++)
-    {
-        float *col;
-        float vec[3] = {hand_draw.joint[i].x, hand_draw.joint[i].y, hand_draw.joint[i].z};
-
-        if      (i >= 17) col = col_violet;
-        else if (i >= 13) col = col_cyan;
-        else if (i >=  9) col = col_green;
-        else if (i >=  5) col = col_yellow;
-        else              col = col_red;
-
-        draw_sphere (mtxGlobal, vec, 15.0f, col);
-    }
-
-    /* joint node */
     for (int is_shadow = 0; is_shadow < 2; is_shadow ++)
     {
-        float *col = col_node;
-        float *colp= col_palm;
+        float *colj;
+        float *coln = col_node;
+        float *colp = col_palm;
+
         matrix_identity (mtxGlobal);
+        matrix_rotate   (mtxGlobal, rotation, 0.0f, 0.0f, 1.0f);
 
         if (is_shadow)
         {
@@ -345,35 +330,53 @@ render_hand_landmark3d (int ofstx, int ofsty, int texw, int texh,
 
             matrix_mult (mtxGlobal, mtxGlobal, mtxShadow);
 
-            col  = col_gray;
+            colj = col_gray;
+            coln = col_gray;
             colp = col_gray;
         }
 
-        matrix_rotate (mtxGlobal, rotation, 0.0f, 0.0f, 1.0f);
+        /* joint point */
+        for (int i = 0; i < HAND_JOINT_NUM; i ++)
+        {
+            float vec[3] = {hand_draw.joint[i].x, hand_draw.joint[i].y, hand_draw.joint[i].z};
 
-        render_node (mtxGlobal, &hand_draw, 0,  1, col);
-        render_node (mtxGlobal, &hand_draw, 0, 17, col);
+            if (!is_shadow)
+            {
+                if      (i >= 17) colj = col_violet;
+                else if (i >= 13) colj = col_cyan;
+                else if (i >=  9) colj = col_green;
+                else if (i >=  5) colj = col_yellow;
+                else              colj = col_red;
+            }
 
-        render_node (mtxGlobal, &hand_draw,  1,  5, col);
-        render_node (mtxGlobal, &hand_draw,  5,  9, col);
-        render_node (mtxGlobal, &hand_draw,  9, 13, col);
-        render_node (mtxGlobal, &hand_draw, 13, 17, col);
+            draw_sphere (mtxGlobal, vec, 15.0f, colj);
+        }
 
+        /* joint node */
+        render_node (mtxGlobal, &hand_draw, 0,  1, coln);
+        render_node (mtxGlobal, &hand_draw, 0, 17, coln);
+
+        render_node (mtxGlobal, &hand_draw,  1,  5, coln);
+        render_node (mtxGlobal, &hand_draw,  5,  9, coln);
+        render_node (mtxGlobal, &hand_draw,  9, 13, coln);
+        render_node (mtxGlobal, &hand_draw, 13, 17, coln);
+
+        for (int i = 0; i < 5; i ++)
+        {
+            int idx0 = 4 * i + 1;
+            int idx1 = idx0 + 1;
+            render_node (mtxGlobal, &hand_draw, idx0,  idx1  , coln);
+            render_node (mtxGlobal, &hand_draw, idx0+1,idx1+1, coln);
+            render_node (mtxGlobal, &hand_draw, idx0+2,idx1+2, coln);
+        }
+
+        /* palm region */
         if (!is_shadow)
         {
             render_palm_tri (mtxGlobal, &hand_draw, 0,  1,  5, colp);
             render_palm_tri (mtxGlobal, &hand_draw, 0,  5,  9, colp);
             render_palm_tri (mtxGlobal, &hand_draw, 0,  9, 13, colp);
             render_palm_tri (mtxGlobal, &hand_draw, 0, 13, 17, colp);
-        }
-
-        for (int i = 0; i < 5; i ++)
-        {
-            int idx0 = 4 * i + 1;
-            int idx1 = idx0 + 1;
-            render_node (mtxGlobal, &hand_draw, idx0,  idx1  , col);
-            render_node (mtxGlobal, &hand_draw, idx0+1,idx1+1, col);
-            render_node (mtxGlobal, &hand_draw, idx0+2,idx1+2, col);
         }
     }
 }
