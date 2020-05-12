@@ -41,10 +41,6 @@ update_capture_texture (int texid)
 void
 feed_blazeface_image(int texid, int win_w, int win_h)
 {
-#if defined (USE_INPUT_CAMERA_CAPTURE)
-    update_capture_texture (texid);
-#endif
-
     int x, y, w, h;
     float *buf_fp32 = (float *)get_blazeface_input_buf (&w, &h);
     unsigned char *buf_ui8, *pui8;
@@ -172,11 +168,30 @@ main(int argc, char *argv[])
     int texid;
     int texw, texh, draw_x, draw_y, draw_w, draw_h;
     double ttime[10] = {0}, interval, invoke_ms;
+    int enable_camera = 1;
     UNUSED (argc);
     UNUSED (*argv);
 
-    if (argc > 1)
-        input_name = argv[1];
+    {
+        int c;
+        const char *optstring = "x";
+
+        while ((c = getopt (argc, argv, optstring)) != -1)
+        {
+            switch (c)
+            {
+            case 'x':
+                enable_camera = 0;
+                break;
+            }
+        }
+
+        while (optind < argc)
+        {
+            input_name = argv[optind];
+            optind++;
+        }
+    }
 
     egl_init_with_platform_window_surface (2, 0, 0, 0, win_w, win_h);
 
@@ -194,7 +209,7 @@ main(int argc, char *argv[])
 
 #if defined (USE_INPUT_CAMERA_CAPTURE)
     /* initialize V4L2 capture function */
-    if (init_capture () == 0)
+    if (enable_camera && init_capture () == 0)
     {
         /* allocate texture buffer for captured image */
         get_capture_dimension (&texw, &texh);
@@ -221,6 +236,13 @@ main(int argc, char *argv[])
         ttime[0] = ttime[1];
 
         glClear (GL_COLOR_BUFFER_BIT);
+
+#if defined (USE_INPUT_CAMERA_CAPTURE)
+        if (enable_camera)
+        {
+            update_capture_texture (texid);
+        }
+#endif
 
         /* invoke pose estimation using TensorflowLite */
         feed_blazeface_image (texid, win_w, win_h);
