@@ -70,10 +70,6 @@ init_tflite_blazeface()
     tflite_get_tensor_by_name (&s_detect_interpreter, 1, "regressors",     &s_detect_tensor_bboxes);
     tflite_get_tensor_by_name (&s_detect_interpreter, 1, "classificators", &s_detect_tensor_scores);
 
-    tflite_get_tensor_by_name (&s_detect_interpreter, 0, "input",          &s_detect_tensor_input);
-    tflite_get_tensor_by_name (&s_detect_interpreter, 1, "regressors",     &s_detect_tensor_bboxes);
-    tflite_get_tensor_by_name (&s_detect_interpreter, 1, "classificators", &s_detect_tensor_scores);
-
     int det_input_w = s_detect_tensor_input.dims[2];
     int det_input_h = s_detect_tensor_input.dims[1];
     create_blazeface_anchors (det_input_w, det_input_h);
