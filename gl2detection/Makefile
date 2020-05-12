@@ -27,6 +27,13 @@ INCLUDES += -I../third_party/
 LDFLAGS  +=
 LIBS     += -pthread
 
+# for V4L2 camera capture
+CFLAGS   += -DUSE_INPUT_CAMERA_CAPTURE
+SRCS     += camera_capture.c
+SRCS     += ../common/util_v4l2.c
+SRCS     += ../common/util_drm.c
+LIBS     += -ldrm
+
 # ---------------------
 #  for TFLite
 # ---------------------

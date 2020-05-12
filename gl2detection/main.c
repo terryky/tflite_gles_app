@@ -13,9 +13,28 @@
 #include "util_texture.h"
 #include "util_render2d.h"
 #include "tflite_detect.h"
+#include "camera_capture.h"
 
 #define UNUSED(x) (void)(x)
 
+
+#if defined (USE_INPUT_CAMERA_CAPTURE)
+static void
+update_capture_texture (int texid)
+{
+    int   cap_w, cap_h;
+    void *cap_buf;
+
+    get_capture_dimension (&cap_w, &cap_h);
+    get_capture_buffer (&cap_buf);
+
+    if (cap_buf)
+    {
+        glBindTexture (GL_TEXTURE_2D, texid);
+        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, cap_w, cap_h, GL_RGBA, GL_UNSIGNED_BYTE, cap_buf);
+    }
+}
+#endif
 
 /* resize image to (300x300) for input image of MobileNet SSD */
 void
@@ -183,11 +202,30 @@ main(int argc, char *argv[])
     int texid;
     int texw, texh, draw_x, draw_y, draw_w, draw_h;
     double ttime[10] = {0}, interval, invoke_ms;
+    int enable_camera = 1;
     UNUSED (argc);
     UNUSED (*argv);
 
-    if (argc > 1)
-        input_name = argv[1];
+    {
+        int c;
+        const char *optstring = "x";
+
+        while ((c = getopt (argc, argv, optstring)) != -1)
+        {
+            switch (c)
+            {
+            case 'x':
+                enable_camera = 0;
+                break;
+            }
+        }
+
+        while (optind < argc)
+        {
+            input_name = argv[optind];
+            optind++;
+        }
+    }
 
     egl_init_with_platform_window_surface (2, 0, 0, 0, win_w, win_h);
 
@@ -202,6 +240,17 @@ main(int argc, char *argv[])
     glViewport (0, 0, win_w, win_h);
 #endif
 
+#if defined (USE_INPUT_CAMERA_CAPTURE)
+    /* initialize V4L2 capture function */
+    if (enable_camera && init_capture () == 0)
+    {
+        /* allocate texture buffer for captured image */
+        get_capture_dimension (&texw, &texh);
+        texid = create_2d_texture (NULL, texw, texh);
+        start_capture ();
+    }
+    else
+#endif
     load_jpg_texture (input_name, &texid, &texw, &texh);
     adjust_texture (win_w, win_h, texw, texh, &draw_x, &draw_y, &draw_w, &draw_h);
 
@@ -220,6 +269,13 @@ main(int argc, char *argv[])
         ttime[0] = ttime[1];
 
         glClear (GL_COLOR_BUFFER_BIT);
+
+#if defined (USE_INPUT_CAMERA_CAPTURE)
+        if (enable_camera)
+        {
+            update_capture_texture (texid);
+        }
+#endif
 
         /* invoke object detection using TensorflowLite */
         feed_detect_image (texid, win_w, win_h);
