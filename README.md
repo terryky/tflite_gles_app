@@ -181,6 +181,37 @@ for more detail infomation, please refer [this article](https://qiita.com/terryk
 
 
 
+## Camera support
+- UVC(USB Video Class) camera capture is supported. (currently, YUYV pixelformat only)
+- If you have error messages like below:
+
+```
+-------------------------------
+ capture_devie  : /dev/video0
+ capture_devtype: V4L2_CAP_VIDEO_CAPTURE
+ capture_buftype: V4L2_BUF_TYPE_VIDEO_CAPTURE
+ capture_memtype: V4L2_MEMORY_MMAP
+ WH(640, 480), 4CC(MJPG), bpl(0), size(341333)
+-------------------------------
+ERR: camera_capture.c(80): not supported.
+ERR: camera_capture.c(80): not supported.
+...
+```
+
+please try to change your camera settings to use YUYV pixelformat like following command :
+
+```
+$ sudo apt-get install v4l-utils
+$ v4l2-ctl --set-fmt-video=width=640,height=480,pixelformat=YUYV --set-parm=30
+
+```
+
+If your camer doesn't support YUYV, please run the apps in camera_disabled_mode with argument ```-x```
+```
+$ ./gl2handpose -x
+```
+
+
 
 ## tested platforms
 You can select the platform by editing [Makefile.env](Makefile.env).
