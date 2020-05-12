@@ -147,7 +147,7 @@ alloc_buffer (capture_dev_t *cap_dev)
     int buf_count = cap_stream->bufcount;
 
     capture_frame_t *cap_frame;
-    cap_frame = (capture_frame_t *)malloc (sizeof (capture_frame_t) * buf_count);
+    cap_frame = (capture_frame_t *)calloc (buf_count, sizeof (capture_frame_t));
     DBG_ASSERT (cap_frame, "alloc failed");
 
     cap_stream->frames = cap_frame;
@@ -241,7 +241,7 @@ v4l2_open_capture_device (int devid)
     dev_type = get_capture_device_type (v4l_fd);
     DBG_ASSERT (dev_type, "not a capture device.\n");
 
-    cap_dev = (capture_dev_t *)malloc (sizeof (capture_dev_t));
+    cap_dev = (capture_dev_t *)calloc (1, sizeof (capture_dev_t));
     DBG_ASSERT (cap_dev, "alloc error.\n");
 
     snprintf (cap_dev->dev_name, sizeof (cap_dev->dev_name), "%s", devname);
