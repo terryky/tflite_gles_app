@@ -40,10 +40,6 @@ update_capture_texture (int texid)
 void
 feed_style_transfer_image(int is_predict, int texid, int win_w, int win_h)
 {
-#if defined (USE_INPUT_CAMERA_CAPTURE)
-    update_capture_texture (texid);
-#endif
-
     int x, y, w, h;
     float *buf_fp32;
     unsigned char *buf_ui8, *pui8;
@@ -219,9 +215,9 @@ int
 main(int argc, char *argv[])
 {
     char input_name_default[] = "pakutaso_famicom.jpg";
-    char *input_name = input_name_default;
+    char *input_name = NULL;
     char input_style_name_default[] = "munch_scream.jpg";
-    char *input_style_name = input_style_name_default;
+    char *input_style_name = NULL;
     int count;
     int win_w = 720 * 2;
     int win_h = 540;
@@ -230,15 +226,38 @@ main(int argc, char *argv[])
     int style_texid;
     float style_ratio = -0.1f;
     double ttime[10] = {0}, interval, invoke_ms;
+    int enable_camera = 1;
     UNUSED (argc);
     UNUSED (*argv);
 
     /* gl2style_transfer [content_file_name] [style_file_name] */
-    if (argc > 1)
-        input_name = argv[1];
+    {
+        int c;
+        const char *optstring = "x";
 
-    if (argc > 2)
-        input_style_name = argv[2];
+        while ((c = getopt (argc, argv, optstring)) != -1)
+        {
+            switch (c)
+            {
+            case 'x':
+                enable_camera = 0;
+                break;
+            }
+        }
+
+        while (optind < argc)
+        {
+            if (input_name == NULL)
+                input_name = argv[optind];
+            else if (input_style_name == NULL)
+                input_style_name = argv[optind];;
+            optind++;
+        }
+    }
+    if (input_name == NULL)
+        input_name = input_name_default;
+    if (input_style_name == NULL)
+        input_style_name = input_style_name_default;
 
     egl_init_with_platform_window_surface (2, 0, 0, 0, win_w, win_h);
 
@@ -256,7 +275,7 @@ main(int argc, char *argv[])
 
 #if defined (USE_INPUT_CAMERA_CAPTURE)
     /* initialize V4L2 capture function */
-    if (init_capture () == 0)
+    if (enable_camera && init_capture () == 0)
     {
         /* allocate texture buffer for captured image */
         get_capture_dimension (&texw, &texh);
@@ -307,6 +326,13 @@ main(int argc, char *argv[])
         ttime[0] = ttime[1];
 
         glClear (GL_COLOR_BUFFER_BIT);
+
+#if defined (USE_INPUT_CAMERA_CAPTURE)
+        if (enable_camera)
+        {
+            update_capture_texture (texid);
+        }
+#endif
 
 #if 0
         /* 
