@@ -407,7 +407,7 @@ v4l2_show_current_capture_settings (capture_dev_t *cap_dev)
     if (dev_type == V4L2_CAP_VIDEO_CAPTURE_MPLANE)
         fprintf (stderr, "V4L2_CAP_VIDEO_CAPTURE_MPLANE\n");
     else if (dev_type == V4L2_CAP_VIDEO_CAPTURE)
-        fprintf (stderr, "V4L2_CAP_VIDEO_CAPTURE_MPLANE\n");
+        fprintf (stderr, "V4L2_CAP_VIDEO_CAPTURE\n");
     else    
         fprintf (stderr, "UNKNOWN\n");
 
