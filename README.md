@@ -40,6 +40,9 @@ $ git clone https://github.com/terryky/tflite_gles_app.git
 $ ./tflite_gles_app/tools/scripts/tf2.2/build_libtflite_r2.2.sh
 
 (Tensorflow configure will start after a while. Please enter according to your environment)
+
+$
+$ ln -s tensorflow_r2.2 ./tensorflow
 ```
 
 ##### 3.build an application.
