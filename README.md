@@ -4,21 +4,21 @@ This repository contains several applications which invoke DNN inference with **
 ## applications
 | App name    | Descriptions |
 |:-----------:|:------------:|
-| [gl2blazeface](https://github.com/terryky/tflite_gles_app/tree/master/gl2blazeface)| ![img](gl2blazeface/gl2blazeface.png " image") <br> lightweight face detection.|
-| [gl2detection](https://github.com/terryky/tflite_gles_app/tree/master/gl2detection)| ![img](gl2detection/gl2detection.png " image") <br> Object Detection using MobileNet SSD.|
-| [gl2facemesh](https://github.com/terryky/tflite_gles_app/tree/master/gl2facemesh)| ![img](gl2facemesh/gl2facemesh.png " image") <br> 3D Face pose estimation and face replacement.|
-| [gl2handpose](https://github.com/terryky/tflite_gles_app/tree/master/gl2handpose)| ![img](gl2handpose/gl2handpose.png " image") <br> 3D Handpose Estimation from single RGB images.|
-| [gl2posenet](https://github.com/terryky/tflite_gles_app/tree/master/gl2posenet)| ![img](gl2posenet/gl2posenet.png " image") <br> Pose Estimation.|
-| [gl2segmentation](https://github.com/terryky/tflite_gles_app/tree/master/gl2segmentation)| ![img](gl2segmentation/gl2segmentation.png " image") <br> Semantic image segmentation using Deeplab.|
-| [gl2style_transfer](https://github.com/terryky/tflite_gles_app/tree/master/gl2style_transfer)| ![img](gl2style_transfer/gl2style_transfer.png " image") <br> Artistic Style Transfer.|
+| [gl2blazeface](https://github.com/terryky/tflite_gles_app/tree/master/gl2blazeface)          | [![img](gl2blazeface/gl2blazeface.png)](https://github.com/terryky/tflite_gles_app/tree/master/gl2blazeface) <br> Lightweight Face Detection.|
+| [gl2detection](https://github.com/terryky/tflite_gles_app/tree/master/gl2detection)          | [![img](gl2detection/gl2detection.png)](https://github.com/terryky/tflite_gles_app/tree/master/gl2detection) <br> Object Detection using MobileNet SSD.|
+| [gl2facemesh](https://github.com/terryky/tflite_gles_app/tree/master/gl2facemesh)            | [![img](gl2facemesh/gl2facemesh.png)](https://github.com/terryky/tflite_gles_app/tree/master/gl2facemesh)    <br> 3D Facial Surface Geometry estimation and face replacement.|
+| [gl2handpose](https://github.com/terryky/tflite_gles_app/tree/master/gl2handpose)            | [![img](gl2handpose/gl2handpose.png)](https://github.com/terryky/tflite_gles_app/tree/master/gl2handpose)    <br> 3D Handpose Estimation from single RGB images.|
+| [gl2posenet](https://github.com/terryky/tflite_gles_app/tree/master/gl2posenet)              | [![img](gl2posenet/gl2posenet.png)](https://github.com/terryky/tflite_gles_app/tree/master/gl2posenet)       <br> Pose Estimation.|
+| [gl2segmentation](https://github.com/terryky/tflite_gles_app/tree/master/gl2segmentation)    | [![img](gl2segmentation/gl2segmentation.png)](https://github.com/terryky/tflite_gles_app/tree/master/gl2segmentation) <br> Semantic image segmentation using Deeplab.|
+| [gl2style_transfer](https://github.com/terryky/tflite_gles_app/tree/master/gl2style_transfer)| [![img](gl2style_transfer/gl2style_transfer.png)](https://github.com/terryky/tflite_gles_app/tree/master/gl2style_transfer) <br> Artistic Style Transfer.|
 
 
 
 ## How to Build & Run
 
 - [Build for x86_64 Linux](#build_for_x86_64)
-- [Build for Jetson Nano](#build_for_jetson_nano)
-- [Build for Raspberry Pi 4](#build_for_raspi4)
+- [Build for Jetson Nano (aarch64 )](#build_for_jetson_nano)
+- [Build for Raspberry Pi 4 (armv7l)](#build_for_raspi4)
 
 
 ### <a name="build_for_x86_64">Build for x86_64 Linux</a>
@@ -61,7 +61,7 @@ $ ./gl2handpose
 
 
 
-### <a name="build_for_jetson_nano">Build for Jetson Nano</a>
+### <a name="build_for_jetson_nano">Build for Jetson Nano (aarch64)</a>
 
 ##### 1.build TensorFlow Lite library on **Host PC**.
 
@@ -111,9 +111,19 @@ $ ./gl2handpose
 (Jetson)$ ./gl2handpose
 ```
 
+##### about VSYNC
+On Jetson Nano, display sync to vblank (VSYNC) is enabled to avoid the tearing by default .
+To enable/disable VSYNC, run app with the following command.
+```
+# enable VSYNC (default).
+(Jetson)$ export __GL_SYNC_TO_VBLANK=1; ./gl2handpose
+
+# disable VSYNC. framerate improves, but tearing occurs.
+(Jetson)$ export __GL_SYNC_TO_VBLANK=0; ./gl2handpose
+```
 
 
-### <a name="build_for_raspi4">Build for Raspberry Pi 4</a>
+### <a name="build_for_raspi4">Build for Raspberry Pi 4 (armv7l)</a>
 
 ##### 1.build TensorFlow Lite library on **Host PC**.
 
@@ -181,8 +191,16 @@ for more detail infomation, please refer [this article](https://qiita.com/terryk
 
 
 
-## Camera support
+## UVC Camera support
 - UVC(USB Video Class) camera capture is supported. (currently, YUYV pixelformat only)
+- Use ```v4l2-ctl``` command to configure the capture resolution.
+
+lower the resolution, higher the framerate.
+```
+$ sudo apt-get install v4l-utils
+$ v4l2-ctl --set-fmt-video=width=160,height=120
+```
+
 - If you have error messages like below:
 
 ```
@@ -203,13 +221,14 @@ please try to change your camera settings to use YUYV pixelformat like following
 ```
 $ sudo apt-get install v4l-utils
 $ v4l2-ctl --set-fmt-video=width=640,height=480,pixelformat=YUYV --set-parm=30
-
 ```
 
-If your camer doesn't support YUYV, please run the apps in camera_disabled_mode with argument ```-x```
+If your camera doesn't support YUYV, please run the apps in camera_disabled_mode with argument ```-x```
 ```
 $ ./gl2handpose -x
 ```
+
+
 
 
 
