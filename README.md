@@ -1,6 +1,8 @@
 # GPU accelerated TensorFlow Lite applications.
 This repository contains several applications which invoke DNN inference with **TensorFlow Lite with GPU Delegate** and visualizes its result with **OpenGLES**.
 
+Target platform: Linux PC / NVIDIA Jetson / RaspberryPi.
+
 ## applications
 | App name    | Descriptions |
 |:-----------:|:------------:|
