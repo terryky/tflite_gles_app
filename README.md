@@ -194,16 +194,34 @@ for more detail infomation, please refer [this article](https://qiita.com/terryk
 
 
 ## UVC Camera support
-- UVC(USB Video Class) camera capture is supported. (currently, YUYV pixelformat only)
+- UVC(USB Video Class) camera capture is supported. 
+
+<img src="gl2handpose/gl2handpose_mov.gif" width="500">
+
 - Use ```v4l2-ctl``` command to configure the capture resolution.
 
-lower the resolution, higher the framerate.
+	- lower the resolution, higher the framerate.
+
 ```
-$ sudo apt-get install v4l-utils
-$ v4l2-ctl --set-fmt-video=width=160,height=120
+(Target)$ sudo apt-get install v4l-utils
+
+# set capture resolution (160x120)
+(Target)$ v4l2-ctl --set-fmt-video=width=160,height=120
+
+# set capture resolution (640x480)
+(Target)$ v4l2-ctl --set-fmt-video=width=640,height=480
+
+# confirm current resolution settings
+(Target)$ v4l2-ctl --all
+
+# query available resolutions
+(Target)$ v4l2-ctl --list-formats-ext
+
 ```
 
-- If you have error messages like below:
+- currently, only YUYV pixelformat is supported. 
+
+	- If you have error messages like below:
 
 ```
 -------------------------------
@@ -213,8 +231,8 @@ $ v4l2-ctl --set-fmt-video=width=160,height=120
  capture_memtype: V4L2_MEMORY_MMAP
  WH(640, 480), 4CC(MJPG), bpl(0), size(341333)
 -------------------------------
-ERR: camera_capture.c(80): not supported.
-ERR: camera_capture.c(80): not supported.
+ERR: camera_capture.c(87): pixformat(MJPG) is not supported.
+ERR: camera_capture.c(87): pixformat(MJPG) is not supported.
 ...
 ```
 
@@ -225,7 +243,10 @@ $ sudo apt-get install v4l-utils
 $ v4l2-ctl --set-fmt-video=width=640,height=480,pixelformat=YUYV --set-parm=30
 ```
 
-If your camera doesn't support YUYV, please run the apps in camera_disabled_mode with argument ```-x```
+- to disable camera
+	- If your camera doesn't support YUYV, please run the apps in camera_disabled_mode with argument ```-x```
+
+
 ```
 $ ./gl2handpose -x
 ```
