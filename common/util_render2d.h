@@ -4,11 +4,14 @@
  * ------------------------------------------------ */
  #ifndef _UTIL_RENDER_2D_H_
  #define _UTIL_RENDER_2D_H_
- 
+
+#include "util_texture.h"
+
 int init_2d_renderer (int w, int h);
 
 int draw_2d_fillrect (int x, int y, int w, int h, float *color);
 int draw_2d_texture (int texid, int x, int y, int w, int h, int upsidedown);
+int draw_2d_texture_ex (texture_2d_t *tex, int x, int y, int w, int h, int upsidedown);
 int draw_2d_texture_texcoord (int texid, int x, int y, int w, int h, float *user_texcoord);
 int draw_2d_texture_blendfunc (int texid, int x, int y, int w, int h,
                            int upsidedown, unsigned int *blendfunc);

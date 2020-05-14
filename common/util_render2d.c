@@ -11,6 +11,7 @@
 #include "util_shader.h"
 #include "util_matrix.h"
 #include "util_render2d.h"
+#include "util_texture.h"
 
 /* ------------------------------------------------------ *
  *  shader for FillColor
@@ -126,19 +127,76 @@ void main (void)                                      \n\
 }                                                     \n";
 
 
+/* ------------------------------------------------------ *
+ *  shader for YUYV Texture
+ *      +--+--+--+--+
+ *      | R| G| B| A|
+ *      +--+--+--+--+
+ *      |Y0| U|Y1| V|
+ *      +--+--+--+--+
+ * ------------------------------------------------------ */
+static char vs_tex_yuyv[] = "                         \n\
+attribute    vec4    a_Vertex;                        \n\
+attribute    vec2    a_TexCoord;                      \n\
+varying      vec2    v_TexCoord;                      \n\
+varying      vec2    v_TexCoordPix;                   \n\
+uniform      mat4    u_PMVMatrix;                     \n\
+uniform      vec2    u_TexDim;                        \n\
+                                                      \n\
+void main (void)                                      \n\
+{                                                     \n\
+    gl_Position   = u_PMVMatrix * a_Vertex;           \n\
+    v_TexCoord    = a_TexCoord;                       \n\
+    v_TexCoordPix = a_TexCoord * u_TexDim;            \n\
+}                                                     \n";
 
-#define SHADER_NUM 4
+static char fs_tex_yuyv[] = "                         \n\
+precision mediump float;                              \n\
+varying     vec2      v_TexCoord;                     \n\
+varying     vec2      v_TexCoordPix;                  \n\
+uniform     sampler2D u_sampler;                      \n\
+uniform     vec4      u_Color;                        \n\
+                                                      \n\
+void main (void)                                      \n\
+{                                                     \n\
+    vec2 evenodd = mod(v_TexCoordPix, 2.0);           \n\
+    vec3 yuv, rgb;                                    \n\
+    vec4 texcol = texture2D (u_sampler, v_TexCoord);  \n\
+    if (evenodd.x < 1.0)                              \n\
+    {                                                 \n\
+        yuv.r = texcol.r;       /* Y */               \n\
+        yuv.g = texcol.g - 0.5; /* U */               \n\
+        yuv.b = texcol.a - 0.5; /* V */               \n\
+    }                                                 \n\
+    else                                              \n\
+    {                                                 \n\
+        yuv.r = texcol.b;       /* Y */               \n\
+        yuv.g = texcol.g - 0.5; /* U */               \n\
+        yuv.b = texcol.a - 0.5; /* V */               \n\
+    }                                                 \n\
+                                                      \n\
+    rgb = mat3 (    1,        1,     1,               \n\
+                    0, -0.34413, 1.772,               \n\
+                1.402, -0.71414,     0) * yuv;        \n\
+    gl_FragColor = vec4(rgb, 1.0);                    \n\
+    gl_FragColor *= u_Color;                          \n\
+}                                                     \n";
+
+
+#define SHADER_NUM 5
 static char *s_shader[SHADER_NUM * 2] = 
 {
     vs_fill,   fs_fill,
     vs_tex,    fs_tex,
     vs_tex,    fs_extex,
     vs_tex,    fs_cmap_jet,
+    vs_tex_yuyv, fs_tex_yuyv,
 };
 
 static shader_obj_t s_sobj[SHADER_NUM];
 static int s_loc_mtx[SHADER_NUM];
 static int s_loc_color[SHADER_NUM];
+static int s_loc_texdim[SHADER_NUM];
 
 static float varray[] =
 {   0.0, 0.0,
@@ -194,8 +252,9 @@ init_2d_renderer (int w, int h)
             return -1;
         }
 
-        s_loc_mtx[i]   = glGetUniformLocation(s_sobj[i].program, "u_PMVMatrix" );
-        s_loc_color[i] = glGetUniformLocation(s_sobj[i].program, "u_Color" );
+        s_loc_mtx[i]    = glGetUniformLocation(s_sobj[i].program, "u_PMVMatrix");
+        s_loc_color[i]  = glGetUniformLocation(s_sobj[i].program, "u_Color");
+        s_loc_texdim[i] = glGetUniformLocation(s_sobj[i].program, "u_TexDim");
     }
 
     set_projection_matrix (w, h);
@@ -208,6 +267,7 @@ typedef struct _texparam
     int          textype;
     int          texid;
     int          x, y, w, h;
+    int          texw, texh;
     int          upsidedown;
     float        color[4];
     float        rot;               /* degree */
@@ -236,13 +296,14 @@ draw_2d_texture_in (texparam_t *tparam)
 
     switch (ttype)
     {
-    case 0:
+    case 0:     /* fill     */
         break;
-    case 1:
+    case 1:     /* tex      */
+    case 4:     /* tex_yuyv */
         glBindTexture (GL_TEXTURE_2D, texid);
         uv = tparam->upsidedown ? tarray2 : tarray;
         break;
-    case 2:
+    case 2:     /* tex_extex */
         glBindTexture (GL_TEXTURE_EXTERNAL_OES, texid);
         uv = tparam->upsidedown ? tarray : tarray2;
         break;
@@ -288,6 +349,14 @@ draw_2d_texture_in (texparam_t *tparam)
     glUniformMatrix4fv (s_loc_mtx[ttype], 1, GL_FALSE, matrix);
     glUniform4fv (s_loc_color[ttype], 1, tparam->color);
 
+    if (s_loc_texdim[ttype] >= 0)
+    {
+        float texdim[2];
+        texdim[0] = tparam->texw;
+        texdim[1] = tparam->texh;
+        glUniform2fv (s_loc_texdim[ttype], 1, texdim);
+    }
+
     if (sobj->loc_vtx >= 0)
     {
         glEnableVertexAttribArray (sobj->loc_vtx);
@@ -319,6 +388,32 @@ draw_2d_texture (int texid, int x, int y, int w, int h, int upsidedown)
     tparam.color[2]= 1.0f;
     tparam.color[3]= 1.0f;
     tparam.upsidedown = upsidedown;
+    draw_2d_texture_in (&tparam);
+
+    return 0;
+}
+
+int
+draw_2d_texture_ex (texture_2d_t *tex, int x, int y, int w, int h, int upsidedown)
+{
+    texparam_t tparam = {0};
+    tparam.x       = x;
+    tparam.y       = y;
+    tparam.w       = w;
+    tparam.h       = h;
+    tparam.texid   = tex->texid;
+    tparam.textype = 1;
+    tparam.texw    = tex->width;
+    tparam.texh    = tex->height;
+    tparam.color[0]= 1.0f;
+    tparam.color[1]= 1.0f;
+    tparam.color[2]= 1.0f;
+    tparam.color[3]= 1.0f;
+    tparam.upsidedown = upsidedown;
+
+    if (tex->format == pixfmt_fourcc('Y', 'U', 'Y', 'V'))
+        tparam.textype = 4;
+
     draw_2d_texture_in (&tparam);
 
     return 0;
