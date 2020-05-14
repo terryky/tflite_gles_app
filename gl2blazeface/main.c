@@ -21,35 +21,68 @@
 
 #if defined (USE_INPUT_CAMERA_CAPTURE)
 static void
-update_capture_texture (int texid)
+update_capture_texture (texture_2d_t *captex)
 {
-    int   cap_w, cap_h;
-    void *cap_buf;
+    int      cap_w, cap_h;
+    uint32_t cap_fmt;
+    void     *cap_buf;
 
     get_capture_dimension (&cap_w, &cap_h);
+    get_capture_pixformat (&cap_fmt);
     get_capture_buffer (&cap_buf);
-
     if (cap_buf)
     {
-        glBindTexture (GL_TEXTURE_2D, texid);
-        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, cap_w, cap_h, GL_RGBA, GL_UNSIGNED_BYTE, cap_buf);
+        int texw = cap_w;
+        int texh = cap_h;
+        int texfmt = GL_RGBA;
+        switch (cap_fmt)
+        {
+        case pixfmt_fourcc('Y', 'U', 'Y', 'V'):
+            texw = cap_w / 2;
+            break;
+        default:
+            break;
+        }
+
+        glBindTexture (GL_TEXTURE_2D, captex->texid);
+        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, texw, texh, texfmt, GL_UNSIGNED_BYTE, cap_buf);
     }
 }
+
+static int
+init_capture_texture (texture_2d_t *captex)
+{
+    int      cap_w, cap_h;
+    uint32_t cap_fmt;
+
+    get_capture_dimension (&cap_w, &cap_h);
+    get_capture_pixformat (&cap_fmt);
+
+    create_2d_texture_ex (captex, NULL, cap_w, cap_h, cap_fmt);
+    start_capture ();
+
+    return 0;
+}
+
 #endif
 
 /* resize image to DNN network input size and convert to fp32. */
 void
-feed_blazeface_image(int texid, int win_w, int win_h)
+feed_blazeface_image(texture_2d_t *srctex, int win_w, int win_h)
 {
     int x, y, w, h;
     float *buf_fp32 = (float *)get_blazeface_input_buf (&w, &h);
-    unsigned char *buf_ui8, *pui8;
+    unsigned char *buf_ui8 = NULL;
+    static unsigned char *pui8 = NULL;
 
-    pui8 = buf_ui8 = (unsigned char *)malloc(w * h * 4);
+    if (pui8 == NULL)
+        pui8 = (unsigned char *)malloc(w * h * 4);
 
-    draw_2d_texture (texid, 0, win_h - h, w, h, 1);
+    buf_ui8 = pui8;
 
-    glPixelStorei (GL_PACK_ALIGNMENT, 1);
+    draw_2d_texture_ex (srctex, 0, win_h - h, w, h, 1);
+
+    glPixelStorei (GL_PACK_ALIGNMENT, 4);
     glReadPixels (0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, buf_ui8);
 
     /* convert UI8 [0, 255] ==> FP32 [-1, 1] */
@@ -69,7 +102,6 @@ feed_blazeface_image(int texid, int win_w, int win_h)
         }
     }
 
-    free (pui8);
     return;
 }
 
@@ -167,6 +199,7 @@ main(int argc, char *argv[])
     int win_h = 540;
     int texid;
     int texw, texh, draw_x, draw_y, draw_w, draw_h;
+    texture_2d_t captex = {0};
     double ttime[10] = {0}, interval, invoke_ms;
     int enable_camera = 1;
     UNUSED (argc);
@@ -211,14 +244,19 @@ main(int argc, char *argv[])
     /* initialize V4L2 capture function */
     if (enable_camera && init_capture () == 0)
     {
-        /* allocate texture buffer for captured image */
-        get_capture_dimension (&texw, &texh);
-        texid = create_2d_texture (NULL, texw, texh);
-        start_capture ();
+        init_capture_texture (&captex);
+        texw = captex.width;
+        texh = captex.height;
     }
     else
 #endif
-    load_jpg_texture (input_name, &texid, &texw, &texh);
+    {
+        load_jpg_texture (input_name, &texid, &texw, &texh);
+        captex.texid  = texid;
+        captex.width  = texw;
+        captex.height = texh;
+        captex.format = pixfmt_fourcc ('R', 'G', 'B', 'A');
+    }
     adjust_texture (win_w, win_h, texw, texh, &draw_x, &draw_y, &draw_w, &draw_h);
 
     glClearColor (0.f, 0.f, 0.f, 1.0f);
@@ -240,12 +278,12 @@ main(int argc, char *argv[])
 #if defined (USE_INPUT_CAMERA_CAPTURE)
         if (enable_camera)
         {
-            update_capture_texture (texid);
+            update_capture_texture (&captex);
         }
 #endif
 
         /* invoke pose estimation using TensorflowLite */
-        feed_blazeface_image (texid, win_w, win_h);
+        feed_blazeface_image (&captex, win_w, win_h);
 
         ttime[2] = pmeter_get_time_ms ();
         invoke_blazeface (&face_ret);
@@ -255,7 +293,7 @@ main(int argc, char *argv[])
         glClear (GL_COLOR_BUFFER_BIT);
 
         /* visualize the object detection results. */
-        draw_2d_texture (texid,  draw_x, draw_y, draw_w, draw_h, 0);
+        draw_2d_texture_ex (&captex, draw_x, draw_y, draw_w, draw_h, 0);
         render_detect_region (draw_x, draw_y, draw_w, draw_h, &face_ret);
 
         draw_pmeter (0, 40);
