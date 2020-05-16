@@ -43,7 +43,7 @@ typedef struct _blazeface_result_t
 
 
 
-extern int init_tflite_blazeface ();
+extern int init_tflite_blazeface (int use_quantized_tflite);
 extern void  *get_blazeface_input_buf (int *w, int *h);
 
 extern int invoke_blazeface (blazeface_result_t *blazeface_result);

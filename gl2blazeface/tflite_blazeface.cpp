@@ -8,8 +8,10 @@
 
 /* 
  * https://github.com/google/mediapipe/tree/master/mediapipe/models/face_detection_front.tflite
+ * https://github.com/PINTO0309/PINTO_model_zoo/tree/master/30_BlazeFace/04_full_integer_quantization
  */
-#define BLAZEFACE_MODEL_PATH  "./blazeface_model/face_detection_front.tflite"
+#define BLAZEFACE_MODEL_PATH        "./blazeface_model/face_detection_front.tflite"
+#define BLAZEFACE_QUANT_MODEL_PATH  "./blazeface_model/face_detection_front_128_full_integer_quant.tflite"
 
 static tflite_interpreter_t s_detect_interpreter;
 static tflite_tensor_t      s_detect_tensor_input;
@@ -62,10 +64,21 @@ create_blazeface_anchors(int input_w, int input_h)
  *  Create TFLite Interpreter
  * -------------------------------------------------- */
 int
-init_tflite_blazeface()
+init_tflite_blazeface(int use_quantized_tflite)
 {
+    const char *blazeface_model;
+
+    if (use_quantized_tflite)
+    {
+        blazeface_model = BLAZEFACE_QUANT_MODEL_PATH;
+    }
+    else
+    {
+        blazeface_model = BLAZEFACE_MODEL_PATH;
+    }
+
     /* Face detect */
-    tflite_create_interpreter_from_file (&s_detect_interpreter, BLAZEFACE_MODEL_PATH);
+    tflite_create_interpreter_from_file (&s_detect_interpreter, blazeface_model);
     tflite_get_tensor_by_name (&s_detect_interpreter, 0, "input",          &s_detect_tensor_input);
     tflite_get_tensor_by_name (&s_detect_interpreter, 1, "regressors",     &s_detect_tensor_bboxes);
     tflite_get_tensor_by_name (&s_detect_interpreter, 1, "classificators", &s_detect_tensor_scores);

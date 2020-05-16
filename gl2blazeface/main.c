@@ -201,18 +201,22 @@ main(int argc, char *argv[])
     int texw, texh, draw_x, draw_y, draw_w, draw_h;
     texture_2d_t captex = {0};
     double ttime[10] = {0}, interval, invoke_ms;
+    int use_quantized_tflite = 0;
     int enable_camera = 1;
     UNUSED (argc);
     UNUSED (*argv);
 
     {
         int c;
-        const char *optstring = "x";
+        const char *optstring = "qx";
 
         while ((c = getopt (argc, argv, optstring)) != -1)
         {
             switch (c)
             {
+            case 'q':
+                use_quantized_tflite = 1;
+                break;
             case 'x':
                 enable_camera = 0;
                 break;
@@ -232,7 +236,7 @@ main(int argc, char *argv[])
     init_pmeter (win_w, win_h, 500);
     init_dbgstr (win_w, win_h);
 
-    init_tflite_blazeface ();
+    init_tflite_blazeface (use_quantized_tflite);
 
 #if defined (USE_GL_DELEGATE) || defined (USE_GPU_DELEGATEV2)
     /* we need to recover framebuffer because GPU Delegate changes the context */
