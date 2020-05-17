@@ -21,36 +21,70 @@
 
 #define UNUSED(x) (void)(x)
 
+
 #if defined (USE_INPUT_CAMERA_CAPTURE)
 static void
-update_capture_texture (int texid)
+update_capture_texture (texture_2d_t *captex)
 {
     int   cap_w, cap_h;
+    uint32_t cap_fmt;
     void *cap_buf;
 
     get_capture_dimension (&cap_w, &cap_h);
+    get_capture_pixformat (&cap_fmt);
     get_capture_buffer (&cap_buf);
-
     if (cap_buf)
     {
-        glBindTexture (GL_TEXTURE_2D, texid);
-        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, cap_w, cap_h, GL_RGBA, GL_UNSIGNED_BYTE, cap_buf);
+        int texw = cap_w;
+        int texh = cap_h;
+        int texfmt = GL_RGBA;
+        switch (cap_fmt)
+        {
+        case pixfmt_fourcc('Y', 'U', 'Y', 'V'):
+            texw = cap_w / 2;
+            break;
+        default:
+            break;
+        }
+
+        glBindTexture (GL_TEXTURE_2D, captex->texid);
+        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, texw, texh, texfmt, GL_UNSIGNED_BYTE, cap_buf);
     }
 }
+
+static int
+init_capture_texture (texture_2d_t *captex)
+{
+    int      cap_w, cap_h;
+    uint32_t cap_fmt;
+
+    get_capture_dimension (&cap_w, &cap_h);
+    get_capture_pixformat (&cap_fmt);
+
+    create_2d_texture_ex (captex, NULL, cap_w, cap_h, cap_fmt);
+    start_capture ();
+
+    return 0;
+}
+
 #endif
 
 void
-feed_face_detect_image(int texid, int win_w, int win_h)
+feed_face_detect_image(texture_2d_t *srctex, int win_w, int win_h)
 {
     int x, y, w, h;
     float *buf_fp32 = (float *)get_face_detect_input_buf (&w, &h);
-    unsigned char *buf_ui8, *pui8;
+    unsigned char *buf_ui8 = NULL;
+    static unsigned char *pui8 = NULL;
 
-    pui8 = buf_ui8 = (unsigned char *)malloc(w * h * 4);
+    if (pui8 == NULL)
+        pui8 = (unsigned char *)malloc(w * h * 4);
 
-    draw_2d_texture (texid, 0, win_h - h, w, h, 1);
+    buf_ui8 = pui8;
 
-    glPixelStorei (GL_PACK_ALIGNMENT, 1);
+    draw_2d_texture_ex (srctex, 0, win_h - h, w, h, 1);
+
+    glPixelStorei (GL_PACK_ALIGNMENT, 4);
     glReadPixels (0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, buf_ui8);
 
     /* convert UI8 [0, 255] ==> FP32 [-1, 1] */
@@ -70,18 +104,21 @@ feed_face_detect_image(int texid, int win_w, int win_h)
         }
     }
 
-    free (pui8);
     return;
 }
 
 void
-feed_face_landmark_image(int texid, int win_w, int win_h, face_detect_result_t *detection, unsigned int face_id)
+feed_face_landmark_image(texture_2d_t *srctex, int win_w, int win_h, face_detect_result_t *detection, unsigned int face_id)
 {
     int x, y, w, h;
     float *buf_fp32 = (float *)get_facemesh_landmark_input_buf (&w, &h);
-    unsigned char *buf_ui8, *pui8;
+    unsigned char *buf_ui8 = NULL;
+    static unsigned char *pui8 = NULL;
 
-    pui8 = buf_ui8 = (unsigned char *)malloc(w * h * 4);
+    if (pui8 == NULL)
+        pui8 = (unsigned char *)malloc(w * h * 4);
+
+    buf_ui8 = pui8;
 
     float texcoord[] = { 0.0f, 1.0f,
                          0.0f, 0.0f,
@@ -105,9 +142,9 @@ feed_face_landmark_image(int texid, int win_w, int win_h, face_detect_result_t *
         texcoord[6] = x1;   texcoord[7] = y1;
     }
 
-    draw_2d_texture_texcoord (texid, 0, win_h - h, w, h, texcoord);
+    draw_2d_texture_ex_texcoord (srctex, 0, win_h - h, w, h, texcoord);
 
-    glPixelStorei (GL_PACK_ALIGNMENT, 1);
+    glPixelStorei (GL_PACK_ALIGNMENT, 4);
     glReadPixels (0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, buf_ui8);
 
     /* convert UI8 [0, 255] ==> FP32 [0, 1] */
@@ -127,7 +164,6 @@ feed_face_landmark_image(int texid, int win_w, int win_h, face_detect_result_t *
         }
     }
 
-    free (pui8);
     return;
 }
 
@@ -206,7 +242,7 @@ compute_3d_face_pos (face_landmark_result_t *dst_facemesh, int texw, int texh,
 }
 
 static void
-render_face_landmark (int texid, int ofstx, int ofsty, int texw, int texh, 
+render_face_landmark (int ofstx, int ofsty, int texw, int texh,
                       face_landmark_result_t *facemesh, face_t *face,
                       int texid_mask,
                       face_landmark_result_t *facemesh_mask, face_t *face_mask,
@@ -284,7 +320,7 @@ render_3d_scene (int ofstx, int ofsty, int texw, int texh,
 }
 
 static void
-render_cropped_face_image (int texid, int ofstx, int ofsty, int texw, int texh, 
+render_cropped_face_image (texture_2d_t *srctex, int ofstx, int ofsty, int texw, int texh,
                            face_detect_result_t *detection, unsigned int face_id)
 {
     float texcoord[8];
@@ -306,7 +342,7 @@ render_cropped_face_image (int texid, int ofstx, int ofsty, int texw, int texh,
     texcoord[4] = x1;   texcoord[5] = y1;
     texcoord[6] = x2;   texcoord[7] = y2;
 
-    draw_2d_texture_texcoord (texid, ofstx, ofsty, texw, texh, texcoord);
+    draw_2d_texture_ex_texcoord (srctex, ofstx, ofsty, texw, texh, texcoord);
 }
 
 
@@ -367,8 +403,8 @@ main(int argc, char *argv[])
     int count;
     int win_w = 800;
     int win_h = 800;
-    int texid;
     int texw, texh, draw_x, draw_y, draw_w, draw_h;
+    texture_2d_t captex = {0};
     double ttime[10] = {0}, interval, invoke_ms0 = 0, invoke_ms1 = 0;
     int enable_camera = 1;
     UNUSED (argc);
@@ -376,7 +412,7 @@ main(int argc, char *argv[])
 
     {
         int c;
-        const char *optstring = "mx";
+        const char *optstring = "x";
 
         while ((c = getopt (argc, argv, optstring)) != -1) 
         {
@@ -415,15 +451,20 @@ main(int argc, char *argv[])
     /* initialize V4L2 capture function */
     if (enable_camera && init_capture () == 0)
     {
-        /* allocate texture buffer for captured image */
-        get_capture_dimension (&texw, &texh);
-
-        texid = create_2d_texture (NULL, texw, texh);
-        start_capture ();
+        init_capture_texture (&captex);
+        texw = captex.width;
+        texh = captex.height;
     }
     else
 #endif
-    load_jpg_texture (input_name, &texid, &texw, &texh);
+    {
+        int texid;
+        load_jpg_texture (input_name, &texid, &texw, &texh);
+        captex.texid  = texid;
+        captex.width  = texw;
+        captex.height = texh;
+        captex.format = pixfmt_fourcc ('R', 'G', 'B', 'A');
+    }
     adjust_texture (win_w, win_h, texw, texh, &draw_x, &draw_y, &draw_w, &draw_h);
 
 
@@ -442,13 +483,19 @@ main(int argc, char *argv[])
     for (int mask_id = 0; mask_id < FACEMASK_NUM; mask_id ++)
     {
         int tw, th;
-        load_jpg_texture (input_facemask_name[mask_id], &texid_mask[mask_id], &tw, &th);
+        texture_2d_t masktex = {0};
 
-        feed_face_detect_image (texid_mask[mask_id], win_w, win_h);
+        load_jpg_texture (input_facemask_name[mask_id], &texid_mask[mask_id], &tw, &th);
+        masktex.texid  = texid_mask[mask_id];
+        masktex.width  = tw;
+        masktex.height = th;
+        masktex.format = pixfmt_fourcc ('R', 'G', 'B', 'A');
+
+        feed_face_detect_image (&masktex, win_w, win_h);
         invoke_face_detect (&face_detect_mask[mask_id]);
 
         int face_id = 0;
-        feed_face_landmark_image (texid_mask[mask_id], win_w, win_h, &face_detect_mask[mask_id], face_id);
+        feed_face_landmark_image (&masktex, win_w, win_h, &face_detect_mask[mask_id], face_id);
 
         invoke_facemesh_landmark (&face_mesh_mask[mask_id]);
     }
@@ -482,14 +529,14 @@ main(int argc, char *argv[])
 #if defined (USE_INPUT_CAMERA_CAPTURE)
         if (enable_camera)
         {
-            update_capture_texture (texid);
+            update_capture_texture (&captex);
         }
 #endif
 
         /* --------------------------------------- *
          *  face detection
          * --------------------------------------- */
-        feed_face_detect_image (texid, win_w, win_h);
+        feed_face_detect_image (&captex, win_w, win_h);
 
         ttime[2] = pmeter_get_time_ms ();
         invoke_face_detect (&face_detect_ret);
@@ -500,7 +547,7 @@ main(int argc, char *argv[])
          *  face landmark
          * --------------------------------------- */
         int face_id = 0;
-        feed_face_landmark_image (texid, win_w, win_h, &face_detect_ret, face_id);
+        feed_face_landmark_image (&captex, win_w, win_h, &face_detect_ret, face_id);
 
         invoke_ms1 = 0;
         ttime[4] = pmeter_get_time_ms ();
@@ -515,7 +562,7 @@ main(int argc, char *argv[])
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         /* visualize the face pose estimation results. */
-        draw_2d_texture (texid,  draw_x, draw_y, draw_w, draw_h, 0);
+        draw_2d_texture_ex (&captex, draw_x, draw_y, draw_w, draw_h, 0);
         render_detect_region (draw_x, draw_y, draw_w, draw_h, &face_detect_ret);
 
         /* draw cropped image of the face area */
@@ -527,11 +574,11 @@ main(int argc, char *argv[])
             float y = h * face_id + 10;
             float col_white[] = {1.0f, 1.0f, 1.0f, 1.0f};
 
-            render_cropped_face_image (texid, x, y, w, h, &face_detect_ret, face_id);
+            render_cropped_face_image (&captex, x, y, w, h, &face_detect_ret, face_id);
             draw_2d_rect (x, y, w, h, col_white, 2.0f);
         }
 
-        render_face_landmark (texid, draw_x, draw_y, draw_w, draw_h, &face_mesh_ret, &face_detect_ret.faces[face_id],
+        render_face_landmark (draw_x, draw_y, draw_w, draw_h, &face_mesh_ret, &face_detect_ret.faces[face_id],
                               cur_texid_mask, cur_face_mesh_mask, &cur_face_detect_mask->faces[face_id], 0);
 
         /* --------------------------------------- *
@@ -540,7 +587,7 @@ main(int argc, char *argv[])
         glViewport (win_w, 0, win_w, win_h);
         render_3d_scene (draw_x, draw_y, draw_w, draw_h, &face_mesh_ret, &face_detect_ret);
 
-        render_face_landmark (texid, draw_x, draw_y, draw_w, draw_h, 
+        render_face_landmark (draw_x, draw_y, draw_w, draw_h, 
                               &face_mesh_ret, &face_detect_ret.faces[face_id],
                               cur_texid_mask, cur_face_mesh_mask, &cur_face_detect_mask->faces[face_id], 1);
 
