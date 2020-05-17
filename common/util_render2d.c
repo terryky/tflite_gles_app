@@ -441,6 +441,33 @@ draw_2d_texture_texcoord (int texid, int x, int y, int w, int h, float *user_tex
 }
 
 int
+draw_2d_texture_ex_texcoord (texture_2d_t *tex, int x, int y, int w, int h, float *user_texcoord)
+{
+    texparam_t tparam = {0};
+    tparam.x       = x;
+    tparam.y       = y;
+    tparam.w       = w;
+    tparam.h       = h;
+    tparam.texid   = tex->texid;
+    tparam.textype = 1;
+    tparam.texw    = tex->width;
+    tparam.texh    = tex->height;
+    tparam.color[0]= 1.0f;
+    tparam.color[1]= 1.0f;
+    tparam.color[2]= 1.0f;
+    tparam.color[3]= 1.0f;
+    tparam.upsidedown = 0;
+    tparam.user_texcoord = user_texcoord;
+
+    if (tex->format == pixfmt_fourcc('Y', 'U', 'Y', 'V'))
+        tparam.textype = 4;
+
+    draw_2d_texture_in (&tparam);
+
+    return 0;
+}
+
+int
 draw_2d_texture_blendfunc (int texid, int x, int y, int w, int h,
                            int upsidedown, unsigned int *blendfunc)
 {
