@@ -56,7 +56,7 @@ typedef struct _hand_landmark_result_t
 
 
 
-int   init_tflite_hand_landmark ();
+int   init_tflite_hand_landmark (int use_quantized_tflite);
 
 void  *get_palm_detection_input_buf (int *w, int *h);
 int   invoke_palm_detection (palm_detection_result_t *palm_result, int flag);

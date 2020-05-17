@@ -13,6 +13,9 @@
 #define PALM_DETECTION_MODEL_PATH  "./handpose_model/palm_detection.tflite"
 #define HAND_LANDMARK_MODEL_PATH   "./handpose_model/hand_landmark_3d.tflite"
 
+#define PALM_DETECTION_QUANT_MODEL_PATH  "./handpose_model/palm_detection.tflite"
+#define HAND_LANDMARK_QUANT_MODEL_PATH   "./handpose_model/hand_landmark_3d_256_integer_quant.tflite"
+
 static tflite_interpreter_t s_palm_interpreter;
 static tflite_tensor_t      s_palm_tensor_input;
 static tflite_tensor_t      s_palm_tensor_scores;
@@ -213,19 +216,33 @@ generate_ssd_anchors ()
  *  Create TFLite Interpreter
  * -------------------------------------------------- */
 int
-init_tflite_hand_landmark()
+init_tflite_hand_landmark(int use_quantized_tflite)
 {
+    const char *palm_model;
+    const char *hand_model;
+
+    if (use_quantized_tflite)
+    {
+        palm_model = PALM_DETECTION_QUANT_MODEL_PATH;
+        hand_model = HAND_LANDMARK_QUANT_MODEL_PATH;
+    }
+    else
+    {
+        palm_model = PALM_DETECTION_MODEL_PATH;
+        hand_model = HAND_LANDMARK_MODEL_PATH;
+    }
+
     /* Palm Detection */
     s_palm_interpreter.resolver.AddCustom("Convolution2DTransposeBias",
             mediapipe::tflite_operations::RegisterConvolution2DTransposeBias());
 
-    tflite_create_interpreter_from_file (&s_palm_interpreter, PALM_DETECTION_MODEL_PATH);
+    tflite_create_interpreter_from_file (&s_palm_interpreter, palm_model);
     tflite_get_tensor_by_name (&s_palm_interpreter, 0, "input",           &s_palm_tensor_input);
     tflite_get_tensor_by_name (&s_palm_interpreter, 1, "classificators",  &s_palm_tensor_scores);
     tflite_get_tensor_by_name (&s_palm_interpreter, 1, "regressors",      &s_palm_tensor_points);
 
     /* Hand Landmark */
-    tflite_create_interpreter_from_file (&s_hand_interpreter, HAND_LANDMARK_MODEL_PATH);
+    tflite_create_interpreter_from_file (&s_hand_interpreter, hand_model);
     tflite_get_tensor_by_name (&s_hand_interpreter, 0, "input_1",         &s_hand_tensor_input);
     tflite_get_tensor_by_name (&s_hand_interpreter, 1, "ld_21_3d",        &s_hand_tensor_landmark);
     tflite_get_tensor_by_name (&s_hand_interpreter, 1, "output_handflag", &s_hand_tensor_handflag);
