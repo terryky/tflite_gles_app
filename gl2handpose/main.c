@@ -20,37 +20,71 @@
 
 #define UNUSED(x) (void)(x)
 
+
 #if defined (USE_INPUT_CAMERA_CAPTURE)
 static void
-update_capture_texture (int texid)
+update_capture_texture (texture_2d_t *captex)
 {
     int   cap_w, cap_h;
+    uint32_t cap_fmt;
     void *cap_buf;
 
     get_capture_dimension (&cap_w, &cap_h);
+    get_capture_pixformat (&cap_fmt);
     get_capture_buffer (&cap_buf);
-
     if (cap_buf)
     {
-        glBindTexture (GL_TEXTURE_2D, texid);
-        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, cap_w, cap_h, GL_RGBA, GL_UNSIGNED_BYTE, cap_buf);
+        int texw = cap_w;
+        int texh = cap_h;
+        int texfmt = GL_RGBA;
+        switch (cap_fmt)
+        {
+        case pixfmt_fourcc('Y', 'U', 'Y', 'V'):
+            texw = cap_w / 2;
+            break;
+        default:
+            break;
+        }
+
+        glBindTexture (GL_TEXTURE_2D, captex->texid);
+        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, texw, texh, texfmt, GL_UNSIGNED_BYTE, cap_buf);
     }
 }
+
+static int
+init_capture_texture (texture_2d_t *captex)
+{
+    int      cap_w, cap_h;
+    uint32_t cap_fmt;
+
+    get_capture_dimension (&cap_w, &cap_h);
+    get_capture_pixformat (&cap_fmt);
+
+    create_2d_texture_ex (captex, NULL, cap_w, cap_h, cap_fmt);
+    start_capture ();
+
+    return 0;
+}
+
 #endif
 
 /* resize image to DNN network input size and convert to fp32. */
 void
-feed_palm_detection_image(int texid, int win_w, int win_h)
+feed_palm_detection_image(texture_2d_t *srctex, int win_w, int win_h)
 {
     int x, y, w, h;
     float *buf_fp32 = (float *)get_palm_detection_input_buf (&w, &h);
-    unsigned char *buf_ui8, *pui8;
+    unsigned char *buf_ui8 = NULL;
+    static unsigned char *pui8 = NULL;
 
-    pui8 = buf_ui8 = (unsigned char *)malloc(w * h * 4);
+    if (pui8 == NULL)
+        pui8 = (unsigned char *)malloc(w * h * 4);
 
-    draw_2d_texture (texid, 0, win_h - h, w, h, 1);
+    buf_ui8 = pui8;
 
-    glPixelStorei (GL_PACK_ALIGNMENT, 1);
+    draw_2d_texture_ex (srctex, 0, win_h - h, w, h, 1);
+
+    glPixelStorei (GL_PACK_ALIGNMENT, 4);
     glReadPixels (0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, buf_ui8);
 
     /* convert UI8 [0, 255] ==> FP32 [-1, 1] */
@@ -70,19 +104,21 @@ feed_palm_detection_image(int texid, int win_w, int win_h)
         }
     }
 
-    free (pui8);
     return;
 }
 
-
 void
-feed_hand_landmark_image(int texid, int win_w, int win_h, palm_detection_result_t *detection, unsigned int hand_id)
+feed_hand_landmark_image(texture_2d_t *srctex, int win_w, int win_h, palm_detection_result_t *detection, unsigned int hand_id)
 {
     int x, y, w, h;
     float *buf_fp32 = (float *)get_hand_landmark_input_buf (&w, &h);
-    unsigned char *buf_ui8, *pui8;
+    unsigned char *buf_ui8 = NULL;
+    static unsigned char *pui8 = NULL;
 
-    pui8 = buf_ui8 = (unsigned char *)malloc(w * h * 4);
+    if (pui8 == NULL)
+        pui8 = (unsigned char *)malloc(w * h * 4);
+
+    buf_ui8 = pui8;
 
     float texcoord[] = { 0.0f, 1.0f,
                          0.0f, 0.0f,
@@ -106,9 +142,9 @@ feed_hand_landmark_image(int texid, int win_w, int win_h, palm_detection_result_
         texcoord[6] = x1;   texcoord[7] = y1;
     }
     
-    draw_2d_texture_texcoord (texid, 0, win_h - h, w, h, texcoord);
+    draw_2d_texture_ex_texcoord (srctex, 0, win_h - h, w, h, texcoord);
 
-    glPixelStorei (GL_PACK_ALIGNMENT, 1);
+    glPixelStorei (GL_PACK_ALIGNMENT, 4);
     glReadPixels (0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, buf_ui8);
 
     /* convert UI8 [0, 255] ==> FP32 [-1, 1] */
@@ -128,9 +164,9 @@ feed_hand_landmark_image(int texid, int win_w, int win_h, palm_detection_result_
         }
     }
 
-    free (pui8);
     return;
 }
+
 
 static void
 render_palm_region (int ofstx, int ofsty, int texw, int texh, palm_detection_result_t *detection)
@@ -406,7 +442,7 @@ render_3d_scene (int ofstx, int ofsty, int texw, int texh,
 
 
 static void
-render_cropped_hand_image (int texid, int ofstx, int ofsty, int texw, int texh, palm_detection_result_t *detection, unsigned int hand_id)
+render_cropped_hand_image (texture_2d_t *srctex, int ofstx, int ofsty, int texw, int texh, palm_detection_result_t *detection, unsigned int hand_id)
 {
     float texcoord[8];
 
@@ -427,7 +463,7 @@ render_cropped_hand_image (int texid, int ofstx, int ofsty, int texw, int texh, 
     texcoord[4] = x1;   texcoord[5] = y1;
     texcoord[6] = x2;   texcoord[7] = y2;
 
-    draw_2d_texture_texcoord (texid, ofstx, ofsty, texw, texh, texcoord);
+    draw_2d_texture_ex_texcoord (srctex, ofstx, ofsty, texw, texh, texcoord);
 }
 
 
@@ -486,8 +522,8 @@ main(int argc, char *argv[])
     int count;
     int win_w = 800;
     int win_h = 600;
-    int texid;
     int texw, texh, draw_x, draw_y, draw_w, draw_h;
+    texture_2d_t captex = {0};
     double ttime[10] = {0}, interval, invoke_ms0 = 0, invoke_ms1 = 0;
     int enable_palm_detect = 0;
     int enable_camera = 1;
@@ -528,7 +564,7 @@ main(int argc, char *argv[])
     init_tflite_hand_landmark ();
 
 #if defined (USE_GL_DELEGATE) || defined (USE_GPU_DELEGATEV2)
-    /* we need to recover framebuffer because GPU Delegate changes the context */
+    /* we need to recover framebuffer because GPU Delegate changes the FBO binding */
     glBindFramebuffer (GL_FRAMEBUFFER, 0);
     glViewport (0, 0, win_w, win_h);
 #endif
@@ -537,15 +573,22 @@ main(int argc, char *argv[])
     /* initialize V4L2 capture function */
     if (enable_camera && init_capture () == 0)
     {
-        /* allocate texture buffer for captured image */
-        get_capture_dimension (&texw, &texh);
-        texid = create_2d_texture (NULL, texw, texh);
-        start_capture ();
+        init_capture_texture (&captex);
+        texw = captex.width;
+        texh = captex.height;
     }
     else
 #endif
-    load_jpg_texture (input_name, &texid, &texw, &texh);
+    {
+        int texid;
+        load_jpg_texture (input_name, &texid, &texw, &texh);
+        captex.texid  = texid;
+        captex.width  = texw;
+        captex.height = texh;
+        captex.format = pixfmt_fourcc ('R', 'G', 'B', 'A');
+    }
     adjust_texture (win_w, win_h, texw, texh, &draw_x, &draw_y, &draw_w, &draw_h);
+
 
     glClearColor (0.f, 0.f, 0.f, 1.0f);
 
@@ -568,7 +611,7 @@ main(int argc, char *argv[])
 #if defined (USE_INPUT_CAMERA_CAPTURE)
         if (enable_camera)
         {
-            update_capture_texture (texid);
+            update_capture_texture (&captex);
         }
 #endif
 
@@ -577,7 +620,7 @@ main(int argc, char *argv[])
          * --------------------------------------- */
         if (enable_palm_detect)
         {
-            feed_palm_detection_image (texid, win_w, win_h);
+            feed_palm_detection_image (&captex, win_w, win_h);
 
             ttime[2] = pmeter_get_time_ms ();
             invoke_palm_detection (&palm_ret, 0);
@@ -595,7 +638,7 @@ main(int argc, char *argv[])
         invoke_ms1 = 0;
         for (int hand_id = 0; hand_id < palm_ret.num; hand_id ++)
         {
-            feed_hand_landmark_image (texid, win_w, win_h, &palm_ret, hand_id);
+            feed_hand_landmark_image (&captex, win_w, win_h, &palm_ret, hand_id);
 
             ttime[4] = pmeter_get_time_ms ();
             invoke_hand_landmark (&hand_ret[hand_id]);
@@ -603,10 +646,13 @@ main(int argc, char *argv[])
             invoke_ms1 += ttime[5] - ttime[4];
         }
 
+        /* --------------------------------------- *
+         *  render scene (left half)
+         * --------------------------------------- */
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         /* visualize the hand pose estimation results. */
-        draw_2d_texture (texid,  draw_x, draw_y, draw_w, draw_h, 0);
+        draw_2d_texture_ex (&captex, draw_x, draw_y, draw_w, draw_h, 0);
         render_palm_region (draw_x, draw_y, draw_w, draw_h, &palm_ret);
         //render_hand_landmark2d (draw_x, draw_y, draw_w, draw_h, &hand_ret[0]);
 
@@ -619,15 +665,20 @@ main(int argc, char *argv[])
             float y = h * hand_id + 10;
             float col_white[] = {1.0f, 1.0f, 1.0f, 1.0f};
 
-            render_cropped_hand_image (texid, x, y, w, h, &palm_ret, hand_id);
+            render_cropped_hand_image (&captex, x, y, w, h, &palm_ret, hand_id);
             draw_2d_rect (x, y, w, h, col_white, 2.0f);
         }
 
-        /* render 3D hand skelton */
+        /* --------------------------------------- *
+         *  render scene  (right half)
+         * --------------------------------------- */
         glViewport (win_w, 0, win_w, win_h);
         render_3d_scene (draw_x, draw_y, draw_w, draw_h, hand_ret, &palm_ret);
 
 
+        /* --------------------------------------- *
+         *  post process
+         * --------------------------------------- */
         glViewport (0, 0, win_w, win_h);
         draw_pmeter (0, 40);
 
