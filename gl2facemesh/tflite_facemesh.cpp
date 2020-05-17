@@ -13,6 +13,8 @@
 #define FACE_DETECTL_MODEL_PATH    "./facemesh_model/face_detection_front.tflite"
 #define FACE_LANDMARK_MODEL_PATH   "./facemesh_model/face_landmark.tflite"
 
+#define FACE_DETECTL_QUANT_MODEL_PATH    "./facemesh_model/face_detection_front_128_full_integer_quant.tflite"
+#define FACE_LANDMARK_QUANT_MODEL_PATH   "./facemesh_model/face_landmark_192_full_integer_quant.tflite"
 
 static tflite_interpreter_t s_detect_interpreter;
 static tflite_tensor_t      s_detect_tensor_input;
@@ -70,16 +72,30 @@ create_blazeface_anchors(int input_w, int input_h)
  *  Create TFLite Interpreter
  * -------------------------------------------------- */
 int
-init_tflite_facemesh ()
+init_tflite_facemesh (int use_quantized_tflite)
 {
+    const char *detect_model;
+    const char *mesh_model;
+
+    if (use_quantized_tflite)
+    {
+        detect_model = FACE_DETECTL_QUANT_MODEL_PATH;
+        mesh_model   = FACE_LANDMARK_QUANT_MODEL_PATH;
+    }
+    else
+    {
+        detect_model = FACE_DETECTL_MODEL_PATH;
+        mesh_model   = FACE_LANDMARK_MODEL_PATH;
+    }
+
     /* Face detect */
-    tflite_create_interpreter_from_file (&s_detect_interpreter, FACE_DETECTL_MODEL_PATH);
+    tflite_create_interpreter_from_file (&s_detect_interpreter, detect_model);
     tflite_get_tensor_by_name (&s_detect_interpreter, 0, "input",          &s_detect_tensor_input);
     tflite_get_tensor_by_name (&s_detect_interpreter, 1, "regressors",     &s_detect_tensor_bboxes);
     tflite_get_tensor_by_name (&s_detect_interpreter, 1, "classificators", &s_detect_tensor_scores);
 
     /* Facemesh Landmark */
-    tflite_create_interpreter_from_file (&s_mesh_interpreter, FACE_LANDMARK_MODEL_PATH);
+    tflite_create_interpreter_from_file (&s_mesh_interpreter, mesh_model);
     tflite_get_tensor_by_name (&s_mesh_interpreter, 0, "input_1",   &s_mesh_tensor_input);
     tflite_get_tensor_by_name (&s_mesh_interpreter, 1, "conv2d_20", &s_mesh_tensor_landmark);
     tflite_get_tensor_by_name (&s_mesh_interpreter, 1, "conv2d_30", &s_mesh_tensor_score);

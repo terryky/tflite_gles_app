@@ -72,7 +72,7 @@ typedef struct _face_landmark_result_t
 
 
 
-int  init_tflite_facemesh ();
+int  init_tflite_facemesh (int use_quantized_tflite);
 
 void *get_face_detect_input_buf (int *w, int *h);
 int  invoke_face_detect (face_detect_result_t *facedet_result);
