@@ -303,9 +303,7 @@ render_face_landmark (int ofstx, int ofsty, int texw, int texh,
 }
 
 static void
-render_3d_scene (int ofstx, int ofsty, int texw, int texh, 
-                 face_landmark_result_t  *landmark,
-                 face_detect_result_t    *detection)
+render_3d_scene (int ofstx, int ofsty, int texw, int texh)
 {
     float mtxGlobal[16];
     float floor_size_x = texw/2; //100.0f;
@@ -511,7 +509,7 @@ main(int argc, char *argv[])
     for (count = 0; ; count ++)
     {
         face_detect_result_t    face_detect_ret = {0};
-        face_landmark_result_t  face_mesh_ret = {0};
+        face_landmark_result_t  face_mesh_ret[MAX_FACE_NUM] = {0};
 
         int mask_id = (count / 100) % FACEMASK_NUM;
         face_detect_result_t   *cur_face_detect_mask = &face_detect_mask[mask_id];
@@ -550,15 +548,16 @@ main(int argc, char *argv[])
         /* --------------------------------------- *
          *  face landmark
          * --------------------------------------- */
-        int face_id = 0;
-        feed_face_landmark_image (&captex, win_w, win_h, &face_detect_ret, face_id);
-
         invoke_ms1 = 0;
-        ttime[4] = pmeter_get_time_ms ();
-        invoke_facemesh_landmark (&face_mesh_ret);
-        ttime[5] = pmeter_get_time_ms ();
-        invoke_ms1 += ttime[5] - ttime[4];
+        for (int face_id = 0; face_id < face_detect_ret.num; face_id ++)
+        {
+            feed_face_landmark_image (&captex, win_w, win_h, &face_detect_ret, face_id);
 
+            ttime[4] = pmeter_get_time_ms ();
+            invoke_facemesh_landmark (&face_mesh_ret[face_id]);
+            ttime[5] = pmeter_get_time_ms ();
+            invoke_ms1 += ttime[5] - ttime[4];
+        }
 
         /* --------------------------------------- *
          *  render scene (left half)
@@ -568,6 +567,12 @@ main(int argc, char *argv[])
         /* visualize the face pose estimation results. */
         draw_2d_texture_ex (&captex, draw_x, draw_y, draw_w, draw_h, 0);
         render_detect_region (draw_x, draw_y, draw_w, draw_h, &face_detect_ret);
+
+        for (int face_id = 0; face_id < face_detect_ret.num; face_id ++)
+        {
+            render_face_landmark (draw_x, draw_y, draw_w, draw_h, &face_mesh_ret[face_id], &face_detect_ret.faces[face_id],
+                                  cur_texid_mask, cur_face_mesh_mask, &cur_face_detect_mask->faces[0], 0);
+        }
 
         /* draw cropped image of the face area */
         for (int face_id = 0; face_id < face_detect_ret.num; face_id ++)
@@ -582,18 +587,18 @@ main(int argc, char *argv[])
             draw_2d_rect (x, y, w, h, col_white, 2.0f);
         }
 
-        render_face_landmark (draw_x, draw_y, draw_w, draw_h, &face_mesh_ret, &face_detect_ret.faces[face_id],
-                              cur_texid_mask, cur_face_mesh_mask, &cur_face_detect_mask->faces[face_id], 0);
-
         /* --------------------------------------- *
          *  render scene  (right half)
          * --------------------------------------- */
         glViewport (win_w, 0, win_w, win_h);
-        render_3d_scene (draw_x, draw_y, draw_w, draw_h, &face_mesh_ret, &face_detect_ret);
+        render_3d_scene (draw_x, draw_y, draw_w, draw_h);
 
-        render_face_landmark (draw_x, draw_y, draw_w, draw_h, 
-                              &face_mesh_ret, &face_detect_ret.faces[face_id],
-                              cur_texid_mask, cur_face_mesh_mask, &cur_face_detect_mask->faces[face_id], 1);
+        for (int face_id = 0; face_id < face_detect_ret.num; face_id ++)
+        {
+            render_face_landmark (draw_x, draw_y, draw_w, draw_h,
+                                  &face_mesh_ret[face_id], &face_detect_ret.faces[face_id],
+                                  cur_texid_mask, cur_face_mesh_mask, &cur_face_detect_mask->faces[0], 1);
+        }
 
         /* current mask image */
         {
