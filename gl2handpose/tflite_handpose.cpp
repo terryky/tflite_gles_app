@@ -13,7 +13,7 @@
 #define PALM_DETECTION_MODEL_PATH  "./handpose_model/palm_detection.tflite"
 #define HAND_LANDMARK_MODEL_PATH   "./handpose_model/hand_landmark_3d.tflite"
 
-#define PALM_DETECTION_QUANT_MODEL_PATH  "./handpose_model/palm_detection.tflite"
+#define PALM_DETECTION_QUANT_MODEL_PATH  "./handpose_model/palm_detection_builtin_256_integer_quant.tflite"
 #define HAND_LANDMARK_QUANT_MODEL_PATH   "./handpose_model/hand_landmark_3d_256_integer_quant.tflite"
 
 static tflite_interpreter_t s_palm_interpreter;
