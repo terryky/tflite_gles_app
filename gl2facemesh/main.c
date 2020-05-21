@@ -485,9 +485,10 @@ main(int argc, char *argv[])
     for (int mask_id = 0; mask_id < FACEMASK_NUM; mask_id ++)
     {
         int tw, th;
-        texture_2d_t masktex = {0};
 
         load_jpg_texture (input_facemask_name[mask_id], &texid_mask[mask_id], &tw, &th);
+#if 1
+        texture_2d_t masktex = {0};
         masktex.texid  = texid_mask[mask_id];
         masktex.width  = tw;
         masktex.height = th;
@@ -500,6 +501,9 @@ main(int argc, char *argv[])
         feed_face_landmark_image (&masktex, win_w, win_h, &face_detect_mask[mask_id], face_id);
 
         invoke_facemesh_landmark (&face_mesh_mask[mask_id]);
+#else
+        get_static_facemesh_landmark (&face_detect_mask[mask_id], &face_mesh_mask[mask_id]);
+#endif
     }
 
 

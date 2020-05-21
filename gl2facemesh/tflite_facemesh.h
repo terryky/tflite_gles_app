@@ -80,6 +80,10 @@ int  invoke_face_detect (face_detect_result_t *facedet_result);
 void *get_facemesh_landmark_input_buf (int *w, int *h);
 int  invoke_facemesh_landmark (face_landmark_result_t *facemesh_result);
 
+int
+get_static_facemesh_landmark (face_detect_result_t   *facedet_result,
+                              face_landmark_result_t *facemesh_result);
+
 int *get_facemesh_tri_indicies (int *num_tris);
 
 #ifdef __cplusplus
