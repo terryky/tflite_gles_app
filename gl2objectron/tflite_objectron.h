@@ -24,7 +24,7 @@ typedef struct fvec3
 
 typedef struct _object_t
 {
-    float score;
+    float belief;
     float center_x;
     float center_y;
     fvec2 bbox[8];

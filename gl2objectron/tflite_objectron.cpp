@@ -83,6 +83,15 @@ get_objectron_input_buf (int *w, int *h)
  * Invoke TensorFlow Lite (3D Object detection)
  * -------------------------------------------------- */
 static float
+get_heatmap_val (int x, int y)
+{
+    int hmp_w = s_detect_tensor_heatmap.dims[2];
+    float *heatmap = (float *)s_detect_tensor_heatmap.ptr;
+
+    return heatmap[hmp_w * y + x];
+}
+
+static float
 get_max_value (float *hmp, int cx, int cy, int hmp_w, int hmp_h, int kern_size)
 {
     int sx = cx - (kern_size / 2);
@@ -223,16 +232,45 @@ decode_by_voting (int cx, int cy, float offset_scale_x, float offset_scale_y, ob
         obj->bbox[i].y = y_sum / votes;
     }
 
-    float x_scale = 1.0f / (float)offset_scale_x;
-    float y_scale = 1.0f / (float)offset_scale_y;
-    for (int i = 0; i < 8; i ++)
-    {
-        obj->bbox[i].x *= x_scale;
-        obj->bbox[i].y *= y_scale;
-    }
-
     free (center_votes);
 }
+
+
+static bool
+IsIdentical (const object_t& box_1, const object_t& box_2)
+{
+    float voting_allowance = 1.0f;
+    for (int i = 0; i < 8; i ++)
+    {
+        const float x_diff = std::abs(box_1.bbox[i].x - box_2.bbox[i].x);
+        const float y_diff = std::abs(box_1.bbox[i].y - box_2.bbox[i].y);
+        if (x_diff > voting_allowance || y_diff > voting_allowance)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+
+static bool
+IsNewBox (std::list<object_t> *obj_list, object_t *obj_item)
+{
+    for (auto& b : *obj_list)
+    {
+        if (IsIdentical (b, *obj_item))
+        {
+            if (b.belief < obj_item->belief)
+            {
+                std::swap (b, *obj_item);
+            }
+            return false;
+        }
+    }
+    return true;
+}
+
+
 
 static int
 Lift2DTo3D(
@@ -403,7 +441,20 @@ invoke_objectron (objectron_result_t *objectron_result)
         int cy = static_cast<int>(std::round(center_point.y));
         object_t obj_item = {0};
 
+        obj_item.belief = get_heatmap_val (cx, cy);
         decode_by_voting (cx, cy, offset_scalex, offset_scaley, &obj_item);
+
+        /* eliminate duplicate bbox */
+        if (!IsNewBox (&obj_list, &obj_item))
+        {
+            continue;
+        }
+
+        for (int i = 0; i < 8; i ++)
+        {
+            obj_item.bbox[i].x /= offset_scalex;
+            obj_item.bbox[i].y /= offset_scaley;
+        }
 
         Lift2DTo3D (projection_matrix_, /*portrait*/ true, &obj_item);
         Project3DTo2D (/*portrait*/ true, &obj_item);

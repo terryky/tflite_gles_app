@@ -142,6 +142,7 @@ static void
 render_detect_region (int ofstx, int ofsty, int texw, int texh, objectron_result_t *detection)
 {
     float col_red[]   = {1.0f, 0.0f, 0.0f, 1.0f};
+    float col_white[] = {1.0f, 1.0f, 1.0f, 1.0f};
 
     for (int i = 0; i < detection->num; i ++)
     {
@@ -172,7 +173,16 @@ render_detect_region (int ofstx, int ofsty, int texw, int texh, objectron_result
         render_bbox_edge (ofstx, ofsty, texw, texh, obj, 5, 7);
         render_bbox_edge (ofstx, ofsty, texw, texh, obj, 7, 3);
         render_bbox_edge (ofstx, ofsty, texw, texh, obj, 3, 1);
+
+        /* score */
+        char buf[512];
+        sprintf (buf, "%d", (int)(obj->belief * 100));
+
+        x = obj->bbox2d[0].x * texw + ofstx;
+        y = obj->bbox2d[0].y * texh + ofsty;
+        draw_dbgstr_ex (buf, x, y, 1.0f, col_white, col_red);
     }
+
 }
 
 
