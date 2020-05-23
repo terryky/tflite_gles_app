@@ -92,7 +92,7 @@ get_heatmap_val (int x, int y)
 }
 
 static float
-get_max_value (float *hmp, int cx, int cy, int hmp_w, int hmp_h, int kern_size)
+get_max_value (int cx, int cy, int hmp_w, int hmp_h, int kern_size)
 {
     int sx = cx - (kern_size / 2);
     int ex = cx + (kern_size / 2) + 1;
@@ -109,7 +109,7 @@ get_max_value (float *hmp, int cx, int cy, int hmp_w, int hmp_h, int kern_size)
     {
         for (int x = sx; x < ex; x ++)
         {
-            float val = hmp[hmp_w * y + x];
+            float val = get_heatmap_val (x, y);
             max_val = std::max (val, max_val);
         }
     }
@@ -118,13 +118,13 @@ get_max_value (float *hmp, int cx, int cy, int hmp_w, int hmp_h, int kern_size)
 }
 
 static void
-dilate_heatmap (float *src_hmp, float *dst_hmp, int hmp_w, int hmp_h, int kern_size)
+dilate_heatmap (float *dst_hmp, int hmp_w, int hmp_h, int kern_size)
 {
     for (int y = 0; y < hmp_h; y ++)
     {
         for (int x = 0; x < hmp_w; x ++)
         {
-            dst_hmp[hmp_w * y + x] = get_max_value (src_hmp, x, y, hmp_w, hmp_h, kern_size);
+            dst_hmp[hmp_w * y + x] = get_max_value (x, y, hmp_w, hmp_h, kern_size);
         }
     }
 }
@@ -135,20 +135,19 @@ extract_center_keypoints (std::list<fvec2> &center_points)
     int hmp_w = s_detect_tensor_heatmap.dims[2];
     int hmp_h = s_detect_tensor_heatmap.dims[1];
 
-    float *heatmap = (float *)s_detect_tensor_heatmap.ptr;
     float *max_filtered_heatmap = (float *)malloc (hmp_w * hmp_h * sizeof (float));
 
     /* apply (5x5) MAX filter */
     int local_max_distance = 2;
     int kernel_size = static_cast<int>(local_max_distance * 2 + 1 + 0.5f);
-    dilate_heatmap (heatmap, max_filtered_heatmap, hmp_w, hmp_h, kernel_size);
+    dilate_heatmap (max_filtered_heatmap, hmp_w, hmp_h, kernel_size);
 
     float heatmap_threshold = 0.6f;
     for (int y = 0; y < hmp_h; y ++)
     {
         for (int x = 0; x < hmp_w; x ++)
         {
-            float center_hmp_val = heatmap             [hmp_w * y + x];
+            float center_hmp_val = get_heatmap_val (x, y);
             float max_hmp_val    = max_filtered_heatmap[hmp_w * y + x];
 
             if ((center_hmp_val >= heatmap_threshold) &&
@@ -171,7 +170,6 @@ extract_center_keypoints (std::list<fvec2> &center_points)
 void
 decode_by_voting (int cx, int cy, float offset_scale_x, float offset_scale_y, object_t *obj)
 {
-    float *heatmap   = (float *)s_detect_tensor_heatmap.ptr;
     float *offsetmap = (float *)s_detect_tensor_offsetmap.ptr;
     int   map_w = s_detect_tensor_offsetmap.dims[2];
     int   map_h = s_detect_tensor_offsetmap.dims[1];
@@ -207,7 +205,7 @@ decode_by_voting (int cx, int cy, float offset_scale_x, float offset_scale_y, ob
                 int idx_x = c + x_min;
                 int idx_y = r + y_min;
 
-                float belief = heatmap[map_w * idx_y + idx_x];
+                float belief = get_heatmap_val (idx_x, idx_y);
                 if (belief < voting_threshold)
                     continue;
 
