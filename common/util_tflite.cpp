@@ -253,7 +253,10 @@ tflite_get_tensor_by_name (tflite_interpreter_t *p, int io, const char *name, tf
     }
 
     if (io_idx < 0)
+    {
+        DBG_LOGE ("can't find tensor: \"%s\"\n", name);
         return -1;
+    }
 
     void *ptr = NULL;
     TfLiteTensor *tensor = interpreter->tensor(tensor_idx);
