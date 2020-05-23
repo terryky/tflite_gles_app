@@ -26,14 +26,22 @@
 /* 
  * https://github.com/google/mediapipe/blob/master/mediapipe/models/object_detection_3d_chair.tflite
  * https://github.com/google/mediapipe/blob/master/mediapipe/models/object_detection_3d_sneakers.tflite
+ * https://github.com/PINTO0309/PINTO_model_zoo/blob/master/36_Objectron/03_integer_quantization
  */
-#define DETECT_3D_MODEL_PATH    "./objectron_model/object_detection_3d_chair.tflite"
-//#define DETECT_3D_MODEL_PATH    "./objectron_model/object_detection_3d_sneakers.tflite"
+#if 1 /* [1] chair or [0] shoes */
+#define DETECT_3D_MODEL_PATH        "./objectron_model/object_detection_3d_chair.tflite"
+#define DETECT_3D_QUANT_MODEL_PATH  "./objectron_model/object_detection_3d_chair_640x480_integer_quant.tflite"
+#else
+#define DETECT_3D_MODEL_PATH        "./objectron_model/object_detection_3d_sneakers.tflite"
+#define DETECT_3D_QUANT_MODEL_PATH  "./objectron_model/object_detection_3d_sneakers_640x480_integer_quant.tflite"
+#endif
 
 static tflite_interpreter_t s_detect_interpreter;
 static tflite_tensor_t      s_detect_tensor_input;
 static tflite_tensor_t      s_detect_tensor_offsetmap;
 static tflite_tensor_t      s_detect_tensor_heatmap;
+
+static int s_need_post_logistic = 0;
 
 /*
  * https://github.com/google/mediapipe/tree/master/mediapipe/graphs/object_detection_3d/calculators/tflite_tensors_to_objects_calculator.cc
@@ -47,14 +55,21 @@ Eigen::Matrix<float, 8, 4, Eigen::RowMajor> epnp_alpha_;
 int
 init_tflite_objectron (int use_quantized_tflite)
 {
-    const char *detect_model;
-    detect_model = DETECT_3D_MODEL_PATH;
-
-    /* 3D Object detection */
-    tflite_create_interpreter_from_file (&s_detect_interpreter, detect_model);
-    tflite_get_tensor_by_name (&s_detect_interpreter, 0, "input",      &s_detect_tensor_input);
-    tflite_get_tensor_by_name (&s_detect_interpreter, 1, "Identity",   &s_detect_tensor_heatmap);   /*  40x 30x 1 */
-    tflite_get_tensor_by_name (&s_detect_interpreter, 1, "Identity_1", &s_detect_tensor_offsetmap); /*  40x 30x16 */
+    if (use_quantized_tflite)
+    {
+        tflite_create_interpreter_from_file (&s_detect_interpreter, DETECT_3D_QUANT_MODEL_PATH);
+        tflite_get_tensor_by_name (&s_detect_interpreter, 0, "input",      &s_detect_tensor_input);
+        tflite_get_tensor_by_name (&s_detect_interpreter, 1, "model/belief/Conv2D/conv2d", &s_detect_tensor_heatmap);
+        tflite_get_tensor_by_name (&s_detect_interpreter, 1, "Identity_1", &s_detect_tensor_offsetmap); /*  40x 30x16 */
+        s_need_post_logistic = 1;
+    }
+    else
+    {
+        tflite_create_interpreter_from_file (&s_detect_interpreter, DETECT_3D_MODEL_PATH);
+        tflite_get_tensor_by_name (&s_detect_interpreter, 0, "input",      &s_detect_tensor_input);
+        tflite_get_tensor_by_name (&s_detect_interpreter, 1, "Identity",   &s_detect_tensor_heatmap);   /*  40x 30x 1 */
+        tflite_get_tensor_by_name (&s_detect_interpreter, 1, "Identity_1", &s_detect_tensor_offsetmap); /*  40x 30x16 */
+    }
 
     projection_matrix_ <<
       1.5731,     0,       0,    0,
@@ -88,7 +103,22 @@ get_heatmap_val (int x, int y)
     int hmp_w = s_detect_tensor_heatmap.dims[2];
     float *heatmap = (float *)s_detect_tensor_heatmap.ptr;
 
-    return heatmap[hmp_w * y + x];
+    float val = heatmap[hmp_w * y + x];
+
+    if (s_need_post_logistic)
+    {
+        const float cutoff_upper = 16.619047164916992188f;
+        const float cutoff_lower = -9.f;
+
+        if (val > cutoff_upper)
+            val = 1.0f;
+        else if (val < cutoff_lower)
+            val = std::exp(val);
+        else
+            val = 1.f / (1.f + std::exp(-val));
+    }
+
+    return val;
 }
 
 static float
