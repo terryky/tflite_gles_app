@@ -109,16 +109,15 @@ feed_objectron_image(texture_2d_t *srctex, int win_w, int win_h)
 
 
 static void
-render_bbox_edge (int ofstx, int ofsty, int texw, int texh, object_t *obj, int idx0, int idx1)
+render_bbox_edge (int ofstx, int ofsty, int texw, int texh, object_t *obj,
+                  int idx0, int idx1, float *color)
 {
-    float col_green[] = {0.0f, 1.0f, 0.0f, 1.0f};
-
     float x0 = obj->bbox2d[idx0].x * texw + ofstx;
     float y0 = obj->bbox2d[idx0].y * texh + ofsty;
     float x1 = obj->bbox2d[idx1].x * texw + ofstx;
     float y1 = obj->bbox2d[idx1].y * texh + ofsty;
 
-    draw_2d_line (x0, y0, x1, y1, col_green, 5.0f);
+    draw_2d_line (x0, y0, x1, y1, color, 5.0f);
 }
 
 /*
@@ -141,8 +140,11 @@ render_bbox_edge (int ofstx, int ofsty, int texw, int texh, object_t *obj, int i
 static void
 render_detect_region (int ofstx, int ofsty, int texw, int texh, objectron_result_t *detection)
 {
-    float col_red[]   = {1.0f, 0.0f, 0.0f, 1.0f};
     float col_white[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    float col_red[]   = {1.0f, 0.0f, 0.0f, 1.0f};
+    float col_green[] = {0.0f, 1.0f, 0.0f, 1.0f};
+    float col_blue[]  = {0.0f, 0.0f, 1.0f, 1.0f};
+    float col_cyan[]  = {0.0f, 1.0f, 1.0f, 1.0f};
 
     for (int i = 0; i < detection->num; i ++)
     {
@@ -154,25 +156,21 @@ render_detect_region (int ofstx, int ofsty, int texw, int texh, objectron_result
         int r = 4;
         draw_2d_fillrect (x - (r/2), y - (r/2), r, r, col_red);
 
-        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 0, 2);
-        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 2, 3);
-        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 3, 1);
-        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 1, 0);
+        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 0, 2, col_green);
+        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 2, 3, col_cyan);
+        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 3, 1, col_cyan);
+        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 1, 0, col_blue);
 
-        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 4, 6);
-        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 6, 7);
-        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 7, 5);
-        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 5, 4);
+        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 4, 6, col_cyan);
+        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 6, 7, col_cyan);
+        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 7, 5, col_cyan);
+        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 5, 4, col_cyan);
 
-        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 0, 4);
-        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 4, 6);
-        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 6, 2);
-        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 2, 0);
+        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 0, 4, col_red);
+        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 6, 2, col_cyan);
 
-        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 1, 5);
-        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 5, 7);
-        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 7, 3);
-        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 3, 1);
+        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 1, 5, col_cyan);
+        render_bbox_edge (ofstx, ofsty, texw, texh, obj, 7, 3, col_cyan);
 
         /* score */
         char buf[512];
