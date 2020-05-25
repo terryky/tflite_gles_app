@@ -84,7 +84,7 @@ int
 get_static_facemesh_landmark (face_detect_result_t   *facedet_result,
                               face_landmark_result_t *facemesh_result);
 
-int *get_facemesh_tri_indicies (int *num_tris);
+int *get_facemesh_tri_indicies (int *num_tris, int flags);
 
 #ifdef __cplusplus
 }

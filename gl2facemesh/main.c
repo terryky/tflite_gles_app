@@ -190,7 +190,7 @@ render_detect_region (int ofstx, int ofsty, int texw, int texh, face_detect_resu
         char buf[512];
         sprintf (buf, "%d", (int)(score * 100));
         draw_dbgstr_ex (buf, x1, y1, 1.0f, col_white, col_red);
-
+#if 0
         /* key points */
         for (int j = 0; j < kFaceKeyNum; j ++)
         {
@@ -200,6 +200,7 @@ render_detect_region (int ofstx, int ofsty, int texw, int texh, face_detect_resu
             int r = 4;
             draw_2d_fillrect (x - (r/2), y - (r/2), r, r, col_red);
         }
+#endif
     }
 }
 
@@ -246,7 +247,7 @@ render_face_landmark (int ofstx, int ofsty, int texw, int texh,
                       face_landmark_result_t *facemesh, face_t *face,
                       int texid_mask,
                       face_landmark_result_t *facemesh_mask, face_t *face_mask,
-                      int meshline)
+                      int meshline, int eyehole)
 {
     float col_red[]   = {0.0f, 1.0f, 0.0f, 1.0f};
     float col_white[] = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -274,7 +275,7 @@ render_face_landmark (int ofstx, int ofsty, int texw, int texh,
     }
 
     int num_idx;
-    int *mesh_tris = get_facemesh_tri_indicies (&num_idx);
+    int *mesh_tris = get_facemesh_tri_indicies (&num_idx, eyehole);
 
     draw_tri_tex_indexed (texid_mask, (float *)facemesh_draw.joint, (float *)facemesh_draw_mask.joint, 
                             mesh_tris, num_idx);
@@ -406,17 +407,21 @@ main(int argc, char *argv[])
     double ttime[10] = {0}, interval, invoke_ms0 = 0, invoke_ms1 = 0;
     int use_quantized_tflite = 0;
     int enable_camera = 1;
+    int drill_eye_hole = 0;
     UNUSED (argc);
     UNUSED (*argv);
 
     {
         int c;
-        const char *optstring = "qx";
+        const char *optstring = "eqx";
 
         while ((c = getopt (argc, argv, optstring)) != -1) 
         {
             switch (c)
             {
+            case 'e':
+                drill_eye_hole = 1;
+                break;
             case 'q':
                 use_quantized_tflite = 1;
                 break;
@@ -575,7 +580,7 @@ main(int argc, char *argv[])
         for (int face_id = 0; face_id < face_detect_ret.num; face_id ++)
         {
             render_face_landmark (draw_x, draw_y, draw_w, draw_h, &face_mesh_ret[face_id], &face_detect_ret.faces[face_id],
-                                  cur_texid_mask, cur_face_mesh_mask, &cur_face_detect_mask->faces[0], 0);
+                                  cur_texid_mask, cur_face_mesh_mask, &cur_face_detect_mask->faces[0], 0, drill_eye_hole);
         }
 
         /* draw cropped image of the face area */
@@ -601,7 +606,7 @@ main(int argc, char *argv[])
         {
             render_face_landmark (draw_x, draw_y, draw_w, draw_h,
                                   &face_mesh_ret[face_id], &face_detect_ret.faces[face_id],
-                                  cur_texid_mask, cur_face_mesh_mask, &cur_face_detect_mask->faces[0], 1);
+                                  cur_texid_mask, cur_face_mesh_mask, &cur_face_detect_mask->faces[0], 1, drill_eye_hole);
         }
 
         /* current mask image */
