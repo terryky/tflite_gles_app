@@ -33,6 +33,7 @@ static maskimage_t s_maskimages[] =
     {"assets/mask/lena.jpg",     0},
     {"assets/mask/soseki.jpg",   0},
     {"assets/mask/bakatono.jpg", 0},
+    {"assets/mask/khamun.jpg",   0},
     {"assets/mask/kin.jpg",      1}
 };
 
