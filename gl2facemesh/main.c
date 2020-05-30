@@ -22,6 +22,23 @@
 
 #define UNUSED(x) (void)(x)
 
+typedef struct maskimage_t
+{
+    char fname[64];
+    int  is_static_mask;
+} maskimage_t;
+
+static maskimage_t s_maskimages[] =
+{
+    {"assets/mask/lena.jpg",     0},
+    {"assets/mask/soseki.jpg",   0},
+    {"assets/mask/bakatono.jpg", 0},
+    {"assets/mask/kin.jpg",      1}
+};
+
+static int s_num_maskimages = sizeof (s_maskimages) / sizeof (maskimage_t);
+
+
 
 #if defined (USE_INPUT_CAMERA_CAPTURE)
 static void
@@ -443,13 +460,11 @@ adjust_texture (int win_w, int win_h, int texw, int texh,
 /*--------------------------------------------------------------------------- *
  *      M A I N    F U N C T I O N
  *--------------------------------------------------------------------------- */
-#define FACEMASK_NUM 3
 int
 main(int argc, char *argv[])
 {
     char input_name_default[] = "pakutaso.jpg";
     char *input_name = NULL;
-    char input_facemask_name[FACEMASK_NUM][32] = {"lena.jpg", "soseki.jpg", "bakatono.jpg"};
     int count;
     int win_w = 800;
     int win_h = 800;
@@ -557,32 +572,42 @@ main(int argc, char *argv[])
     /* --------------------------------------- *
      *  prepare "facemask"
      * --------------------------------------- */
-    face_detect_result_t    face_detect_mask[FACEMASK_NUM] = {0};
-    face_landmark_result_t  face_mesh_mask[FACEMASK_NUM] = {0};
-    int texid_mask[FACEMASK_NUM];
+    face_detect_result_t    *face_detect_mask;
+    face_landmark_result_t  *face_mesh_mask;
+    int *texid_mask;
 
-    for (int mask_id = 0; mask_id < FACEMASK_NUM; mask_id ++)
+    face_detect_mask = (face_detect_result_t *)calloc (s_num_maskimages, sizeof(face_detect_result_t));
+    face_mesh_mask = (face_landmark_result_t *)calloc (s_num_maskimages, sizeof(face_landmark_result_t));
+    texid_mask = (int *)calloc (s_num_maskimages, sizeof (int));
+
+    for (int mask_id = 0; mask_id < s_num_maskimages; mask_id ++)
     {
         int tw, th;
+        char *mask_fname    = s_maskimages[mask_id].fname;
+        int  is_static_mask = s_maskimages[mask_id].is_static_mask;
 
-        load_jpg_texture (input_facemask_name[mask_id], &texid_mask[mask_id], &tw, &th);
-#if 1
-        texture_2d_t masktex = {0};
-        masktex.texid  = texid_mask[mask_id];
-        masktex.width  = tw;
-        masktex.height = th;
-        masktex.format = pixfmt_fourcc ('R', 'G', 'B', 'A');
+        load_jpg_texture (mask_fname, &texid_mask[mask_id], &tw, &th);
 
-        feed_face_detect_image (&masktex, win_w, win_h);
-        invoke_face_detect (&face_detect_mask[mask_id]);
+        if (is_static_mask == 0)
+        {
+            texture_2d_t masktex = {0};
+            masktex.texid  = texid_mask[mask_id];
+            masktex.width  = tw;
+            masktex.height = th;
+            masktex.format = pixfmt_fourcc ('R', 'G', 'B', 'A');
 
-        int face_id = 0;
-        feed_face_landmark_image (&masktex, win_w, win_h, &face_detect_mask[mask_id], face_id);
+            feed_face_detect_image (&masktex, win_w, win_h);
+            invoke_face_detect (&face_detect_mask[mask_id]);
 
-        invoke_facemesh_landmark (&face_mesh_mask[mask_id]);
-#else
-        get_static_facemesh_landmark (&face_detect_mask[mask_id], &face_mesh_mask[mask_id]);
-#endif
+            int face_id = 0;
+            feed_face_landmark_image (&masktex, win_w, win_h, &face_detect_mask[mask_id], face_id);
+
+            invoke_facemesh_landmark (&face_mesh_mask[mask_id]);
+        }
+        else
+        {
+            get_static_facemesh_landmark (&face_detect_mask[mask_id], &face_mesh_mask[mask_id]);
+        }
     }
 
 
@@ -594,7 +619,7 @@ main(int argc, char *argv[])
         face_detect_result_t    face_detect_ret = {0};
         face_landmark_result_t  face_mesh_ret[MAX_FACE_NUM] = {0};
 
-        int mask_id = (count / 100) % FACEMASK_NUM;
+        int mask_id = (count / 100) % s_num_maskimages;
         face_detect_result_t   *cur_face_detect_mask = &face_detect_mask[mask_id];
         face_landmark_result_t *cur_face_mesh_mask = &face_mesh_mask[mask_id];
         int cur_texid_mask = texid_mask[mask_id];
