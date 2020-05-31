@@ -1,30 +1,53 @@
 # GPU accelerated TensorFlow Lite applications.
-This repository contains several applications which invoke DNN inference with **TensorFlow Lite with GPU Delegate** and visualizes its result with **OpenGLES**.
+This repository contains several applications which invoke DNN inference with **TensorFlow Lite GPU Delegate** and visualizes its result with **OpenGLES**.
 
 Target platform: Linux PC / NVIDIA Jetson / RaspberryPi.
 
-## applications
-| App name    | Descriptions |
-|:-----------:|:------------:|
-| [gl2blazeface](https://github.com/terryky/tflite_gles_app/tree/master/gl2blazeface)          | [![img](gl2blazeface/gl2blazeface.png)](https://github.com/terryky/tflite_gles_app/tree/master/gl2blazeface) <br> Lightweight Face Detection.|
-| [gl2detection](https://github.com/terryky/tflite_gles_app/tree/master/gl2detection)          | [![img](gl2detection/gl2detection.png)](https://github.com/terryky/tflite_gles_app/tree/master/gl2detection) <br> Object Detection using MobileNet SSD.|
-| [gl2facemesh](https://github.com/terryky/tflite_gles_app/tree/master/gl2facemesh)            | [![img](gl2facemesh/gl2facemesh.png)](https://github.com/terryky/tflite_gles_app/tree/master/gl2facemesh)    <br> 3D Facial Surface Geometry estimation and face replacement.|
-| [gl2handpose](https://github.com/terryky/tflite_gles_app/tree/master/gl2handpose)            | [![img](gl2handpose/gl2handpose.png)](https://github.com/terryky/tflite_gles_app/tree/master/gl2handpose)    <br> 3D Handpose Estimation from single RGB images.|
-| [gl2objectron](https://github.com/terryky/tflite_gles_app/tree/master/gl2objectron)          | [<img src="gl2objectron/gl2objectron.png" width=400>](https://github.com/terryky/tflite_gles_app/tree/master/gl2objectron) <br> 3D Object Detection.|
-| [gl2posenet](https://github.com/terryky/tflite_gles_app/tree/master/gl2posenet)              | [![img](gl2posenet/gl2posenet.png)](https://github.com/terryky/tflite_gles_app/tree/master/gl2posenet)       <br> Pose Estimation.|
-| [gl2segmentation](https://github.com/terryky/tflite_gles_app/tree/master/gl2segmentation)    | [![img](gl2segmentation/gl2segmentation.png)](https://github.com/terryky/tflite_gles_app/tree/master/gl2segmentation) <br> Semantic image segmentation using Deeplab.|
-| [gl2style_transfer](https://github.com/terryky/tflite_gles_app/tree/master/gl2style_transfer)| [![img](gl2style_transfer/gl2style_transfer.png)](https://github.com/terryky/tflite_gles_app/tree/master/gl2style_transfer) <br> Artistic Style Transfer.|
+## 1. applications
+
+### gl2blazeface
+- Lightweight Face Detection.<br>
+[<img src="gl2blazeface/gl2blazeface.png" width=500>](https://github.com/terryky/tflite_gles_app/tree/master/gl2blazeface)
+
+### gl2detection
+- Object Detection using MobileNet SSD.<br>
+[<img src="gl2detection/gl2detection.png" width=500>](https://github.com/terryky/tflite_gles_app/tree/master/gl2detection)
+
+### gl2facemesh
+- 3D Facial Surface Geometry estimation and face replacement.<br>
+[<img src="gl2facemesh/gl2facemesh.png" width=700>](https://github.com/terryky/tflite_gles_app/tree/master/gl2facemesh)
+
+### gl2handpose
+- 3D Handpose Estimation from single RGB images.<br>
+[<img src="gl2handpose/gl2handpose.png" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2handpose)
+
+### gl2objectron
+- 3D Object Detection.<br>
+[<img src="gl2objectron/gl2objectron.png" width=300>](https://github.com/terryky/tflite_gles_app/tree/master/gl2objectron)
+
+### gl2posenet
+- Pose Estimation.<br>
+[<img src="gl2posenet/gl2posenet.png" width=500>](https://github.com/terryky/tflite_gles_app/tree/master/gl2posenet)
+
+### gl2segmentation
+- Semantic image segmentation using Deeplab.<br>
+[<img src="gl2segmentation/gl2segmentation.png" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2segmentation)
+
+### gl2style_transfer
+- Artistic Style Transfer.<br>
+[<img src="gl2style_transfer/gl2style_transfer.png" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2style_transfer)
 
 
 
-## How to Build & Run
+
+## 2. How to Build & Run
 
 - [Build for x86_64 Linux](#build_for_x86_64)
 - [Build for Jetson Nano (aarch64 )](#build_for_jetson_nano)
 - [Build for Raspberry Pi 4 (armv7l)](#build_for_raspi4)
 
 
-### <a name="build_for_x86_64">Build for x86_64 Linux</a>
+### <a name="build_for_x86_64">2.1. Build for x86_64 Linux</a>
 
 ##### 1.setup environment
 ```
@@ -64,7 +87,7 @@ $ ./gl2handpose
 
 
 
-### <a name="build_for_jetson_nano">Build for Jetson Nano (aarch64)</a>
+### <a name="build_for_jetson_nano">2.2. Build for Jetson Nano (aarch64)</a>
 
 ##### 1.build TensorFlow Lite library on **Host PC**.
 
@@ -126,7 +149,7 @@ To enable/disable VSYNC, run app with the following command.
 ```
 
 
-### <a name="build_for_raspi4">Build for Raspberry Pi 4 (armv7l)</a>
+### <a name="build_for_raspi4">2.3 Build for Raspberry Pi 4 (armv7l)</a>
 
 ##### 1.build TensorFlow Lite library on **Host PC**.
 
@@ -194,7 +217,19 @@ for more detail infomation, please refer [this article](https://qiita.com/terryk
 
 
 
-## UVC Camera support
+## 3. About Input video stream
+
+Both **Live camera** and **video file** are supported as input methods.
+- [Live UVC Camera](#uvc_camera)
+- [Recorded Video file](#video_file)
+
+
+
+
+
+### <a name="uvc_camera">3.1. Live UVC Camera (default)</a>
+
+
 - UVC(USB Video Class) camera capture is supported. 
 
 <img src="gl2handpose/gl2handpose_mov.gif" width="500">
@@ -206,18 +241,17 @@ for more detail infomation, please refer [this article](https://qiita.com/terryk
 ```
 (Target)$ sudo apt-get install v4l-utils
 
-# set capture resolution (160x120)
-(Target)$ v4l2-ctl --set-fmt-video=width=160,height=120
-
-# set capture resolution (640x480)
-(Target)$ v4l2-ctl --set-fmt-video=width=640,height=480
-
 # confirm current resolution settings
 (Target)$ v4l2-ctl --all
 
 # query available resolutions
 (Target)$ v4l2-ctl --list-formats-ext
 
+# set capture resolution (160x120)
+(Target)$ v4l2-ctl --set-fmt-video=width=160,height=120
+
+# set capture resolution (640x480)
+(Target)$ v4l2-ctl --set-fmt-video=width=640,height=480
 ```
 
 - currently, only YUYV pixelformat is supported. 
@@ -253,10 +287,27 @@ $ ./gl2handpose -x
 ```
 
 
+### <a name="video_file">3.2 Recorded Video file</a>
+- FFmpeg (libav) video decode is supported. 
+- If you want to use a recorded video file instead of a live camera, follow these steps:
+
+```
+# setup dependent libralies.
+(Target)$ sudo apt install libavcodec-dev libavdevice-dev libavfilter-dev libavformat-dev libavresample-dev libavutil-dev
+
+# build an app with ENABLE_VDEC options
+(Target)$ cd ~/work/tflite_gles_app/gl2facemesh
+(Target)$ make -j4 ENABLE_VDEC=true
+
+# run an app with a video file name as an argument.
+(Target)$ ./gl2facemesh -v assets/sample_video.mp4
+```
 
 
 
-## tested platforms
+
+
+## 4. Tested platforms
 You can select the platform by editing [Makefile.env](Makefile.env).
 - Linux PC (X11)
 - NVIDIA Jetson Nano (X11)
