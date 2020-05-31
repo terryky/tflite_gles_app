@@ -15,6 +15,7 @@
 #include "util_render2d.h"
 #include "tflite_blazeface.h"
 #include "camera_capture.h"
+#include "video_decode.h"
 
 #define UNUSED(x) (void)(x)
 
@@ -65,6 +66,56 @@ init_capture_texture (texture_2d_t *captex)
 }
 
 #endif
+
+#if defined (USE_INPUT_VIDEO_DECODE)
+static void
+update_video_texture (texture_2d_t *captex)
+{
+    int   video_w, video_h;
+    uint32_t video_fmt;
+    void *video_buf;
+
+    get_video_dimension (&video_w, &video_h);
+    get_video_pixformat (&video_fmt);
+    get_video_buffer (&video_buf);
+
+    if (video_buf)
+    {
+        int texw = video_w;
+        int texh = video_h;
+        int texfmt = GL_RGBA;
+        switch (video_fmt)
+        {
+        case pixfmt_fourcc('Y', 'U', 'Y', 'V'):
+            texw = video_w / 2;
+            break;
+        default:
+            break;
+        }
+
+        glBindTexture (GL_TEXTURE_2D, captex->texid);
+        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, texw, texh, texfmt, GL_UNSIGNED_BYTE, video_buf);
+    }
+}
+
+static int
+init_video_texture (texture_2d_t *captex, const char *fname)
+{
+    int      vid_w, vid_h;
+    uint32_t vid_fmt;
+
+    open_video_file (fname);
+
+    get_video_dimension (&vid_w, &vid_h);
+    get_video_pixformat (&vid_fmt);
+
+    create_2d_texture_ex (captex, NULL, vid_w, vid_h, vid_fmt);
+    start_video_decode ();
+
+    return 0;
+}
+#endif /* USE_INPUT_VIDEO_DECODE */
+
 
 /* resize image to DNN network input size and convert to fp32. */
 void
@@ -193,7 +244,7 @@ int
 main(int argc, char *argv[])
 {
     char input_name_default[] = "pakutaso_sotsugyou.jpg";
-    char *input_name = input_name_default;
+    char *input_name = NULL;
     int count;
     int win_w = 960;
     int win_h = 540;
@@ -205,10 +256,13 @@ main(int argc, char *argv[])
     int enable_camera = 1;
     UNUSED (argc);
     UNUSED (*argv);
+#if defined (USE_INPUT_VIDEO_DECODE)
+    int enable_video = 0;
+#endif
 
     {
         int c;
-        const char *optstring = "qx";
+        const char *optstring = "qv:x";
 
         while ((c = getopt (argc, argv, optstring)) != -1)
         {
@@ -217,6 +271,12 @@ main(int argc, char *argv[])
             case 'q':
                 use_quantized_tflite = 1;
                 break;
+#if defined (USE_INPUT_VIDEO_DECODE)
+            case 'v':
+                enable_video = 1;
+                input_name = optarg;
+                break;
+#endif
             case 'x':
                 enable_camera = 0;
                 break;
@@ -229,6 +289,9 @@ main(int argc, char *argv[])
             optind++;
         }
     }
+
+    if (input_name == NULL)
+        input_name = input_name_default;
 
     egl_init_with_platform_window_surface (2, 0, 0, 0, win_w, win_h);
 
@@ -244,6 +307,17 @@ main(int argc, char *argv[])
     glViewport (0, 0, win_w, win_h);
 #endif
 
+#if defined (USE_INPUT_VIDEO_DECODE)
+    /* initialize FFmpeg video decode */
+    if (enable_video && init_video_decode () == 0)
+    {
+        init_video_texture (&captex, input_name);
+        texw = captex.width;
+        texh = captex.height;
+        enable_camera = 0;
+    }
+    else
+#endif
 #if defined (USE_INPUT_CAMERA_CAPTURE)
     /* initialize V4L2 capture function */
     if (enable_camera && init_capture () == 0)
@@ -279,6 +353,13 @@ main(int argc, char *argv[])
 
         glClear (GL_COLOR_BUFFER_BIT);
 
+#if defined (USE_INPUT_VIDEO_DECODE)
+        /* initialize FFmpeg video decode */
+        if (enable_video)
+        {
+            update_video_texture (&captex);
+        }
+#endif
 #if defined (USE_INPUT_CAMERA_CAPTURE)
         if (enable_camera)
         {
