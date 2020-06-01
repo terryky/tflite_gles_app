@@ -3,37 +3,41 @@ This repository contains several applications which invoke DNN inference with **
 
 Target platform: Linux PC / NVIDIA Jetson / RaspberryPi.
 
-## 1. applications
+## 1. Applications
 
-### gl2blazeface
+### [gl2blazeface](https://github.com/terryky/tflite_gles_app/tree/master/gl2blazeface)
 - Lightweight Face Detection.<br>
 [<img src="gl2blazeface/gl2blazeface.png" width=500>](https://github.com/terryky/tflite_gles_app/tree/master/gl2blazeface)
 
-### gl2detection
+### [gl2detection](https://github.com/terryky/tflite_gles_app/tree/master/gl2detection)
 - Object Detection using MobileNet SSD.<br>
 [<img src="gl2detection/gl2detection.png" width=500>](https://github.com/terryky/tflite_gles_app/tree/master/gl2detection)
 
-### gl2facemesh
+### [gl2facemesh](https://github.com/terryky/tflite_gles_app/tree/master/gl2facemesh)
 - 3D Facial Surface Geometry estimation and face replacement.<br>
 [<img src="gl2facemesh/gl2facemesh.png" width=700>](https://github.com/terryky/tflite_gles_app/tree/master/gl2facemesh)
 
-### gl2handpose
+### [gl2hair_segmentation](https://github.com/terryky/tflite_gles_app/tree/master/gl2hair_segmentation)
+- Hair segmentation and recoloring.<br>
+[<img src="gl2hair_segmentation/gl2hair_segmentation.png" width=700>](https://github.com/terryky/tflite_gles_app/tree/master/gl2hair_segmentation)
+
+### [gl2handpose](https://github.com/terryky/tflite_gles_app/tree/master/gl2handpose)
 - 3D Handpose Estimation from single RGB images.<br>
 [<img src="gl2handpose/gl2handpose.png" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2handpose)
 
-### gl2objectron
+### [gl2objectron](https://github.com/terryky/tflite_gles_app/tree/master/gl2objectron)
 - 3D Object Detection.<br>
 [<img src="gl2objectron/gl2objectron.png" width=300>](https://github.com/terryky/tflite_gles_app/tree/master/gl2objectron)
 
-### gl2posenet
+### [gl2posenet](https://github.com/terryky/tflite_gles_app/tree/master/gl2posenet)
 - Pose Estimation.<br>
 [<img src="gl2posenet/gl2posenet.png" width=500>](https://github.com/terryky/tflite_gles_app/tree/master/gl2posenet)
 
-### gl2segmentation
+### [gl2segmentation](https://github.com/terryky/tflite_gles_app/tree/master/gl2segmentation)
 - Semantic image segmentation using Deeplab.<br>
 [<img src="gl2segmentation/gl2segmentation.png" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2segmentation)
 
-### gl2style_transfer
+### [gl2style_transfer](https://github.com/terryky/tflite_gles_app/tree/master/gl2style_transfer)
 - Artistic Style Transfer.<br>
 [<img src="gl2style_transfer/gl2style_transfer.png" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2style_transfer)
 
@@ -49,7 +53,7 @@ Target platform: Linux PC / NVIDIA Jetson / RaspberryPi.
 
 ### <a name="build_for_x86_64">2.1. Build for x86_64 Linux</a>
 
-##### 1.setup environment
+##### 2.1.1. setup environment
 ```
 $ sudo apt install libgles2-mesa-dev 
 $
@@ -58,7 +62,7 @@ $ chmod 755 bazel-2.0.0-installer-linux-x86_64.sh
 $ sudo ./bazel-2.0.0-installer-linux-x86_64.sh
 ```
 
-##### 2.build TensorFlow Lite library.
+##### 2.1.2. build TensorFlow Lite library.
 
 ```
 $ cd ~/work 
@@ -71,14 +75,14 @@ $
 $ ln -s tensorflow_r2.2 ./tensorflow
 ```
 
-##### 3.build an application.
+##### 2.1.3. build an application.
 
 ```
 $ cd ~/work/tflite_gles_app/gl2handpose
 $ make -j4
 ```
 
-##### 4.run an application.
+##### 2.1.4. run an application.
 
 ```
 $ cd ~/work/tflite_gles_app/gl2handpose
@@ -89,7 +93,7 @@ $ ./gl2handpose
 
 ### <a name="build_for_jetson_nano">2.2. Build for Jetson Nano (aarch64)</a>
 
-##### 1.build TensorFlow Lite library on **Host PC**.
+##### 2.2.1. build TensorFlow Lite library on **Host PC**.
 
 ```
 (HostPC)$ wget https://github.com/bazelbuild/bazel/releases/download/2.0.0/bazel-2.0.0-installer-linux-x86_64.sh
@@ -103,13 +107,13 @@ $ ./gl2handpose
 (Tensorflow configure will start after a while. Please enter according to your environment)
 ```
 
-##### 2.copy libtensorflow-lite.a to target Jetson.
+##### 2.2.2. copy libtensorflow-lite.a to target Jetson.
 
 ```
 (HostPC)scp ~/work/tensorflow_r2.2/tensorflow/lite/tools/make/gen/linux_aarch64/lib/libtensorflow-lite.a jetson@192.168.11.11:/home/jetson/
 ```
 
-##### 3.clone Tensorflow repository on **target Jetson**.
+##### 2.2.3. clone Tensorflow repository on **target Jetson**.
 
 ```
 (Jetson)$ cd ~/work
@@ -120,7 +124,7 @@ $ ./gl2handpose
 ```
 
 
-##### 4.build an application.
+##### 2.2.4. build an application.
 
 ```
 (Jetson)$ cd ~/work 
@@ -130,7 +134,7 @@ $ ./gl2handpose
 (Jetson)$ make -j4 TARGET_ENV=jetson_nano TFLITE_DELEGATE=GPU_DELEGATEV2
 ```
 
-##### 5.run an application.
+##### 2.2.5. run an application.
 
 ```
 (Jetson)$ cd ~/work/tflite_gles_app/gl2handpose
@@ -151,7 +155,7 @@ To enable/disable VSYNC, run app with the following command.
 
 ### <a name="build_for_raspi4">2.3 Build for Raspberry Pi 4 (armv7l)</a>
 
-##### 1.build TensorFlow Lite library on **Host PC**.
+##### 2.3.1. build TensorFlow Lite library on **Host PC**.
 
 ```
 (HostPC)$ wget https://github.com/bazelbuild/bazel/releases/download/2.0.0/bazel-2.0.0-installer-linux-x86_64.sh
@@ -165,13 +169,13 @@ To enable/disable VSYNC, run app with the following command.
 (Tensorflow configure will start after a while. Please enter according to your environment)
 ```
 
-##### 2.copy libtensorflow-lite.a to target Raspberry Pi 4.
+##### 2.3.2. copy libtensorflow-lite.a to target Raspberry Pi 4.
 
 ```
 (HostPC)scp ~/work/tensorflow_r2.2/tensorflow/lite/tools/make/gen/rpi_armv7l/lib/libtensorflow-lite.a pi@192.168.11.11:/home/pi/
 ```
 
-##### 3.setup environment on **Raspberry Pi 4**.
+##### 2.3.3. setup environment on **Raspberry Pi 4**.
 
 ```
 (Raspi)$ sudo apt install libgles2-mesa-dev libegl1-mesa-dev xorg-dev
@@ -180,7 +184,7 @@ To enable/disable VSYNC, run app with the following command.
 ```
 
 
-##### 4.clone Tensorflow repository on **target Raspi**.
+##### 2.3.4. clone Tensorflow repository on **target Raspi**.
 
 ```
 (Raspi)$ cd ~/work
@@ -191,7 +195,7 @@ To enable/disable VSYNC, run app with the following command.
 ```
 
 
-##### 5.build an application on **target Raspi**..
+##### 2.3.5. build an application on **target Raspi**..
 
 ```
 (Raspi)$ cd ~/work 
@@ -205,7 +209,7 @@ To enable/disable VSYNC, run app with the following command.
 ```
 
 
-##### 6.run an application on **target Raspi**..
+##### 2.3.6. run an application on **target Raspi**..
 
 ```
 (Raspi)$ cd ~/work/tflite_gles_app/gl2handpose
