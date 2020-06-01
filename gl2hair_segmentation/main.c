@@ -14,6 +14,7 @@
 #include "util_pmeter.h"
 #include "util_texture.h"
 #include "util_render2d.h"
+#include "util_matrix.h"
 #include "tflite_hair_segmentation.h"
 #include "render_hair.h"
 #include "camera_capture.h"
@@ -202,20 +203,40 @@ colormap_hsv (float h, float col[4])
         break;
     }
 
-    float lumi = (r * 0.299f + g * 0.587f + b * 0.114f);
-
-    r *= lumi;
-    g *= lumi;
-    b *= lumi;
-
     col[0] = r;
     col[1] = g;
     col[2] = b;
     col[3] = 1.0f;
 }
 
+static void
+render_hsv_circle (int x0, int y0, float angle)
+{
+    float col[4];
+    float r = 80.0f;
 
+    float gray[] = {0.0f, 0.0f, 0.0f, 0.2f};
+    draw_2d_fillrect (x0 - r - 10, y0 - r - 10, 2 * r + 20, 2 * r + 20, gray);
 
+    for (int i = 0; i < 360; i ++)
+    {
+        int x1 = x0 + (int)(r * cosf (DEG_TO_RAD(i)) + 0.5f);
+        int y1 = y0 + (int)(r * sinf (DEG_TO_RAD(i)) + 0.5f);
+
+        colormap_hsv ((float)i /360.0f, col);
+        draw_2d_line (x0, y0, x1, y1, col, 2);
+    }
+
+    float col_white[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    int x1 = x0 + (int)(r * cosf (DEG_TO_RAD(angle)) + 0.5f);
+    int y1 = y0 + (int)(r * sinf (DEG_TO_RAD(angle)) + 0.5f);
+    draw_2d_line (x0, y0, x1, y1, col_white, 2);
+
+    int q = 10;
+    draw_2d_rect (x1 - (q/2), y1 - (q/2), q, q, col_white, 2);
+}
+
+//#define RENDER_BY_BLEND 1
 void
 render_segment_result (int ofstx, int ofsty, int draw_w, int draw_h, 
                        texture_2d_t *srctex, segmentation_result_t *segment_ret)
@@ -228,13 +249,18 @@ render_segment_result (int ofstx, int ofsty, int draw_w, int draw_h,
     unsigned int imgbuf[segmap_h][segmap_w];
     float hair_color[4] = {0};
     float back_color[4] = {0};
-    static float s_count = 0.0f;
+    static float s_hsv_h = 0.0f;
 
-    s_count += 0.05f;
-    if (s_count >= 1.0f)
-        s_count = 0.0f;
+    s_hsv_h += 5.0f;
+    if (s_hsv_h >= 360.0f)
+        s_hsv_h = 0.0f;
 
-    colormap_hsv (s_count, hair_color);
+    colormap_hsv (s_hsv_h / 360.0f, hair_color);
+
+#if defined (RENDER_BY_BLEND)
+    float lumi = (hair_color[0] * 0.299f + hair_color[1] * 0.587f + hair_color[2] * 0.114f);
+    hair_color[3] = lumi;
+#endif
 
     /* find the most confident class for each pixel. */
     for (y = 0; y < segmap_h; y ++)
@@ -253,12 +279,7 @@ render_segment_result (int ofstx, int ofsty, int draw_w, int draw_h,
                 }
             }
 
-            float *col;
-            if (max_id > 0)
-                col = hair_color;
-            else
-                col = back_color;
-
+            float *col = (max_id > 0) ? hair_color : back_color;
             unsigned char r = ((int)(col[0] * 255)) & 0xff;
             unsigned char g = ((int)(col[1] * 255)) & 0xff;
             unsigned char b = ((int)(col[2] * 255)) & 0xff;
@@ -283,16 +304,18 @@ render_segment_result (int ofstx, int ofsty, int draw_w, int draw_h,
         segmap_w, segmap_h, 0, GL_RGBA,
         GL_UNSIGNED_BYTE, imgbuf);
 
-#if 0
+#if !defined (RENDER_BY_BLEND)
     draw_colored_hair (srctex, texid, ofstx, ofsty, draw_w, draw_h, 0, hair_color);
 #else
     draw_2d_texture_ex (srctex, ofstx, ofsty, draw_w, draw_h, 0);
 
-    unsigned int blend_add  [] = {GL_ONE, GL_ONE, GL_ZERO, GL_ONE};
+    unsigned int blend_add  [] = {GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE};
     draw_2d_texture_blendfunc (texid, ofstx, ofsty, draw_w, draw_h, 0, blend_add);
 #endif
 
     glDeleteTextures (1, &texid);
+
+    render_hsv_circle (ofstx + draw_w - 100, ofsty + 100, s_hsv_h);
 }
 
 
@@ -392,7 +415,7 @@ main(int argc, char *argv[])
     if (input_name == NULL)
         input_name = input_name_default;
 
-    egl_init_with_platform_window_surface (2, 0, 0, 0, win_w, win_h);
+    egl_init_with_platform_window_surface (2, 0, 0, 0, win_w * 2, win_h);
 
     init_2d_renderer (win_w, win_h);
     init_hair_renderer (win_w, win_h);
@@ -449,6 +472,7 @@ main(int argc, char *argv[])
         interval = (count > 0) ? ttime[1] - ttime[0] : 0;
         ttime[0] = ttime[1];
 
+        glViewport (0, 0, win_w, win_h);
         glClear (GL_COLOR_BUFFER_BIT);
 
 #if defined (USE_INPUT_VIDEO_DECODE)
@@ -475,9 +499,14 @@ main(int argc, char *argv[])
 
         glClear (GL_COLOR_BUFFER_BIT);
 
+        glViewport (0, 0, win_w, win_h);
+        draw_2d_texture_ex (&captex, draw_x, draw_y, draw_w, draw_h, 0);
+
         /* visualize the segmentation results. */
+        glViewport (win_w, 0, win_w, win_h);
         render_segment_result (draw_x, draw_y, draw_w, draw_h, &captex, &segment_result);
 
+        glViewport (0, 0, win_w, win_h);
         draw_pmeter (0, 40);
 
         sprintf (strbuf, "Interval:%5.1f [ms]\nTFLite  :%5.1f [ms]", interval, invoke_ms);

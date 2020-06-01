@@ -10,7 +10,7 @@
 #include "util_debug.h"
 #include "util_texture.h"
 
-//#define USE_YUYV_TO_RGB_CONVERSION
+#define USE_YUYV_TO_RGB_CONVERSION
 
 
 static pthread_t    s_capture_thread;
