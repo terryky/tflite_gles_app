@@ -11,4 +11,4 @@ Hair segmentation and recoloring.
 ```
 $ ./gl2hair_segmentation -v assets/pexels_person.mp4
 ```
- ![capture image](gl2hair_segmentation_mov.jpg "capture image")
+ ![capture image](gl2hair_segmentation_mov.gif "capture image")
