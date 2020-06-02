@@ -19,7 +19,7 @@ Target platform: Linux PC / NVIDIA Jetson / RaspberryPi.
 
 ### [gl2hair_segmentation](https://github.com/terryky/tflite_gles_app/tree/master/gl2hair_segmentation)
 - Hair segmentation and recoloring.<br>
-[<img src="gl2hair_segmentation/gl2hair_segmentation.png" width=700>](https://github.com/terryky/tflite_gles_app/tree/master/gl2hair_segmentation)
+[<img src="gl2hair_segmentation/gl2hair_segmentation.jpg" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2hair_segmentation)
 
 ### [gl2handpose](https://github.com/terryky/tflite_gles_app/tree/master/gl2handpose)
 - 3D Handpose Estimation from single RGB images.<br>
