@@ -14,80 +14,161 @@
 #include "util_render2d.h"
 #include "tflite_detect.h"
 #include "camera_capture.h"
+#include "video_decode.h"
 
 #define UNUSED(x) (void)(x)
 
 
 #if defined (USE_INPUT_CAMERA_CAPTURE)
 static void
-update_capture_texture (int texid)
+update_capture_texture (texture_2d_t *captex)
 {
-    int   cap_w, cap_h;
-    void *cap_buf;
+    int      cap_w, cap_h;
+    uint32_t cap_fmt;
+    void     *cap_buf;
 
     get_capture_dimension (&cap_w, &cap_h);
+    get_capture_pixformat (&cap_fmt);
     get_capture_buffer (&cap_buf);
-
     if (cap_buf)
     {
-        glBindTexture (GL_TEXTURE_2D, texid);
-        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, cap_w, cap_h, GL_RGBA, GL_UNSIGNED_BYTE, cap_buf);
+        int texw = cap_w;
+        int texh = cap_h;
+        int texfmt = GL_RGBA;
+        switch (cap_fmt)
+        {
+        case pixfmt_fourcc('Y', 'U', 'Y', 'V'):
+            texw = cap_w / 2;
+            break;
+        default:
+            break;
+        }
+
+        glBindTexture (GL_TEXTURE_2D, captex->texid);
+        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, texw, texh, texfmt, GL_UNSIGNED_BYTE, cap_buf);
     }
 }
+
+static int
+init_capture_texture (texture_2d_t *captex)
+{
+    int      cap_w, cap_h;
+    uint32_t cap_fmt;
+
+    get_capture_dimension (&cap_w, &cap_h);
+    get_capture_pixformat (&cap_fmt);
+
+    create_2d_texture_ex (captex, NULL, cap_w, cap_h, cap_fmt);
+    start_capture ();
+
+    return 0;
+}
+
 #endif
+
+#if defined (USE_INPUT_VIDEO_DECODE)
+static void
+update_video_texture (texture_2d_t *captex)
+{
+    int   video_w, video_h;
+    uint32_t video_fmt;
+    void *video_buf;
+
+    get_video_dimension (&video_w, &video_h);
+    get_video_pixformat (&video_fmt);
+    get_video_buffer (&video_buf);
+
+    if (video_buf)
+    {
+        int texw = video_w;
+        int texh = video_h;
+        int texfmt = GL_RGBA;
+        switch (video_fmt)
+        {
+        case pixfmt_fourcc('Y', 'U', 'Y', 'V'):
+            texw = video_w / 2;
+            break;
+        default:
+            break;
+        }
+
+        glBindTexture (GL_TEXTURE_2D, captex->texid);
+        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, texw, texh, texfmt, GL_UNSIGNED_BYTE, video_buf);
+    }
+}
+
+static int
+init_video_texture (texture_2d_t *captex, const char *fname)
+{
+    int      vid_w, vid_h;
+    uint32_t vid_fmt;
+
+    open_video_file (fname);
+
+    get_video_dimension (&vid_w, &vid_h);
+    get_video_pixformat (&vid_fmt);
+
+    create_2d_texture_ex (captex, NULL, vid_w, vid_h, vid_fmt);
+    start_video_decode ();
+
+    return 0;
+}
+#endif /* USE_INPUT_VIDEO_DECODE */
 
 /* resize image to (300x300) for input image of MobileNet SSD */
 void
-feed_detect_image_uint8 (int texid, int win_w, int win_h)
+feed_detect_image_uint8 (texture_2d_t *srctex, int win_w, int win_h)
 {
-    int w, h;
+    int x, y, w, h;
     uint8_t *buf_u8 = (uint8_t *)get_detect_input_buf (&w, &h);
+    unsigned char *buf_ui8 = NULL;
+    static unsigned char *pui8 = NULL;
 
-    draw_2d_texture (texid, 0, win_h - h, w, h, 1);
+    if (pui8 == NULL)
+        pui8 = (unsigned char *)malloc(w * h * 4);
 
-#if 0 /* if your platform supports glReadPixles(GL_RGB), use this code. */
-    glPixelStorei (GL_PACK_ALIGNMENT, 1);
-    glReadPixels (0, 0, w, h, GL_RGB, GL_UNSIGNED_BYTE, buf);
-#else /* if your platform supports only glReadPixels(GL_RGBA), try this code. */
+    buf_ui8 = pui8;
+
+    draw_2d_texture_ex (srctex, 0, win_h - h, w, h, 1);
+
+    glPixelStorei (GL_PACK_ALIGNMENT, 4);
+    glReadPixels (0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, buf_ui8);
+
+    for (y = 0; y < h; y ++)
     {
-        int x, y;
-        unsigned char *bufRGBA = (unsigned char *)malloc (w * h * 4);
-        unsigned char *pRGBA = bufRGBA;
-        glPixelStorei (GL_PACK_ALIGNMENT, 4);
-        glReadPixels (0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, bufRGBA);
-
-        for (y = 0; y < h; y ++)
+        for (x = 0; x < w; x ++)
         {
-            for (x = 0; x < w; x ++)
-            {
-                int r = *pRGBA ++;
-                int g = *pRGBA ++;
-                int b = *pRGBA ++;
-                pRGBA ++;          /* skip alpha */
+            int r = *buf_ui8 ++;
+            int g = *buf_ui8 ++;
+            int b = *buf_ui8 ++;
+            buf_ui8 ++;          /* skip alpha */
 
-                *buf_u8 ++ = r;
-                *buf_u8 ++ = g;
-                *buf_u8 ++ = b;
-            }
+            *buf_u8 ++ = r;
+            *buf_u8 ++ = g;
+            *buf_u8 ++ = b;
         }
-        free (bufRGBA);
     }
-#endif
+
+    return;
 }
 
 void
-feed_detect_image_float (int texid, int win_w, int win_h)
+feed_detect_image_float (texture_2d_t *srctex, int win_w, int win_h)
 {
-    int w, h;
+    int x, y, w, h;
     float *buf_fp32 = (float *)get_detect_input_buf (&w, &h);
+    unsigned char *buf_ui8 = NULL;
+    static unsigned char *pui8 = NULL;
 
-    draw_2d_texture (texid, 0, win_h - h, w, h, 1);
+    if (pui8 == NULL)
+        pui8 = (unsigned char *)malloc(w * h * 4);
 
-    int x, y;
-    unsigned char *bufRGBA = (unsigned char *)malloc (w * h * 4);
-    unsigned char *pRGBA = bufRGBA;
+    buf_ui8 = pui8;
+
+    draw_2d_texture_ex (srctex, 0, win_h - h, w, h, 1);
+
     glPixelStorei (GL_PACK_ALIGNMENT, 4);
-    glReadPixels (0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, bufRGBA);
+    glReadPixels (0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, buf_ui8);
 
     /* convert UI8 [0, 255] ==> FP32 [-1, 1] */
     float mean = 128.0f;
@@ -96,26 +177,27 @@ feed_detect_image_float (int texid, int win_w, int win_h)
     {
         for (x = 0; x < w; x ++)
         {
-            int r = *pRGBA ++;
-            int g = *pRGBA ++;
-            int b = *pRGBA ++;
-            pRGBA ++;          /* skip alpha */
+            int r = *buf_ui8 ++;
+            int g = *buf_ui8 ++;
+            int b = *buf_ui8 ++;
+            buf_ui8 ++;          /* skip alpha */
             *buf_fp32 ++ = (float)(r - mean) / std;
             *buf_fp32 ++ = (float)(g - mean) / std;
             *buf_fp32 ++ = (float)(b - mean) / std;
         }
     }
-    free (bufRGBA);
+
+    return;
 }
 
 void
-feed_detect_image(int texid, int win_w, int win_h)
+feed_detect_image(texture_2d_t *srctex, int win_w, int win_h)
 {
     int type = get_detect_input_type ();
     if (type)
-        feed_detect_image_uint8 (texid, win_w, win_h);
+        feed_detect_image_uint8 (srctex, win_w, win_h);
     else
-        feed_detect_image_float (texid, win_w, win_h);
+        feed_detect_image_float (srctex, win_w, win_h);
 }
 
 void
@@ -143,6 +225,7 @@ render_detect_region (int ofstx, int ofsty, int texw, int texh, detect_result_t 
         draw_dbgstr_ex (buf, x1, y1, 1.0f, col_white, col);
     }
 }
+
 
 /* Adjust the texture size to fit the window size
  *
@@ -195,25 +278,35 @@ int
 main(int argc, char *argv[])
 {
     char input_name_default[] = "food.jpg";
-    char *input_name = input_name_default;
+    char *input_name = NULL;
     int count;
     int win_w = 960;
     int win_h = 540;
     int texid;
     int texw, texh, draw_x, draw_y, draw_w, draw_h;
+    texture_2d_t captex = {0};
     double ttime[10] = {0}, interval, invoke_ms;
     int enable_camera = 1;
     UNUSED (argc);
     UNUSED (*argv);
+#if defined (USE_INPUT_VIDEO_DECODE)
+    int enable_video = 0;
+#endif
 
     {
         int c;
-        const char *optstring = "x";
+        const char *optstring = "v:x";
 
         while ((c = getopt (argc, argv, optstring)) != -1)
         {
             switch (c)
             {
+#if defined (USE_INPUT_VIDEO_DECODE)
+            case 'v':
+                enable_video = 1;
+                input_name = optarg;
+                break;
+#endif
             case 'x':
                 enable_camera = 0;
                 break;
@@ -227,11 +320,15 @@ main(int argc, char *argv[])
         }
     }
 
+    if (input_name == NULL)
+        input_name = input_name_default;
+
     egl_init_with_platform_window_surface (2, 0, 0, 0, win_w, win_h);
 
     init_2d_renderer (win_w, win_h);
     init_pmeter (win_w, win_h, 500);
     init_dbgstr (win_w, win_h);
+
     init_tflite_detection ();
 
 #if defined (USE_GL_DELEGATE) || defined (USE_GPU_DELEGATEV2)
@@ -240,21 +337,37 @@ main(int argc, char *argv[])
     glViewport (0, 0, win_w, win_h);
 #endif
 
+#if defined (USE_INPUT_VIDEO_DECODE)
+    /* initialize FFmpeg video decode */
+    if (enable_video && init_video_decode () == 0)
+    {
+        init_video_texture (&captex, input_name);
+        texw = captex.width;
+        texh = captex.height;
+        enable_camera = 0;
+    }
+    else
+#endif
 #if defined (USE_INPUT_CAMERA_CAPTURE)
     /* initialize V4L2 capture function */
     if (enable_camera && init_capture () == 0)
     {
-        /* allocate texture buffer for captured image */
-        get_capture_dimension (&texw, &texh);
-        texid = create_2d_texture (NULL, texw, texh);
-        start_capture ();
+        init_capture_texture (&captex);
+        texw = captex.width;
+        texh = captex.height;
     }
     else
 #endif
-    load_jpg_texture (input_name, &texid, &texw, &texh);
+    {
+        load_jpg_texture (input_name, &texid, &texw, &texh);
+        captex.texid  = texid;
+        captex.width  = texw;
+        captex.height = texh;
+        captex.format = pixfmt_fourcc ('R', 'G', 'B', 'A');
+    }
     adjust_texture (win_w, win_h, texw, texh, &draw_x, &draw_y, &draw_w, &draw_h);
 
-    glClearColor (0.7f, 0.7f, 0.7f, 1.0f);
+    glClearColor (0.f, 0.f, 0.f, 1.0f);
 
     for (count = 0; ; count ++)
     {
@@ -270,23 +383,32 @@ main(int argc, char *argv[])
 
         glClear (GL_COLOR_BUFFER_BIT);
 
+#if defined (USE_INPUT_VIDEO_DECODE)
+        /* initialize FFmpeg video decode */
+        if (enable_video)
+        {
+            update_video_texture (&captex);
+        }
+#endif
 #if defined (USE_INPUT_CAMERA_CAPTURE)
         if (enable_camera)
         {
-            update_capture_texture (texid);
+            update_capture_texture (&captex);
         }
 #endif
 
         /* invoke object detection using TensorflowLite */
-        feed_detect_image (texid, win_w, win_h);
+        feed_detect_image (&captex, win_w, win_h);
 
         ttime[2] = pmeter_get_time_ms ();
         invoke_detect (&detection);
         ttime[3] = pmeter_get_time_ms ();
         invoke_ms = ttime[3] - ttime[2];
 
+        glClear (GL_COLOR_BUFFER_BIT);
+
         /* visualize the object detection results. */
-        draw_2d_texture (texid,  draw_x, draw_y, draw_w, draw_h, 0);
+        draw_2d_texture_ex (&captex, draw_x, draw_y, draw_w, draw_h, 0);
         render_detect_region (draw_x, draw_y, draw_w, draw_h, &detection);
 
         draw_pmeter (0, 40);

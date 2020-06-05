@@ -34,6 +34,27 @@ SRCS     += ../common/util_v4l2.c
 SRCS     += ../common/util_drm.c
 LIBS     += -ldrm
 
+#
+# for FFmpeg (libav) video decode
+#
+ENABLE_VDEC ?= false
+#ENABLE_VDEC := true
+ifeq ($(ENABLE_VDEC), true)
+CFLAGS   += -DUSE_INPUT_VIDEO_DECODE
+FFMPEG_LIBS=    libavdevice                        \
+                libavformat                        \
+                libavfilter                        \
+                libavcodec                         \
+                libswresample                      \
+                libswscale                         \
+                libavutil                          \
+
+CFLAGS += $(shell pkg-config --cflags $(FFMPEG_LIBS))
+LIBS   += $(shell pkg-config --libs   $(FFMPEG_LIBS)) -lm
+SRCS   += video_decode.c
+endif
+
+
 # ---------------------
 #  for TFLite
 # ---------------------
