@@ -6,7 +6,7 @@ INCLUDES += -I$(MAKETOP)/third_party/
 CFLAGS   += -Wall
 CFLAGS   += -O2
 
-LDFLAGS  +=
+LDFLAGS  += -L$(MAKETOP)/third_party/tensorflow/current/lite/lib/current/
 LIBS     += 
 
 all: $(TARGET)

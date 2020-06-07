@@ -3,19 +3,23 @@
 # > make TARGET_ENV=raspi
 #
 all:
-	make -C gl2blazeface
-	make -C gl2detection
-	make -C gl2facemesh
-	make -C gl2handpose
-	make -C gl2posenet
-	make -C gl2segmentation
-	make -C gl2style_transfer
+	$(MAKE) -C gl2blazeface
+	$(MAKE) -C gl2detection
+	$(MAKE) -C gl2facemesh
+	$(MAKE) -C gl2hair_segmentation
+	$(MAKE) -C gl2handpose
+	$(MAKE) -C gl2objectron
+	$(MAKE) -C gl2posenet
+	$(MAKE) -C gl2segmentation
+	$(MAKE) -C gl2style_transfer
 
 clean:
-	make -C gl2blazeface clean
-	make -C gl2detection clean
-	make -C gl2facemesh clean
-	make -C gl2handpose clean
-	make -C gl2posenet clean
-	make -C gl2segmentation clean
-	make -C gl2style_transfer clean
+	$(MAKE) -C gl2blazeface clean
+	$(MAKE) -C gl2detection clean
+	$(MAKE) -C gl2facemesh clean
+	$(MAKE) -C gl2hair_segmentation clean
+	$(MAKE) -C gl2handpose clean
+	$(MAKE) -C gl2objectron clean
+	$(MAKE) -C gl2posenet clean
+	$(MAKE) -C gl2segmentation clean
+	$(MAKE) -C gl2style_transfer clean
