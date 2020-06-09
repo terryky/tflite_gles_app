@@ -2,46 +2,30 @@
  * The MIT License (MIT)
  * Copyright (c) 2019 terryky1220@gmail.com
  * ------------------------------------------------ */
-#include "tensorflow/lite/kernels/register.h"
-#include "tensorflow/lite/model.h"
-#include "tensorflow/lite/optional_debug_tools.h"
-#if defined (USE_GL_DELEGATE)
-#include "tensorflow/lite/delegates/gpu/gl_delegate.h"
-#endif
-#if defined (USE_GPU_DELEGATEV2)
-#include "tensorflow/lite/delegates/gpu/delegate.h"
-#endif
+#include "util_tflite.h"
 #include "tflite_posenet.h"
+#include "ssbo_tensor.h"
 #include <list>
 #include <float.h>
-#include "ssbo_tensor.h"
 
 /* 
- * https://storage.googleapis.com/download.tensorflow.org/models/tflite/posenet_mobilenet_v1_100_257x257_multi_kpt_stripped.tflite
- * https://storage.googleapis.com/download.tensorflow.org/models/tflite/posenet_mobilenet_v1_100_513x513_multi_kpt_stripped.tflite
+ * [float]
+ *   https://storage.googleapis.com/download.tensorflow.org/models/tflite/posenet_mobilenet_v1_100_257x257_multi_kpt_stripped.tflite
+ *   https://storage.googleapis.com/download.tensorflow.org/models/tflite/posenet_mobilenet_v1_100_513x513_multi_kpt_stripped.tflite
+ *
+ * [int8 quant]
+ *   https://github.com/PINTO0309/PINTO_model_zoo/tree/master/03_posenet/01_posenet_v1/03_integer_quantization
  */
-#define POSENET_MODEL_PATH  "./posenet_model/posenet_mobilenet_v1_100_257x257_multi_kpt_stripped.tflite"
+#define POSENET_MODEL_PATH          "./posenet_model/posenet_mobilenet_v1_100_257x257_multi_kpt_stripped.tflite"
+#define POSENET_QUANT_MODEL_PATH    "./posenet_model/model-mobilenet_v1_101_257_integer_quant.tflite"
 
-using namespace std;
-using namespace tflite;
+static tflite_interpreter_t s_interpreter;
+static tflite_tensor_t      s_tensor_input;
+static tflite_tensor_t      s_tensor_heatmap;
+static tflite_tensor_t      s_tensor_offsets;
+static tflite_tensor_t      s_tensor_fw_disp;
+static tflite_tensor_t      s_tensor_bw_disp;
 
-unique_ptr<FlatBufferModel> model;
-unique_ptr<Interpreter> interpreter;
-ops::builtin::BuiltinOpResolver resolver;
-
-#if defined (USE_QUANT_TFLITE_MODEL)
-static uint8_t *in_ptr;
-static uint8_t *heatmap_ptr;
-static uint8_t *offsets_ptr;
-static uint8_t *fw_disp_ptr;
-static uint8_t *bw_disp_ptr;
-#else
-static float   *in_ptr;
-static float   *heatmap_ptr;
-static float   *offsets_ptr;
-static float   *fw_disp_ptr;
-static float   *bw_disp_ptr;
-#endif
 static int     s_img_w = 0;
 static int     s_img_h = 0;
 static int     s_hmp_w = 0;
@@ -85,197 +69,44 @@ static int pose_edges[][2] =
 };
 
 
-static void
-print_tensor_dim (int tensor_id)
-{
-    TfLiteIntArray *dim = interpreter->tensor(tensor_id)->dims;
-    
-    for (int i = 0; i < dim->size; i ++)
-    {
-        if (i > 0)
-            fprintf (stderr, "x");
-        fprintf (stderr, "%d", dim->data[i]);
-    }
-    fprintf (stderr, "\n");
-}
-
-static void
-print_tensor_info ()
-{
-    int i, idx;
-    int in_size  = interpreter->inputs().size();
-    int out_size = interpreter->outputs().size();
-
-    fprintf (stderr, "-----------------------------------------------------------------------------\n");
-    fprintf (stderr, "tensors size     : %zu\n", interpreter->tensors_size());
-    fprintf (stderr, "nodes   size     : %zu\n", interpreter->nodes_size());
-    fprintf (stderr, "number of inputs : %d\n", in_size);
-    fprintf (stderr, "number of outputs: %d\n", out_size);
-    fprintf (stderr, "input(0) name    : %s\n", interpreter->GetInputName(0));
-
-    fprintf (stderr, "\n");
-    fprintf (stderr, "-----------------------------------------------------------------------------\n");
-    fprintf (stderr, "                     name                     bytes  type  scale   zero_point\n");
-    fprintf (stderr, "-----------------------------------------------------------------------------\n");
-    int t_size = interpreter->tensors_size();
-    for (i = 0; i < t_size; i++) 
-    {
-        fprintf (stderr, "Tensor[%2d] %-32s %8zu, %2d, %f, %3d\n", i,
-            interpreter->tensor(i)->name, 
-            interpreter->tensor(i)->bytes,
-            interpreter->tensor(i)->type,
-            interpreter->tensor(i)->params.scale,
-            interpreter->tensor(i)->params.zero_point);
-    }
-
-    fprintf (stderr, "\n");
-    fprintf (stderr, "-----------------------------------------------------------------------------\n");
-    fprintf (stderr, " Input Tensor Dimension\n");
-    fprintf (stderr, "-----------------------------------------------------------------------------\n");
-    for (i = 0; i < in_size; i ++)
-    {
-        idx = interpreter->inputs()[i];
-        fprintf (stderr, "Tensor[%2d]: ", idx);
-        print_tensor_dim (idx);
-    }
-
-    fprintf (stderr, "\n");
-    fprintf (stderr, "-----------------------------------------------------------------------------\n");
-    fprintf (stderr, " Output Tensor Dimension\n");
-    fprintf (stderr, "-----------------------------------------------------------------------------\n");
-    for (i = 0; i < out_size; i ++)
-    {
-        idx = interpreter->outputs()[i];
-        fprintf (stderr, "Tensor[%2d]: ", idx);
-        print_tensor_dim (idx);
-    }
-
-    fprintf (stderr, "\n");
-    fprintf (stderr, "-----------------------------------------------------------------------------\n");
-    PrintInterpreterState(interpreter.get());
-    fprintf (stderr, "-----------------------------------------------------------------------------\n");
-}
-
 int
-init_tflite_posenet(ssbo_t *ssbo)
+init_tflite_posenet(int use_quantized_tflite, ssbo_t *ssbo)
 {
-    model = FlatBufferModel::BuildFromFile(POSENET_MODEL_PATH);
-    if (!model)
+    const char *posenet_model;
+
+    if (use_quantized_tflite)
     {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
-        return -1;
+        posenet_model = POSENET_QUANT_MODEL_PATH;
+        tflite_create_interpreter_from_file (&s_interpreter, posenet_model);
+        tflite_get_tensor_by_name (&s_interpreter, 0, "image",              &s_tensor_input);
+        tflite_get_tensor_by_name (&s_interpreter, 1, "heatmap",            &s_tensor_heatmap);
+        tflite_get_tensor_by_name (&s_interpreter, 1, "offset_2",           &s_tensor_offsets);
+        tflite_get_tensor_by_name (&s_interpreter, 1, "displacement_fwd_2", &s_tensor_fw_disp);
+        tflite_get_tensor_by_name (&s_interpreter, 1, "displacement_bwd_2", &s_tensor_bw_disp);
     }
-
-    InterpreterBuilder(*model, resolver)(&interpreter);
-    if (!interpreter)
+    else
     {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
-        return -1;
+        posenet_model = POSENET_MODEL_PATH;
+        tflite_create_interpreter_from_file (&s_interpreter, posenet_model);
+        tflite_get_tensor_by_name (&s_interpreter, 0, "sub_2",                                  &s_tensor_input);
+        tflite_get_tensor_by_name (&s_interpreter, 1, "MobilenetV1/heatmap_2/BiasAdd",          &s_tensor_heatmap);
+        tflite_get_tensor_by_name (&s_interpreter, 1, "MobilenetV1/offset_2/BiasAdd",           &s_tensor_offsets);
+        tflite_get_tensor_by_name (&s_interpreter, 1, "MobilenetV1/displacement_fwd_2/BiasAdd", &s_tensor_fw_disp);
+        tflite_get_tensor_by_name (&s_interpreter, 1, "MobilenetV1/displacement_bwd_2/BiasAdd", &s_tensor_bw_disp);
     }
-
-#if defined (USE_GL_DELEGATE)
-    const TfLiteGpuDelegateOptions options = {
-        .metadata = NULL,
-        .compile_options = {
-            .precision_loss_allowed = 1,  // FP16
-            .preferred_gl_object_type = TFLITE_GL_OBJECT_TYPE_FASTEST,
-            .dynamic_batch_enabled = 0,   // Not fully functional yet
-        },
-    };
-    auto* delegate = TfLiteGpuDelegateCreate(&options);
-
-#if defined (USE_INPUT_SSBO)
-    if (ssbo)
-    {
-        int ssbo_id = ssbo->ssbo_id;
-        int tensor_index = interpreter->inputs()[0];
-
-        /* check enough space in SSBO */
-        TfLiteIntArray *dim = interpreter->tensor(tensor_index)->dims;
-        int tensor_w = dim->data[2];
-        int tensor_h = dim->data[1];
-
-        if (ssbo->width < tensor_w || ssbo->height < tensor_h)
-        {
-            fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
-            return -1;
-        }
-
-        if (TfLiteGpuDelegateBindBufferToTensor(delegate, ssbo_id, tensor_index) != kTfLiteOk)
-        {
-            fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
-            return -1;
-        }
-        ssbo->active_width  = tensor_w;
-        ssbo->active_height = tensor_h;
-    }
-#endif
-
-    if (interpreter->ModifyGraphWithDelegate(delegate) != kTfLiteOk)
-    {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
-        return -1;
-    }
-#endif
-#if defined (USE_GPU_DELEGATEV2)
-    const TfLiteGpuDelegateOptionsV2 options = {
-        .is_precision_loss_allowed = 1, // FP16
-        .inference_preference = TFLITE_GPU_INFERENCE_PREFERENCE_FAST_SINGLE_ANSWER,
-        .inference_priority1  = TFLITE_GPU_INFERENCE_PRIORITY_MIN_LATENCY,
-        .inference_priority2  = TFLITE_GPU_INFERENCE_PRIORITY_AUTO,
-        .inference_priority3  = TFLITE_GPU_INFERENCE_PRIORITY_AUTO,
-    };
-    auto* delegate = TfLiteGpuDelegateV2Create(&options);
-    if (interpreter->ModifyGraphWithDelegate(delegate) != kTfLiteOk)
-    {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
-        return -1;
-    }
-#endif
-
-    interpreter->SetNumThreads(4);
-    if (interpreter->AllocateTensors() != kTfLiteOk)
-    {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
-        return -1;
-    }
-
-#if 1 /* for debug */
-    print_tensor_info ();
-#endif
-    
-#if defined (USE_QUANT_TFLITE_MODEL)
-    in_ptr      = interpreter->typed_input_tensor<uint8_t>(0);
-    heatmap_ptr = interpreter->typed_output_tensor<uint8_t>(2);
-    offsets_ptr = interpreter->typed_output_tensor<uint8_t>(3);
-    fw_disp_ptr = interpreter->typed_output_tensor<uint8_t>(0);
-    bw_disp_ptr = interpreter->typed_output_tensor<uint8_t>(1);
-#else
-    in_ptr      = interpreter->typed_input_tensor<float>(0);
-    heatmap_ptr = interpreter->typed_output_tensor<float>(0);
-    offsets_ptr = interpreter->typed_output_tensor<float>(1);
-    fw_disp_ptr = interpreter->typed_output_tensor<float>(2);
-    bw_disp_ptr = interpreter->typed_output_tensor<float>(3);
-#endif
 
     /* input image dimention */
-    int input_idx = interpreter->inputs()[0];
-    TfLiteIntArray *dim = interpreter->tensor(input_idx)->dims;
-    s_img_w = dim->data[2];
-    s_img_h = dim->data[1];
+    s_img_w = s_tensor_input.dims[2];
+    s_img_h = s_tensor_input.dims[1];
     fprintf (stderr, "input image size: (%d, %d)\n", s_img_w, s_img_h);
 
     /* heatmap dimention */
-    int heatmap_idx = interpreter->outputs()[0];
-    TfLiteIntArray *hmp_dim = interpreter->tensor(heatmap_idx)->dims;
-    s_hmp_w = hmp_dim->data[2];
-    s_hmp_h = hmp_dim->data[1];
+    s_hmp_w = s_tensor_heatmap.dims[2];
+    s_hmp_h = s_tensor_heatmap.dims[1];
     fprintf (stderr, "heatmap size: (%d, %d)\n", s_hmp_w, s_hmp_h);
 
     /* displacement forward vector dimention */
-    int fw_disp_idx = interpreter->outputs()[2];
-    TfLiteIntArray *fwd_dim = interpreter->tensor(fw_disp_idx)->dims;
-    s_edge_num = fwd_dim->data[3] / 2;
+    s_edge_num = s_tensor_fw_disp.dims[3] / 2;
 
     return 0;
 }
@@ -283,20 +114,17 @@ init_tflite_posenet(ssbo_t *ssbo)
 void *
 get_posenet_input_buf (int *w, int *h)
 {
-    *w = s_img_w;
-    *h = s_img_h;
-    return in_ptr;
+    *w = s_tensor_input.dims[2];
+    *h = s_tensor_input.dims[1];
+    return s_tensor_input.ptr;
 }
 
 static float
 get_heatmap_score (int idx_y, int idx_x, int key_id)
 {
     int idx = (idx_y * s_hmp_w * kPoseKeyNum) + (idx_x * kPoseKeyNum) + key_id;
-#if defined (USE_QUANT_TFLITE_MODEL)
-    return heatmap_ptr[idx] * 0.00390625;
-#else
+    float *heatmap_ptr = (float *)s_tensor_heatmap.ptr;
     return heatmap_ptr[idx];
-#endif
 }
 
 static void
@@ -305,15 +133,9 @@ get_displacement_vector (void *disp_buf, float *dis_x, float *dis_y, int idx_y, 
     int idx0 = (idx_y * s_hmp_w * s_edge_num*2) + (idx_x * s_edge_num*2) + (edge_id + s_edge_num);
     int idx1 = (idx_y * s_hmp_w * s_edge_num*2) + (idx_x * s_edge_num*2) + (edge_id);
 
-#if defined (USE_QUANT_TFLITE_MODEL)
-    uint8_t *disp_buf_ui8 = (uint8_t *)disp_buf;
-    *dis_x = (disp_buf_ui8[idx0] - 163) * 2.2850129f;   // (disp_buf_ui8[idx0] - 80) * 2.3249127f   [FIXME]
-    *dis_y = (disp_buf_ui8[idx1] - 163) * 2.2850129f;   // (disp_buf_ui8[idx1] - 80) * 2.3249127f
-#else
     float *disp_buf_fp = (float *)disp_buf;
     *dis_x = disp_buf_fp[idx0];
     *dis_y = disp_buf_fp[idx1];
-#endif
 }
 
 static void
@@ -321,16 +143,10 @@ get_offset_vector (float *ofst_x, float *ofst_y, int idx_y, int idx_x, int pose_
 {
     int idx0 = (idx_y * s_hmp_w * kPoseKeyNum*2) + (idx_x * kPoseKeyNum*2) + (pose_id + kPoseKeyNum);
     int idx1 = (idx_y * s_hmp_w * kPoseKeyNum*2) + (idx_x * kPoseKeyNum*2) + (pose_id);
+    float *offsets_ptr = (float *)s_tensor_offsets.ptr;
 
-#if defined (USE_QUANT_TFLITE_MODEL)
-    uint8_t ofst_x8 = offsets_ptr[idx0];
-    uint8_t ofst_y8 = offsets_ptr[idx1];
-    *ofst_x = (ofst_x8 - 137) * 0.5732986927032471f;
-    *ofst_y = (ofst_y8 - 137) * 0.5732986927032471f;
-#else
     *ofst_x = offsets_ptr[idx0];
     *ofst_y = offsets_ptr[idx1];
-#endif
 }
 
 /* enqueue an item in descending order. */
@@ -367,10 +183,10 @@ enqueue_score (std::list<part_score_t> &queue, int x, int y, int key, float scor
 static bool
 score_is_max_in_local_window (int key, float score, int idx_y, int idx_x, int max_rad)
 {
-    int xs = max (idx_x - max_rad,     0);
-    int ys = max (idx_y - max_rad,     0);
-    int xe = min (idx_x + max_rad + 1, s_hmp_w);
-    int ye = min (idx_y + max_rad + 1, s_hmp_h);
+    int xs = std::max (idx_x - max_rad,     0);
+    int ys = std::max (idx_y - max_rad,     0);
+    int xe = std::min (idx_x + max_rad + 1, s_hmp_w);
+    int ye = std::min (idx_y + max_rad + 1, s_hmp_h);
 
     for (int y = ys; y < ye; y ++)
     {
@@ -426,10 +242,10 @@ get_pos_to_near_index (float pos_x, float pos_y, int *idx_x, int *idx_y)
     int hmp_idx_x = roundf (hmp_pos_x);
     int hmp_idx_y = roundf (hmp_pos_y);
 
-    hmp_idx_x = min (hmp_idx_x, s_hmp_w -1);
-    hmp_idx_y = min (hmp_idx_y, s_hmp_h -1);
-    hmp_idx_x = max (hmp_idx_x, 0);
-    hmp_idx_y = max (hmp_idx_y, 0);
+    hmp_idx_x = std::min (hmp_idx_x, s_hmp_w -1);
+    hmp_idx_y = std::min (hmp_idx_y, s_hmp_h -1);
+    hmp_idx_x = std::max (hmp_idx_x, 0);
+    hmp_idx_y = std::max (hmp_idx_y, 0);
 
     *idx_x = hmp_idx_x;
     *idx_y = hmp_idx_y;
@@ -493,6 +309,9 @@ decode_pose (part_score_t &root, keypoint_t *keys)
     int idx_x = root.idx_x;
     int idx_y = root.idx_y;
     int keyid = root.key_id;
+    float *fw_disp_ptr = (float *)s_tensor_fw_disp.ptr;
+    float *bw_disp_ptr = (float *)s_tensor_bw_disp.ptr;
+
     float pos_x, pos_y;
     get_index_to_pos (idx_x, idx_y, keyid, &pos_x, &pos_y);
 
@@ -662,72 +481,10 @@ decode_single_pose (posenet_result_t *pose_result)
     pose_result->pose[0].pose_score = 1.0f;
 }
 
-
-#if 0 /* for debug */
-static void
-load_dummy_img()
-{
-    FILE *fp;
-    
-    if ((fp = fopen ("000000000139_RGB888_SIZE300x300.img", "rb" )) == NULL)
-    {
-        fprintf (stderr, "Can't open img file.\n");
-        return;
-    }
-
-    fseek (fp, 0, SEEK_END);
-    size_t len = ftell (fp);
-    fseek( fp, 0, SEEK_SET );
-
-    void *buf = malloc(len);
-    if (fread (buf, 1, len, fp) < len)
-    {
-        fprintf (stderr, "Can't read img file.\n");
-        return;
-    }
-
-    memcpy (in_ptr, buf, 300 * 300 * 3);
-
-    free (buf);
-}
-
-static void
-save_img ()
-{
-    static int s_cnt = 0;
-    FILE *fp;
-    char strFName[ 128 ];
-    int w = s_img_w;
-    int h = s_img_h;
-    
-    sprintf (strFName, "detect%04d_RGB888_SIZE%dx%d.img", s_cnt, w, h);
-    s_cnt ++;
-
-    fp = fopen (strFName, "wb");
-    if (fp == NULL)
-    {
-        fprintf (stderr, "FATAL ERROR at %s(%d)\n", __FILE__, __LINE__);
-        return;
-    }
-
-    fwrite (in_ptr, 3, w * h, fp);
-    fclose (fp);
-}
-#endif
-
-
 int
 invoke_posenet (posenet_result_t *pose_result)
 {
-#if 0 /* load dummy image. */
-    load_dummy_img();
-#endif
-
-#if 0 /* dump image of DL network input. */
-    save_img ();
-#endif
-
-    if (interpreter->Invoke() != kTfLiteOk)
+    if (s_interpreter.interpreter->Invoke() != kTfLiteOk)
     {
         fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
         return -1;
@@ -742,7 +499,7 @@ invoke_posenet (posenet_result_t *pose_result)
     else
         decode_single_pose (pose_result);
 
-    pose_result->pose[0].heatmap = heatmap_ptr;
+    pose_result->pose[0].heatmap = s_tensor_heatmap.ptr;
     pose_result->pose[0].heatmap_dims[0] = s_hmp_w;
     pose_result->pose[0].heatmap_dims[1] = s_hmp_h;
 

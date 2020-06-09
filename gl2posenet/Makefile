@@ -16,7 +16,8 @@ SRCS += $(MAKETOP)/common/util_texture.c
 SRCS += $(MAKETOP)/common/util_render2d.c
 SRCS += $(MAKETOP)/common/util_debugstr.c
 SRCS += $(MAKETOP)/common/util_pmeter.c
-SRCS += ../common/util_particle.c
+SRCS += $(MAKETOP)/common/util_tflite.cpp
+SRCS += $(MAKETOP)/common/util_particle.c
 SRCS += $(MAKETOP)/common/winsys/$(WINSYS_SRC).c
 
 OBJS += $(patsubst %.cc,%.o,$(patsubst %.cpp,%.o,$(patsubst %.c,%.o,$(SRCS))))

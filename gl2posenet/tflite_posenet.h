@@ -59,7 +59,7 @@ typedef struct _posenet_result_t
 
 
 
-extern int init_tflite_posenet (ssbo_t *ssbo);
+extern int init_tflite_posenet (int use_quantized_tflite, ssbo_t *ssbo);
 extern void  *get_posenet_input_buf (int *w, int *h);
 
 extern int invoke_posenet (posenet_result_t *pose_result);

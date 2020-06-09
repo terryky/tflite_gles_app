@@ -148,9 +148,9 @@ feed_posenet_image(texture_2d_t *srctex, ssbo_t *ssbo, int win_w, int win_h)
     glPixelStorei (GL_PACK_ALIGNMENT, 4);
     glReadPixels (0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, buf_ui8);
 
-    /* convert UI8 [0, 255] ==> FP32 [-1, 1] */
-    float mean = 128.0f;
-    float std  = 128.0f;
+    /* convert UI8 [0, 255] ==> FP32 [0, 1] */
+    float mean =   0.0f;
+    float std  = 255.0f;
     for (y = 0; y < h; y ++)
     {
         for (x = 0; x < w; x ++)
@@ -410,13 +410,14 @@ main(int argc, char *argv[])
     char input_name_default[] = "pakutaso_person.jpg";
     char *input_name = NULL;
     int count;
-    int win_w = 960;
-    int win_h = 540;
+    int win_w = 600;
+    int win_h = 600;
     int texid;
     int texw, texh, draw_x, draw_y, draw_w, draw_h;
     texture_2d_t captex = {0};
     ssbo_t *ssbo = NULL;
     double ttime[10] = {0}, interval, invoke_ms;
+    int use_quantized_tflite = 0;
     int enable_camera = 1;
     UNUSED (argc);
     UNUSED (*argv);
@@ -426,12 +427,15 @@ main(int argc, char *argv[])
 
     {
         int c;
-        const char *optstring = "v:x";
+        const char *optstring = "qv:x";
 
         while ((c = getopt (argc, argv, optstring)) != -1)
         {
             switch (c)
             {
+            case 'q':
+                use_quantized_tflite = 1;
+                break;
 #if defined (USE_INPUT_VIDEO_DECODE)
             case 'v':
                 enable_video = 1;
@@ -464,7 +468,7 @@ main(int argc, char *argv[])
     ssbo = init_ssbo_tensor (512, 512);
 #endif
 
-    init_tflite_posenet (ssbo);
+    init_tflite_posenet (use_quantized_tflite, ssbo);
 
 #if defined (USE_GL_DELEGATE) || defined (USE_GPU_DELEGATEV2)
     /* we need to recover framebuffer because GPU Delegate changes the context */
