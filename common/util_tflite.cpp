@@ -120,7 +120,7 @@ tflite_print_tensor_info (std::unique_ptr<Interpreter> &interpreter)
 
 
 static int
-modify_graph_with_delegate (tflite_interpreter_t *p)
+modify_graph_with_delegate (tflite_interpreter_t *p, tflite_createopt_t *opt)
 {
     TfLiteDelegate *delegate = NULL;
 
@@ -134,6 +134,21 @@ modify_graph_with_delegate (tflite_interpreter_t *p)
         },
     };
     delegate = TfLiteGpuDelegateCreate(&options);
+
+#if defined (USE_INPUT_SSBO)
+    if (opt && opt->gpubuffer)
+    {
+        int ssbo_id = opt->gpubuffer;
+        int tensor_index = p->interpreter->inputs()[0];
+
+        TfLiteIntArray *dim = interpreter->tensor(tensor_index)->dims;
+        if (TfLiteGpuDelegateBindBufferToTensor(delegate, ssbo_id, tensor_index) != kTfLiteOk)
+        {
+            DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+            return -1;
+        }
+    }
+#endif
 #endif
 
 #if defined (USE_GPU_DELEGATEV2)
@@ -206,7 +221,44 @@ tflite_create_interpreter_from_file (tflite_interpreter_t *p, const char *model_
         return -1;
     }
 
-    if (modify_graph_with_delegate (p) < 0)
+    if (modify_graph_with_delegate (p, NULL) < 0)
+    {
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+
+    p->interpreter->SetNumThreads(4);
+    if (p->interpreter->AllocateTensors() != kTfLiteOk)
+    {
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+
+#if 1 /* for debug */
+    tflite_print_tensor_info (p->interpreter);
+#endif
+
+    return 0;
+}
+
+int
+tflite_create_interpreter_ex_from_file (tflite_interpreter_t *p, const char *model_path, tflite_createopt_t *opt)
+{
+    p->model = FlatBufferModel::BuildFromFile (model_path);
+    if (!p->model)
+    {
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+
+    InterpreterBuilder(*(p->model), p->resolver)(&(p->interpreter));
+    if (!p->interpreter)
+    {
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+
+    if (modify_graph_with_delegate (p, opt) < 0)
     {
         DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
         return -1;

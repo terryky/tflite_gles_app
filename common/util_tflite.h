@@ -34,6 +34,10 @@ typedef struct tflite_interpreter_t
     tflite::ops::builtin::BuiltinOpResolver  resolver;
 } tflite_interpreter_t;
 
+typedef struct tflite_createopt_t
+{
+    int gpubuffer;
+} tflite_createopt_t;
 
 typedef struct tflite_tensor_t
 {
@@ -53,6 +57,7 @@ int tflite_create_interpreter (tflite_interpreter_t *p, const char *model_buf, s
 int tflite_get_tensor_by_name (tflite_interpreter_t *p, int io, const char *name, tflite_tensor_t *ptensor);
 
 int tflite_create_interpreter_from_file (tflite_interpreter_t *p, const char *model_path);
+int tflite_create_interpreter_ex_from_file (tflite_interpreter_t *p, const char *model_path, tflite_createopt_t *opt);
 
 
 
