@@ -15,8 +15,10 @@
  *
  * [int8 quant]
  *   https://github.com/PINTO0309/PINTO_model_zoo/tree/master/03_posenet/01_posenet_v1/03_integer_quantization
+ *   https://github.com/PINTO0309/PINTO_model_zoo/tree/master/03_posenet/03_posenet/03_integer_quantization
  */
 #define POSENET_MODEL_PATH          "./posenet_model/posenet_mobilenet_v1_100_257x257_multi_kpt_stripped.tflite"
+//#define POSENET_QUANT_MODEL_PATH  "./posenet_model/posenet_mobilenet_v1_100_257x257_multi_kpt_stripped_integer_quant.tflite"
 #define POSENET_QUANT_MODEL_PATH    "./posenet_model/model-mobilenet_v1_101_257_integer_quant.tflite"
 
 static tflite_interpreter_t s_interpreter;
@@ -464,6 +466,28 @@ decode_single_pose (posenet_result_t *pose_result)
             }
         }
     }
+
+#if 0
+    for (int i = 0; i < kPoseKeyNum; i ++)
+    {
+        fprintf (stderr, "---------[%d] --------\n", i);
+        for (int y = 0; y < s_hmp_h; y ++)
+        {
+            fprintf (stderr, "[%d] ", y);
+            for (int x = 0; x < s_hmp_w; x ++)
+            {
+                float confidence = get_heatmap_score (y, x, i);
+                fprintf (stderr, "%6.3f ", confidence);
+
+                if (x == max_block_idx[i][0] && y == max_block_idx[i][1])
+                    fprintf (stderr, "#");
+                else
+                    fprintf (stderr, " ");
+            }
+            fprintf (stderr, "\n");
+        }
+    }
+#endif
 
     /* find the offset vector and calculate the keypoint coordinates. */
     for (int i = 0; i < kPoseKeyNum;i ++ )

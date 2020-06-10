@@ -1,4 +1,4 @@
-#tflite file in this directory was downloaded from:
+# tflite file in this directory was downloaded from:
 
 ## float model
 - https://www.tensorflow.org/lite/models/pose_estimation/overview
@@ -7,3 +7,4 @@
 
 ## int8 quantized model
 - https://github.com/PINTO0309/PINTO_model_zoo/tree/master/03_posenet/01_posenet_v1/03_integer_quantization
+- https://github.com/PINTO0309/PINTO_model_zoo/tree/master/03_posenet/03_posenet/03_integer_quantization
