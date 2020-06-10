@@ -1,12 +1,20 @@
 # gl2segmentation
-TensorflowLite Semantic image segmentation application.
- - Load JPEG file as source image for pose estimation.
+Semantic image segmentation.
  - Invoke Tensorflow Lite with [Deeplab](https://www.tensorflow.org/lite/models/segmentation/overview).
- - visualize the result of detection.
 
  ![capture image](gl2segmentation.png "capture image")
 
-## Visualize Heatmap
+
+#### stream input example
+
+```
+$  ./gl2segmentation -v assets/pexels_video.mp4
+```
+ ![capture image](gl2segmentation_mov.gif "capture image")
+
+
+
+#### Visualize Heatmap
 To visualize the heatmap of each classes, edit just one line.
 
 ```
