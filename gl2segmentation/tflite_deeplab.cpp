@@ -57,7 +57,7 @@ init_class_color ()
             col[1] = (rand () % 255) / 255.0f;
             col[2] = (rand () % 255) / 255.0f;
         }
-        col[3] = 0.9f;
+        col[3] = 0.8f;
     }
     return 0;
 }
