@@ -17,6 +17,7 @@
 #include "util_matrix.h"
 #include "tflite_objectron.h"
 #include "camera_capture.h"
+#include "video_decode.h"
 
 #define UNUSED(x) (void)(x)
 
@@ -25,9 +26,9 @@
 static void
 update_capture_texture (texture_2d_t *captex)
 {
-    int   cap_w, cap_h;
+    int      cap_w, cap_h;
     uint32_t cap_fmt;
-    void *cap_buf;
+    void     *cap_buf;
 
     get_capture_dimension (&cap_w, &cap_h);
     get_capture_pixformat (&cap_fmt);
@@ -68,7 +69,57 @@ init_capture_texture (texture_2d_t *captex)
 
 #endif
 
+#if defined (USE_INPUT_VIDEO_DECODE)
+static void
+update_video_texture (texture_2d_t *captex)
+{
+    int   video_w, video_h;
+    uint32_t video_fmt;
+    void *video_buf;
 
+    get_video_dimension (&video_w, &video_h);
+    get_video_pixformat (&video_fmt);
+    get_video_buffer (&video_buf);
+
+    if (video_buf)
+    {
+        int texw = video_w;
+        int texh = video_h;
+        int texfmt = GL_RGBA;
+        switch (video_fmt)
+        {
+        case pixfmt_fourcc('Y', 'U', 'Y', 'V'):
+            texw = video_w / 2;
+            break;
+        default:
+            break;
+        }
+
+        glBindTexture (GL_TEXTURE_2D, captex->texid);
+        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, texw, texh, texfmt, GL_UNSIGNED_BYTE, video_buf);
+    }
+}
+
+static int
+init_video_texture (texture_2d_t *captex, const char *fname)
+{
+    int      vid_w, vid_h;
+    uint32_t vid_fmt;
+
+    open_video_file (fname);
+
+    get_video_dimension (&vid_w, &vid_h);
+    get_video_pixformat (&vid_fmt);
+
+    create_2d_texture_ex (captex, NULL, vid_w, vid_h, vid_fmt);
+    start_video_decode ();
+
+    return 0;
+}
+#endif /* USE_INPUT_VIDEO_DECODE */
+
+
+/* resize image to DNN network input size and convert to fp32. */
 void
 feed_objectron_image(texture_2d_t *srctex, int win_w, int win_h)
 {
@@ -235,7 +286,7 @@ int
 main(int argc, char *argv[])
 {
     char input_name_default[] = "chair.jpg";
-    char *input_name = input_name_default;
+    char *input_name = NULL;
     int count;
     int win_w = 800;
     int win_h = 800;
@@ -246,30 +297,42 @@ main(int argc, char *argv[])
     int enable_camera = 1;
     UNUSED (argc);
     UNUSED (*argv);
+#if defined (USE_INPUT_VIDEO_DECODE)
+    int enable_video = 0;
+#endif
 
     {
         int c;
-        const char *optstring = "qx";
+        const char *optstring = "qv:x";
 
-        while ((c = getopt (argc, argv, optstring)) != -1) 
+        while ((c = getopt (argc, argv, optstring)) != -1)
         {
             switch (c)
             {
             case 'q':
                 use_quantized_tflite = 1;
                 break;
+#if defined (USE_INPUT_VIDEO_DECODE)
+            case 'v':
+                enable_video = 1;
+                input_name = optarg;
+                break;
+#endif
             case 'x':
                 enable_camera = 0;
                 break;
             }
         }
 
-        while (optind < argc) 
+        while (optind < argc)
         {
             input_name = argv[optind];
             optind++;
         }
     }
+
+    if (input_name == NULL)
+        input_name = input_name_default;
 
     egl_init_with_platform_window_surface (2, 0, 0, 0, win_w, win_h);
 
@@ -285,6 +348,17 @@ main(int argc, char *argv[])
     glViewport (0, 0, win_w, win_h);
 #endif
 
+#if defined (USE_INPUT_VIDEO_DECODE)
+    /* initialize FFmpeg video decode */
+    if (enable_video && init_video_decode () == 0)
+    {
+        init_video_texture (&captex, input_name);
+        texw = captex.width;
+        texh = captex.height;
+        enable_camera = 0;
+    }
+    else
+#endif
 #if defined (USE_INPUT_CAMERA_CAPTURE)
     /* initialize V4L2 capture function */
     if (enable_camera && init_capture () == 0)
@@ -330,6 +404,13 @@ main(int argc, char *argv[])
         glClear (GL_COLOR_BUFFER_BIT);
         glViewport (0, 0, win_w, win_h);
 
+#if defined (USE_INPUT_VIDEO_DECODE)
+        /* initialize FFmpeg video decode */
+        if (enable_video)
+        {
+            update_video_texture (&captex);
+        }
+#endif
 #if defined (USE_INPUT_CAMERA_CAPTURE)
         if (enable_camera)
         {
