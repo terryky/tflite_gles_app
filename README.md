@@ -26,11 +26,13 @@ Target platform: Linux PC / NVIDIA Jetson / RaspberryPi.
 [<img src="gl2handpose/gl2handpose.png" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2handpose)
 
 ### [gl2objectron](https://github.com/terryky/tflite_gles_app/tree/master/gl2objectron)
-- 3D Object Detection.<br>
+- 3D Object Detection.
+- TensorRT port is [**HERE**](https://github.com/terryky/tflite_gles_app/tree/master/trt_objectron)<br>
 [<img src="gl2objectron/gl2objectron.png" width=300>](https://github.com/terryky/tflite_gles_app/tree/master/gl2objectron)
 
 ### [gl2posenet](https://github.com/terryky/tflite_gles_app/tree/master/gl2posenet)
-- Pose Estimation.<br>
+- Pose Estimation.
+- TensorRT port is [**HERE**](https://github.com/terryky/tflite_gles_app/tree/master/trt_posenet)<br>
 [<img src="gl2posenet/gl2posenet.png" width=500>](https://github.com/terryky/tflite_gles_app/tree/master/gl2posenet)
 
 ### [gl2segmentation](https://github.com/terryky/tflite_gles_app/tree/master/gl2segmentation)
