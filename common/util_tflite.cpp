@@ -14,6 +14,12 @@ print_tensor_dim (TfLiteTensor *tensor)
 {
     TfLiteIntArray *dim = tensor->dims;
 
+    if (dim == NULL)
+    {
+        DBG_LOG ("[]");
+        return;
+    }
+
     DBG_LOG ("[");
     for (int i = 0; i < dim->size; i ++)
     {
@@ -48,6 +54,12 @@ get_tflite_type_str (TfLiteType type)
 static void
 print_tensor (TfLiteTensor *tensor, int idx)
 {
+    if (tensor == NULL)
+    {
+        DBG_LOG ("Tensor[%3d]  \n", idx );
+        return;
+    }
+
     DBG_LOG ("Tensor[%3d] %8zu, %2d(%s), (%3d, %8.6f) %-32s ", idx,
         tensor->bytes,
         tensor->type,
@@ -257,6 +269,12 @@ tflite_create_interpreter_ex_from_file (tflite_interpreter_t *p, const char *mod
         DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
         return -1;
     }
+
+#if 0
+    std::vector<int> sizes = {1, 1280, 1280, 3};
+    int input_id = p->interpreter->inputs()[0];
+    p->interpreter->ResizeInputTensor(input_id, sizes);
+#endif
 
     if (modify_graph_with_delegate (p, opt) < 0)
     {
