@@ -371,42 +371,89 @@ get_classification_input_buf (int *w, int *h)
 /* -------------------------------------------------- *
  * Invoke TensorRT
  * -------------------------------------------------- */
-static bool
-compare (classify_t &v1, classify_t &v2)
-{
-    if (v1.score > v2.score)
-        return true;
-    else
-        return false;
-}
-
-
 int
-invoke_classification (classification_result_t *class_ret)
+trt_copy_tensor_to_gpu (trt_tensor_t &tensor)
 {
-    float *in_ptr  = (float *)s_tensor_input.cpu_mem;
-    float *out_ptr = (float *)s_tensor_output.cpu_mem;
     cudaError_t err;
 
-    /* copy to CUDA buffer */
-    err = cudaMemcpy (s_tensor_input.gpu_mem, in_ptr, s_tensor_input.memsize, cudaMemcpyHostToDevice);
+    err = cudaMemcpy (tensor.gpu_mem, tensor.cpu_mem, tensor.memsize, cudaMemcpyHostToDevice);
     if (err != 0)
     {
         fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
         return -1;
     }
+    return 0;
+}
+
+int
+trt_copy_tensor_from_gpu (trt_tensor_t &tensor)
+{
+    cudaError_t err;
+
+    err = cudaMemcpy (tensor.cpu_mem, tensor.gpu_mem, tensor.memsize, cudaMemcpyDeviceToHost);
+    if (err != 0)
+    {
+        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+    return 0;
+}
+
+
+static float
+get_scoreval (int class_id)
+{
+    float *val = (float *)s_tensor_output.cpu_mem;
+    return val[class_id];
+}
+
+static int
+push_listitem (std::list<classify_t> &class_list, classify_t &item, size_t topn)
+{
+    size_t idx = 0;
+
+    /* search insert point */
+    for (auto itr = class_list.begin(); itr != class_list.end(); itr ++)
+    {
+        if (item.score > itr->score)
+        {
+            class_list.insert (itr, item);
+            if (class_list.size() > topn)
+            {
+                class_list.pop_back();
+            }
+            return 0;
+        }
+
+        idx ++;
+        if (idx >= topn)
+        {
+            return 0;
+        }
+    }
+
+    /* if list is not full, add item to the bottom */
+    if (class_list.size() < topn)
+    {
+        class_list.push_back (item);
+    }
+    return 0;
+}
+
+int
+invoke_classification (classification_result_t *class_ret)
+{
+    size_t topn = 5;
+
+    /* copy to CUDA buffer */
+    trt_copy_tensor_to_gpu (s_tensor_input);
 
     /* invoke inference */
     int batchSize = 1;
     s_trt_context->execute (batchSize, &s_gpu_buffers[0]);
 
     /* copy from CUDA buffer */
-    err = cudaMemcpy (out_ptr, s_tensor_output.gpu_mem, s_tensor_output.memsize, cudaMemcpyDeviceToHost);
-    if (err != 0)
-    {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
-        return -1;
-    }
+    trt_copy_tensor_from_gpu (s_tensor_output);
 
 
     std::list<classify_t> classify_list;
@@ -414,12 +461,10 @@ invoke_classification (classification_result_t *class_ret)
     {
         classify_t item;
         item.id = i;
-        item.score = out_ptr[i];
+        item.score = get_scoreval (i);
 
-        classify_list.push_back (item);
+        push_listitem (classify_list, item, topn);
     }
-
-    classify_list.sort (compare);
 
     int count = 0;
     for (auto itr = classify_list.begin(); itr != classify_list.end(); itr ++)
@@ -430,11 +475,8 @@ invoke_classification (classification_result_t *class_ret)
         item->score = itr->score;
         memcpy (item->name, s_class_name[itr->id], 64);
 
-        class_ret->num = count + 1;
-
         count ++;
-        if (count >= 5)
-            break;
+        class_ret->num = count;
     }
 
     return 0;
