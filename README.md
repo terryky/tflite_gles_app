@@ -11,6 +11,7 @@ Target platform: Linux PC / NVIDIA Jetson / RaspberryPi.
 
 ### [gl2detection](https://github.com/terryky/tflite_gles_app/tree/master/gl2detection)
 - Object Detection using MobileNet SSD.<br>
+- TensorRT port is [**HERE**](https://github.com/terryky/tflite_gles_app/tree/master/trt_detection)<br>
 [<img src="gl2detection/gl2detection.png" width=500>](https://github.com/terryky/tflite_gles_app/tree/master/gl2detection)
 
 ### [gl2facemesh](https://github.com/terryky/tflite_gles_app/tree/master/gl2facemesh)
