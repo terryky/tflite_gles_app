@@ -23,6 +23,10 @@
 #include "tensorflow/lite/experimental/delegates/hexagon/hexagon_delegate.h"
 #endif
 
+#if defined (USE_XNNPACK_DELEGATE)
+#include "tensorflow/lite/delegates/xnnpack/xnnpack_delegate.h"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

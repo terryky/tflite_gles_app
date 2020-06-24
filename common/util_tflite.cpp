@@ -203,6 +203,22 @@ modify_graph_with_delegate (tflite_interpreter_t *p, tflite_createopt_t *opt)
     delegate = delegatep.get();
 #endif
 
+#if defined (USE_XNNPACK_DELEGATE)
+    int num_threads = 4;
+
+    // IMPORTANT: initialize options with TfLiteXNNPackDelegateOptionsDefault() for
+    // API-compatibility with future extensions of the TfLiteXNNPackDelegateOptions
+    // structure.
+    TfLiteXNNPackDelegateOptions xnnpack_options = TfLiteXNNPackDelegateOptionsDefault();
+    xnnpack_options.num_threads = num_threads;
+
+    delegate = TfLiteXNNPackDelegateCreate (&xnnpack_options);
+    if (!delegate)
+    {
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+    }
+#endif
+
     if (!delegate)
         return 0;
 
