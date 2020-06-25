@@ -44,7 +44,7 @@ cp bazel-out/k8-opt/bin/tensorflow/lite/delegates/gpu/cl/compiled_program_cache_
 
 
 # build TensorFlow Lite library (libtensorflow-lite.a)
-./tensorflow/lite/tools/make/build_aarch64_lib.sh | tee -a log_build_libtflite_gpu_delegate.txt
+./tensorflow/lite/tools/make/build_aarch64_lib.sh TARGET_ARCH=aarch64 2>&1 | tee -a log_build_libtflite_gpu_delegate.txt
 
 
 echo "----------------------------------------------------"
