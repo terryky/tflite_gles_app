@@ -345,3 +345,40 @@ You can select the platform by editing [Makefile.env](Makefile.env).
 - RaspberryPi4 (X11)
 - RaspberryPi3 (Dispmanx)
 - Coral EdgeTPU Devboard (Wayland)
+
+
+## 5. Performance [ms]
+
+| app                  | condition    | Raspberry Pi 4 <br> [ms] |
+| -------------------- | :----------: | :----------------------: |
+| gl2blazeface         | CPU fp32     |   10                     |
+|                      | CPU int8     |    7                     |
+|                      | GPU Delegate |   70                     |
+| gl2classification    | CPU fp32     |   69                     |
+|                      | CPU int8     |   28                     |
+|                      | GPU Delegate |   69                     |
+| gl2detection         | CPU fp32     |                          |
+|                      | CPU int8     |   62                     |
+|                      | GPU Delegate |                          |
+| gl2facemesh          | CPU fp32     |   29                     |
+|                      | CPU int8     |   24                     |
+|                      | GPU Delegate |  150                     |
+| gl2hair_segmentation | CPU fp32     |  410                     |
+|                      | CPU int8     |                          |
+|                      | GPU Delegate |  270                     |
+| gl2handpose          | CPU fp32     |  116                     |
+|                      | CPU int8     |   80                     |
+|                      | GPU Delegate |  880                     |
+| gl2objectron         | CPU fp32     |  470                     |
+|                      | CPU int8     |  248                     |
+|                      | GPU Delegate | 1990                     |
+| gl2posenet           | CPU fp32     |   92                     |
+|                      | CPU int8     |   53                     |
+|                      | GPU Delegate |  803                     |
+| gl2segmentation      | CPU fp32     |  108                     |
+|                      | CPU int8     |                          |
+|                      | GPU Delegate |  790                     |
+| gl2style_transfer    | CPU fp32     | 1830                     |
+|                      | CPU int8     |                          |
+|                      | GPU Delegate | 2440                     |
+
