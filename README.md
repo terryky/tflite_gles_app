@@ -54,9 +54,9 @@ Target platform: Linux PC / NVIDIA Jetson / RaspberryPi.
 
 ## 2. How to Build & Run
 
-- [Build for x86_64 Linux](#build_for_x86_64)
-- [Build for Jetson Nano (aarch64 )](#build_for_jetson_nano)
-- [Build for Raspberry Pi 4 (armv7l)](#build_for_raspi4)
+- [Build for x86_64  Linux](#build_for_x86_64)
+- [Build for aarch64 Linux (Jetson Nano, Raspberry Pi)](#build_for_aarch64)
+- [Build for armv7l  Linux (Raspberry Pi)](#build_for_armv7l)
 
 
 ### <a name="build_for_x86_64">2.1. Build for x86_64 Linux</a>
@@ -64,10 +64,12 @@ Target platform: Linux PC / NVIDIA Jetson / RaspberryPi.
 ##### 2.1.1. setup environment
 ```
 $ sudo apt install libgles2-mesa-dev 
+$ mkdir ~/work
+$ mkdir ~/lib
 $
-$ wget https://github.com/bazelbuild/bazel/releases/download/2.0.0/bazel-2.0.0-installer-linux-x86_64.sh
-$ chmod 755 bazel-2.0.0-installer-linux-x86_64.sh
-$ sudo ./bazel-2.0.0-installer-linux-x86_64.sh
+$ wget https://github.com/bazelbuild/bazel/releases/download/3.1.0/bazel-3.1.0-installer-linux-x86_64.sh
+$ chmod 755 bazel-3.1.0-installer-linux-x86_64.sh
+$ sudo ./bazel-3.1.0-installer-linux-x86_64.sh
 ```
 
 ##### 2.1.2. build TensorFlow Lite library.
@@ -75,12 +77,15 @@ $ sudo ./bazel-2.0.0-installer-linux-x86_64.sh
 ```
 $ cd ~/work 
 $ git clone https://github.com/terryky/tflite_gles_app.git
-$ ./tflite_gles_app/tools/scripts/tf2.2/build_libtflite_r2.2.sh
+$ ./tflite_gles_app/tools/scripts/tf2.3/build_libtflite_r2.3.sh
 
 (Tensorflow configure will start after a while. Please enter according to your environment)
 
 $
-$ ln -s tensorflow_r2.2 ./tensorflow
+$ ln -s tensorflow_r2.3 ./tensorflow
+$
+$ cp ./tensorflow/bazel-bin/tensorflow/lite/libtensorflowlite.so ~/lib
+$ cp ./tensorflow/bazel-bin/tensorflow/lite/delegates/gpu/libtensorflowlite_gpu_delegate.so ~/lib
 ```
 
 ##### 2.1.3. build an application.
@@ -93,60 +98,71 @@ $ make -j4
 ##### 2.1.4. run an application.
 
 ```
+$ export LD_LIBRARY_PATH=~/lib:$LD_LIBRARY_PATH
 $ cd ~/work/tflite_gles_app/gl2handpose
 $ ./gl2handpose
 ```
 
 
 
-### <a name="build_for_jetson_nano">2.2. Build for Jetson Nano (aarch64)</a>
+### <a name="build_for_aarch64">2.2. Build for aarch64 Linux (Jetson Nano, Raspberry Pi)</a>
 
 ##### 2.2.1. build TensorFlow Lite library on **Host PC**.
 
 ```
-(HostPC)$ wget https://github.com/bazelbuild/bazel/releases/download/2.0.0/bazel-2.0.0-installer-linux-x86_64.sh
-(HostPC)$ chmod 755 bazel-2.0.0-installer-linux-x86_64.sh
-(HostPC)$ sudo ./bazel-2.0.0-installer-linux-x86_64.sh
+(HostPC)$ wget https://github.com/bazelbuild/bazel/releases/download/3.1.0/bazel-3.1.0-installer-linux-x86_64.sh
+(HostPC)$ chmod 755 bazel-3.1.0-installer-linux-x86_64.sh
+(HostPC)$ sudo ./bazel-3.1.0-installer-linux-x86_64.sh
 (HostPC)$
+(HostPC)$ mkdir ~/work
 (HostPC)$ cd ~/work 
 (HostPC)$ git clone https://github.com/terryky/tflite_gles_app.git
-(HostPC)$ ./tflite_gles_app/tools/scripts/tf2.2/build_libtflite_r2.2_with_gpu_delegate_aarch64.sh
+(HostPC)$ ./tflite_gles_app/tools/scripts/tf2.3/build_libtflite_r2.3_aarch64.sh
 
 (Tensorflow configure will start after a while. Please enter according to your environment)
 ```
 
-##### 2.2.2. copy libtensorflow-lite.a to target Jetson.
+##### 2.2.2. copy Tensorflow Lite libraries to target Jetson / Raspi.
 
 ```
-(HostPC)scp ~/work/tensorflow_r2.2/tensorflow/lite/tools/make/gen/linux_aarch64/lib/libtensorflow-lite.a jetson@192.168.11.11:/home/jetson/
+(HostPC)scp ~/work/tensorflow_r2.3/bazel-bin/tensorflow/lite/libtensorflowlite.so jetson@192.168.11.11:/home/jetson/lib
+(HostPC)scp ~/work/tensorflow_r2.3/bazel-bin/tensorflow/lite/delegates/gpu/libtensorflowlite_gpu_delegate.so jetson@192.168.11.11:/home/jetson/lib
 ```
 
-##### 2.2.3. clone Tensorflow repository on **target Jetson**.
+##### 2.2.3. clone Tensorflow repository on **target Jetson / Raspi**.
 
 ```
-(Jetson)$ cd ~/work
-(Jetson)$ git clone https://github.com/tensorflow/tensorflow.git
-(Jetson)$ cd tensorflow
-(Jetson)$ git checkout r2.2
-(Jetson)$ ./tensorflow/lite/tools/make/download_dependencies.sh
+(Jetson/Raspi)$ cd ~/work
+(Jetson/Raspi)$ git clone https://github.com/tensorflow/tensorflow.git
+(Jetson/Raspi)$ cd tensorflow
+(Jetson/Raspi)$ git checkout r2.3
+(Jetson/Raspi)$ ./tensorflow/lite/tools/make/download_dependencies.sh
 ```
 
 
 ##### 2.2.4. build an application.
 
 ```
-(Jetson)$ cd ~/work 
-(Jetson)$ git clone https://github.com/terryky/tflite_gles_app.git
-(Jetson)$ cd ~/work/tflite_gles_app/gl2handpose
-(Jetson)$ cp ~/libtensorflow-lite.a .
+(Jetson/Raspi)$ cd ~/work 
+(Jetson/Raspi)$ git clone https://github.com/terryky/tflite_gles_app.git
+(Jetson/Raspi)$ cd ~/work/tflite_gles_app/gl2handpose
+
+# on Jetson
 (Jetson)$ make -j4 TARGET_ENV=jetson_nano TFLITE_DELEGATE=GPU_DELEGATEV2
+
+# on Raspberry pi without GPUDelegate (recommended)
+(Raspi )$ make -j4 TARGET_ENV=raspi4
+
+# on Raspberry pi with GPUDelegate (low performance)
+(Raspi )$ make -j4 TARGET_ENV=raspi4 TFLITE_DELEGATE=GPU_DELEGATEV2
 ```
 
 ##### 2.2.5. run an application.
 
 ```
-(Jetson)$ cd ~/work/tflite_gles_app/gl2handpose
-(Jetson)$ ./gl2handpose
+(Jetson/Raspi)$ export LD_LIBRARY_PATH=~/lib:$LD_LIBRARY_PATH
+(Jetson/Raspi)$ cd ~/work/tflite_gles_app/gl2handpose
+(Jetson/Raspi)$ ./gl2handpose
 ```
 
 ##### about VSYNC
@@ -161,29 +177,31 @@ To enable/disable VSYNC, run app with the following command.
 ```
 
 
-### <a name="build_for_raspi4">2.3 Build for Raspberry Pi 4 (armv7l)</a>
+### <a name="build_for_armv7l">2.3 Build for armv7l Linux (Raspberry Pi)</a>
 
 ##### 2.3.1. build TensorFlow Lite library on **Host PC**.
 
 ```
-(HostPC)$ wget https://github.com/bazelbuild/bazel/releases/download/2.0.0/bazel-2.0.0-installer-linux-x86_64.sh
-(HostPC)$ chmod 755 bazel-2.0.0-installer-linux-x86_64.sh
-(HostPC)$ sudo ./bazel-2.0.0-installer-linux-x86_64.sh
+(HostPC)$ wget https://github.com/bazelbuild/bazel/releases/download/3.1.0/bazel-3.1.0-installer-linux-x86_64.sh
+(HostPC)$ chmod 755 bazel-3.1.0-installer-linux-x86_64.sh
+(HostPC)$ sudo ./bazel-3.1.0-installer-linux-x86_64.sh
 (HostPC)$
+(HostPC)$ mkdir ~/work
 (HostPC)$ cd ~/work 
 (HostPC)$ git clone https://github.com/terryky/tflite_gles_app.git
-(HostPC)$ ./tflite_gles_app/tools/scripts/tf2.2/build_libtflite_r2.2_with_gpu_delegate_rpi.sh
+(HostPC)$ ./tflite_gles_app/tools/scripts/tf2.3/build_libtflite_r2.3_armv7l.sh
 
 (Tensorflow configure will start after a while. Please enter according to your environment)
 ```
 
-##### 2.3.2. copy libtensorflow-lite.a to target Raspberry Pi 4.
+##### 2.3.2. copy Tensorflow Lite libraries to target Raspberry Pi.
 
 ```
-(HostPC)scp ~/work/tensorflow_r2.2/tensorflow/lite/tools/make/gen/rpi_armv7l/lib/libtensorflow-lite.a pi@192.168.11.11:/home/pi/
+(HostPC)scp ~/work/tensorflow_r2.3/bazel-bin/tensorflow/lite/libtensorflowlite.so pi@192.168.11.11:/home/pi/lib
+(HostPC)scp ~/work/tensorflow_r2.3/bazel-bin/tensorflow/lite/delegates/gpu/libtensorflowlite_gpu_delegate.so pi@192.168.11.11:/home/pi/lib
 ```
 
-##### 2.3.3. setup environment on **Raspberry Pi 4**.
+##### 2.3.3. setup environment on **Raspberry Pi**.
 
 ```
 (Raspi)$ sudo apt install libgles2-mesa-dev libegl1-mesa-dev xorg-dev
@@ -198,7 +216,7 @@ To enable/disable VSYNC, run app with the following command.
 (Raspi)$ cd ~/work
 (Raspi)$ git clone https://github.com/tensorflow/tensorflow.git
 (Raspi)$ cd tensorflow
-(Raspi)$ git checkout r2.2
+(Raspi)$ git checkout r2.3
 (Raspi)$ ./tensorflow/lite/tools/make/download_dependencies.sh
 ```
 
@@ -209,7 +227,6 @@ To enable/disable VSYNC, run app with the following command.
 (Raspi)$ cd ~/work 
 (Raspi)$ git clone https://github.com/terryky/tflite_gles_app.git
 (Raspi)$ cd ~/work/tflite_gles_app/gl2handpose
-(Raspi)$ cp ~/libtensorflow-lite.a .
 (Raspi)$ make -j4 TARGET_ENV=raspi4  #disable GPUDelegate. (recommended)
 
 #enable GPUDelegate. but it cause low performance on Raspi4.
@@ -220,6 +237,7 @@ To enable/disable VSYNC, run app with the following command.
 ##### 2.3.6. run an application on **target Raspi**..
 
 ```
+(Raspi)$ export LD_LIBRARY_PATH=~/lib:$LD_LIBRARY_PATH
 (Raspi)$ cd ~/work/tflite_gles_app/gl2handpose
 (Raspi)$ ./gl2handpose
 ```
