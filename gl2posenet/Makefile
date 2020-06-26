@@ -54,6 +54,14 @@ endif
 
 
 # ---------------------
+#  for TFLite GPU GL Delegate with SSBO binding.
+# ---------------------
+#CFLAGS   += -DUSE_GLES_31
+#CFLAGS   += -DUSE_INPUT_SSBO
+#SRCS     += ssbo_tensor.c
+
+
+# ---------------------
 #  for TFLite
 # ---------------------
 TENSORFLOW_DIR = $(HOME)/work/tensorflow
@@ -63,36 +71,7 @@ INCLUDES += -I$(TENSORFLOW_DIR)/tensorflow/lite/tools/make/downloads/flatbuffers
 INCLUDES += -I$(TENSORFLOW_DIR)/tensorflow/lite/tools/make/downloads/absl
 INCLUDES += -I$(TENSORFLOW_DIR)/external/flatbuffers/include
 INCLUDES += -I$(TENSORFLOW_DIR)/external/com_google_absl
-LDFLAGS  += -L$(TENSORFLOW_DIR)/tensorflow/lite/tools/make/gen/linux_x86_64/lib/
-LDFLAGS  += -L$(TENSORFLOW_DIR)/
-LDFLAGS  += -L./
-LIBS     += -ltensorflow-lite -ldl
 
 LDFLAGS  += -Wl,--allow-multiple-definition
-
-
-# ---------------------
-#  for TFLite GPU GL Delegate
-# ---------------------
-
-#LDFLAGS  += -L$(TENSORFLOW_DIR)/bazel-bin/tensorflow/lite/delegates/gpu
-#LIBS     += -ltensorflowlite_gpu_gl
-#LIBS     += -lgl_delegate
-
-
-
-# ---------------------
-#  for TFLite GPU GL Delegate with SSBO binding.
-# ---------------------
-#CFLAGS   += -DUSE_GLES_31
-#CFLAGS   += -DUSE_INPUT_SSBO
-#SRCS     += ssbo_tensor.c
-
-
-# ---------------------
-#  for Quantized tflite model
-# ---------------------
-#CFLAGS   += -DUSE_QUANT_TFLITE_MODEL
-
 
 include ../Makefile.include

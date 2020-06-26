@@ -7,7 +7,8 @@ CFLAGS   += -Wall
 CFLAGS   += -O2
 
 LDFLAGS  += -L$(MAKETOP)/third_party/tensorflow/current/lite/lib/current/
-LIBS     += 
+LDFLAGS  += -L$(HOME)/lib
+LIBS     += -ltensorflowlite -ltensorflowlite_gpu_delegate
 
 all: $(TARGET)
 
