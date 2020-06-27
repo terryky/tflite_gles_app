@@ -354,31 +354,41 @@ You can select the platform by editing [Makefile.env](Makefile.env).
 | **Blazeface**                        | CPU fp32     |   10                     |    10                 |
 |                                      | CPU int8     |    7                     |     7                 |
 |                                      | GPU Delegate |   70                     |    10                 |
+|                                      | TensorRT     |   --                     |                       |
 | **Classification**                   | CPU fp32     |   69                     |    50                 |
 | *(mobilenet_v1_1.0_224)*             | CPU int8     |   28                     |    29                 |
 |                                      | GPU Delegate |  360                     |    37                 |
+|                                      | TensorRT     |   --                     |                       |
 | **Detection**                        | CPU fp32     |                          |                       |
 | *(ssd_mobilenet_v1_coco)*            | CPU int8     |   62                     |    64                 |
 |                                      | GPU Delegate |                          |                       |
+|                                      | TensorRT     |   --                     |                       |
 | **Facemesh**                         | CPU fp32     |   29                     |    30                 |
 |                                      | CPU int8     |   24                     |    27                 |
 |                                      | GPU Delegate |  150                     |    20                 |
+|                                      | TensorRT     |   --                     |                       |
 | **Hair segmentation**                | CPU fp32     |  410                     |   400                 |
 |                                      | CPU int8     |                          |                       |
 |                                      | GPU Delegate |  270                     |    30                 |
+|                                      | TensorRT     |   --                     |                       |
 | **Handpose**                         | CPU fp32     |  116                     |    85                 |
 |                                      | CPU int8     |   80                     |    87                 |
 |                                      | GPU Delegate |  880                     |    90                 |
+|                                      | TensorRT     |   --                     |                       |
 | **Objectron**                        | CPU fp32     |  470                     |   302                 |
 |                                      | CPU int8     |  248                     |   249                 |
 |                                      | GPU Delegate | 1990                     |   235                 |
+|                                      | TensorRT     |   --                     |                       |
 | **Posenet**                          | CPU fp32     |   92                     |    70                 |
 | *(posenet_mobilenet_v1_100_257x257)* | CPU int8     |   53                     |    55                 |
 |                                      | GPU Delegate |  803                     |    80                 |
+|                                      | TensorRT     |   --                     |                       |
 | **Segmentation**                     | CPU fp32     |  108                     |    80                 |
 |                                      | CPU int8     |                          |                       |
 |                                      | GPU Delegate |  790                     |    90                 |
+|                                      | TensorRT     |   --                     |                       |
 | **Style transfer**                   | CPU fp32     | 1830                     |   950                 |
 |                                      | CPU int8     |                          |                       |
 |                                      | GPU Delegate | 2440                     |   215                 |
+|                                      | TensorRT     |   --                     |                       |
 
