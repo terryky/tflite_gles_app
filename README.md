@@ -347,38 +347,38 @@ You can select the platform by editing [Makefile.env](Makefile.env).
 - Coral EdgeTPU Devboard (Wayland)
 
 
-## 5. Performance [ms]
+## 5. Performance of inference [ms]
 
-| app                  | condition    | Raspberry Pi 4 <br> [ms] |
-| -------------------- | :----------: | :----------------------: |
-| gl2blazeface         | CPU fp32     |   10                     |
-|                      | CPU int8     |    7                     |
-|                      | GPU Delegate |   70                     |
-| gl2classification    | CPU fp32     |   69                     |
-|                      | CPU int8     |   28                     |
-|                      | GPU Delegate |   69                     |
-| gl2detection         | CPU fp32     |                          |
-|                      | CPU int8     |   62                     |
-|                      | GPU Delegate |                          |
-| gl2facemesh          | CPU fp32     |   29                     |
-|                      | CPU int8     |   24                     |
-|                      | GPU Delegate |  150                     |
-| gl2hair_segmentation | CPU fp32     |  410                     |
-|                      | CPU int8     |                          |
-|                      | GPU Delegate |  270                     |
-| gl2handpose          | CPU fp32     |  116                     |
-|                      | CPU int8     |   80                     |
-|                      | GPU Delegate |  880                     |
-| gl2objectron         | CPU fp32     |  470                     |
-|                      | CPU int8     |  248                     |
-|                      | GPU Delegate | 1990                     |
-| gl2posenet           | CPU fp32     |   92                     |
-|                      | CPU int8     |   53                     |
-|                      | GPU Delegate |  803                     |
-| gl2segmentation      | CPU fp32     |  108                     |
-|                      | CPU int8     |                          |
-|                      | GPU Delegate |  790                     |
-| gl2style_transfer    | CPU fp32     | 1830                     |
-|                      | CPU int8     |                          |
-|                      | GPU Delegate | 2440                     |
+| application                          | condition    | Raspberry Pi 4 <br> [ms] | Jetson nano <br> [ms] |
+| ------------------------------------ | :----------: | :----------------------: | :-------------------: |
+| **Blazeface**                        | CPU fp32     |   10                     |    10                 |
+|                                      | CPU int8     |    7                     |     7                 |
+|                                      | GPU Delegate |   70                     |    10                 |
+| **Classification**                   | CPU fp32     |   69                     |    50                 |
+| *(mobilenet_v1_1.0_224)*             | CPU int8     |   28                     |    29                 |
+|                                      | GPU Delegate |  360                     |    37                 |
+| **Detection**                        | CPU fp32     |                          |                       |
+| *(ssd_mobilenet_v1_coco)*            | CPU int8     |   62                     |    64                 |
+|                                      | GPU Delegate |                          |                       |
+| **Facemesh**                         | CPU fp32     |   29                     |    30                 |
+|                                      | CPU int8     |   24                     |    27                 |
+|                                      | GPU Delegate |  150                     |    20                 |
+| **Hair segmentation**                | CPU fp32     |  410                     |   400                 |
+|                                      | CPU int8     |                          |                       |
+|                                      | GPU Delegate |  270                     |    30                 |
+| **Handpose**                         | CPU fp32     |  116                     |    85                 |
+|                                      | CPU int8     |   80                     |    87                 |
+|                                      | GPU Delegate |  880                     |    90                 |
+| **Objectron**                        | CPU fp32     |  470                     |   302                 |
+|                                      | CPU int8     |  248                     |   249                 |
+|                                      | GPU Delegate | 1990                     |   235                 |
+| **Posenet**                          | CPU fp32     |   92                     |    70                 |
+| *(posenet_mobilenet_v1_100_257x257)* | CPU int8     |   53                     |    55                 |
+|                                      | GPU Delegate |  803                     |    80                 |
+| **Segmentation**                     | CPU fp32     |  108                     |    80                 |
+|                                      | CPU int8     |                          |                       |
+|                                      | GPU Delegate |  790                     |    90                 |
+| **Style transfer**                   | CPU fp32     | 1830                     |   950                 |
+|                                      | CPU int8     |                          |                       |
+|                                      | GPU Delegate | 2440                     |   215                 |
 
