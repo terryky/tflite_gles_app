@@ -9,6 +9,7 @@
 #include "NvInferPlugin.h"
 #include "NvUtils.h"
 #include "NvUffParser.h"
+#include "NvOnnxParser.h"
 #include <algorithm>
 #include <cassert>
 #include <chrono>
@@ -96,6 +97,10 @@ ICudaEngine *
 trt_create_engine_from_uff (const std::string &uff_file,
                             std::vector<trt_uff_inputdef_t>  &input_array, 
                             std::vector<trt_uff_outputdef_t> &output_array);
+
+ICudaEngine *
+trt_create_engine_from_onnx (const std::string &onnx_file);
+
 
 /* emit/load PLAN file */
 int trt_emit_plan_file (ICudaEngine *engine, const std::string &plan_file_name);

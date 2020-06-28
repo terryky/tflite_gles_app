@@ -189,6 +189,55 @@ trt_create_engine_from_uff (const std::string &uff_file,
 }
 
 
+ICudaEngine *
+trt_create_engine_from_onnx (const std::string &onnx_file)
+{
+    IBuilder           *builder = createInferBuilder (s_Logger);
+    INetworkDefinition *network = builder->createNetwork ();
+    IBuilderConfig     *config  = builder->createBuilderConfig ();
+
+    nvonnxparser::IParser *parser = nvonnxparser::createParser (*network, s_Logger);
+
+    int severity = static_cast<int>(ILogger::Severity::kWARNING);
+    auto parsed = parser->parseFromFile(onnx_file.c_str(), severity);
+    if (!parsed)
+    {
+        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        return NULL;
+    }
+
+    // builder->setInt8Mode (true);
+    // builder->setInt8Calibrator (NULL);
+    fprintf (stderr, " - HasFastFp16(): %d\n", builder->platformHasFastFp16());
+    fprintf (stderr, " - HasFastInt8(): %d\n", builder->platformHasFastInt8());
+
+    /* create the engine */
+    builder->setMaxBatchSize (1);
+    builder->setMaxWorkspaceSize (MAX_WORKSPACE);
+
+    config->setFlag (BuilderFlag::kFP16);
+//  config->setFlag (BuilderFlag::kINT8);
+
+    fprintf (stderr, "Building CUDA Engine. (This takes more than 10 minutes. please wait...)\n");
+    start_waitcounter_thread();
+
+    ICudaEngine *engine = builder->buildEngineWithConfig (*network, *config);
+    if (!engine)
+    {
+        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        return NULL;
+    }
+
+    stop_waitcounter_thread();
+
+    network->destroy();
+    builder->destroy();
+    parser->destroy();
+
+    return engine;
+}
+
+
 /* -------------------------------------------------- *
  *  save/load "plan file"
  * -------------------------------------------------- */
