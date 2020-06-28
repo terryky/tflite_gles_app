@@ -358,11 +358,11 @@ You can select the platform by editing [Makefile.env](Makefile.env).
 | **Classification**                   | CPU fp32     |   69                     |    50                 |
 | *(mobilenet_v1_1.0_224)*             | CPU int8     |   28                     |    29                 |
 |                                      | GPU Delegate |  360                     |    37                 |
-|                                      | TensorRT     |   --                     |                       |
+|                                      | TensorRT     |   --                     |    19                 |
 | **Detection**                        | CPU fp32     |                          |                       |
 | *(ssd_mobilenet_v1_coco)*            | CPU int8     |   62                     |    64                 |
 |                                      | GPU Delegate |                          |                       |
-|                                      | TensorRT     |   --                     |                       |
+|                                      | TensorRT     |   --                     |    32                 |
 | **Facemesh**                         | CPU fp32     |   29                     |    30                 |
 |                                      | CPU int8     |   24                     |    27                 |
 |                                      | GPU Delegate |  150                     |    20                 |
@@ -378,11 +378,11 @@ You can select the platform by editing [Makefile.env](Makefile.env).
 | **Objectron**                        | CPU fp32     |  470                     |   302                 |
 |                                      | CPU int8     |  248                     |   249                 |
 |                                      | GPU Delegate | 1990                     |   235                 |
-|                                      | TensorRT     |   --                     |                       |
+|                                      | TensorRT     |   --                     |   108                 |
 | **Posenet**                          | CPU fp32     |   92                     |    70                 |
 | *(posenet_mobilenet_v1_100_257x257)* | CPU int8     |   53                     |    55                 |
 |                                      | GPU Delegate |  803                     |    80                 |
-|                                      | TensorRT     |   --                     |                       |
+|                                      | TensorRT     |   --                     |    18                 |
 | **Segmentation**                     | CPU fp32     |  108                     |    80                 |
 |                                      | CPU int8     |                          |                       |
 |                                      | GPU Delegate |  790                     |    90                 |
