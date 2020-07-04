@@ -10,24 +10,24 @@
 /* 
  * https://github.com/tensorflow/models/blob/master/research/object_detection/data/mscoco_label_map.pbtxt
  */
-#define LABEL_MAP_PATH           "./detect_model/mscoco_label_map.pbtxt"
+#define LABEL_MAP_PATH          "./detect_model/mscoco_label_map.pbtxt"
 
-#if 1       /* Mobilenet SSD V1 with PostProcess (quant) */
-#define MOBILNET_SSD_MODEL_PATH  "./detect_model/detect_regular_nms_quant.tflite"
+#if 1       /* Mobilenet SSD V1 */
+#define DETECT_MODEL_PATH       "./detect_model/mobilenetv1_1.0/ssd_mobilenet_v1_1.0_coco.tflite"
+#define DETECT_QUANT_MODEL_PATH "./detect_model/mobilenetv1_1.0/detect_regular_nms_quant.tflite"
+#define ANCHORS_FILE            "./detect_model/mobilenetv1_1.0/anchors.txt"
 
-#elif 0     /* Mobilenet SSD V1 without PostProcess (quant) */
-#define MOBILNET_SSD_MODEL_PATH  "./detect_model/detect_no_nms_quant.tflite"
-#define ANCHORS_FILE             "./detect_model/anchors.txt"
+
+#elif 0     /* Mobilenet SSD V3 without PostProcess (float) */
+#define DETECT_MODEL_PATH       "./detect_model/mobilenetv3_small/ssd_mobilenet_v3_small_coco_float.tflite"
+#define DETECT_QUANT_MODEL_PATH ""
+#define ANCHORS_FILE            "./detect_model/mobilenetv3_small/anchors.txt"
 #define INVOKE_POSTPROCESS_AFTER_TFLITE 1
 
 #elif 0     /* Mobilenet SSD V3 without PostProcess (float) */
-#define MOBILNET_SSD_MODEL_PATH  "./detect_model/mobilenetv3_small/ssd_mobilenet_v3_small_coco_float.tflite"
-#define ANCHORS_FILE             "./detect_model/mobilenetv3_small/anchors.txt"
-#define INVOKE_POSTPROCESS_AFTER_TFLITE 1
-
-#elif 0     /* Mobilenet SSD V3 without PostProcess (float) */
-#define MOBILNET_SSD_MODEL_PATH  "./detect_model/mobilenetv3_large/ssd_mobilenet_v3_large_coco_float.tflite"
-#define ANCHORS_FILE             "./detect_model/mobilenetv3_large/anchors.txt"
+#define DETECT_MODEL_PATH       "./detect_model/mobilenetv3_large/ssd_mobilenet_v3_large_coco_float.tflite"
+#define DETECT_QUANT_MODEL_PATH ""
+#define ANCHORS_FILE            "./detect_model/mobilenetv3_large/anchors.txt"
 #define INVOKE_POSTPROCESS_AFTER_TFLITE 1
 
 #else
@@ -164,9 +164,20 @@ init_class_color ()
 
 
 int
-init_tflite_detection()
+init_tflite_detection(int use_quantized_tflite)
 {
-    tflite_create_interpreter_from_file (&s_interpreter, MOBILNET_SSD_MODEL_PATH);
+    const char *model;
+
+    if (use_quantized_tflite)
+    {
+        model = DETECT_QUANT_MODEL_PATH;
+    }
+    else
+    {
+        model = DETECT_MODEL_PATH;
+    }
+
+    tflite_create_interpreter_from_file (&s_interpreter, model);
 
     /* get input tensor */
     tflite_get_tensor_by_name (&s_interpreter, 0, "normalized_input_image_tensor",  &s_tensor_input);

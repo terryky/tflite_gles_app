@@ -27,7 +27,7 @@ typedef struct _detect_result_t
 
 
 
-int   init_tflite_detection();
+int   init_tflite_detection (int use_quantized_tflite);
 int   get_detect_input_type ();
 void  *get_detect_input_buf (int *w, int *h);
 char  *get_detect_class_name (int class_idx);
