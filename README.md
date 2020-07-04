@@ -359,9 +359,9 @@ You can select the platform by editing [Makefile.env](Makefile.env).
 | *(mobilenet_v1_1.0_224)*             | CPU int8     |   28                     |    29                 |
 |                                      | GPU Delegate |  360                     |    37                 |
 |                                      | TensorRT     |   --                     |    19                 |
-| **Detection**                        | CPU fp32     |                          |                       |
+| **Detection**                        | CPU fp32     |  150                     |                       |
 | *(ssd_mobilenet_v1_coco)*            | CPU int8     |   62                     |    64                 |
-|                                      | GPU Delegate |                          |                       |
+|                                      | GPU Delegate |  980                     |                       |
 |                                      | TensorRT     |   --                     |    32                 |
 | **Facemesh**                         | CPU fp32     |   29                     |    30                 |
 |                                      | CPU int8     |   24                     |    27                 |
