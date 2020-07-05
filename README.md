@@ -5,48 +5,48 @@ Target platform: Linux PC / NVIDIA Jetson / RaspberryPi.
 
 ## 1. Applications
 
-### [gl2blazeface](https://github.com/terryky/tflite_gles_app/tree/master/gl2blazeface)
+### [Blazeface](https://github.com/terryky/tflite_gles_app/tree/master/gl2blazeface)
 - Lightweight Face Detection.<br>
 [<img src="gl2blazeface/gl2blazeface.png" width=500>](https://github.com/terryky/tflite_gles_app/tree/master/gl2blazeface)
 
-### [gl2classification](https://github.com/terryky/tflite_gles_app/tree/master/gl2classification)
-- Image Classfication.<br>
+### [Image Classification](https://github.com/terryky/tflite_gles_app/tree/master/gl2classification)
+- Image Classfication using Moilenet.<br>
 - TensorRT port is [**HERE**](https://github.com/terryky/tflite_gles_app/tree/master/trt_classification)<br>
 [<img src="gl2classification/gl2classification.png" width=500>](https://github.com/terryky/tflite_gles_app/tree/master/gl2classification)
 
-### [gl2detection](https://github.com/terryky/tflite_gles_app/tree/master/gl2detection)
+### [Object Detection](https://github.com/terryky/tflite_gles_app/tree/master/gl2detection)
 - Object Detection using MobileNet SSD.<br>
 - TensorRT port is [**HERE**](https://github.com/terryky/tflite_gles_app/tree/master/trt_detection)<br>
 [<img src="gl2detection/gl2detection.png" width=500>](https://github.com/terryky/tflite_gles_app/tree/master/gl2detection)
 
-### [gl2facemesh](https://github.com/terryky/tflite_gles_app/tree/master/gl2facemesh)
+### [Facemesh](https://github.com/terryky/tflite_gles_app/tree/master/gl2facemesh)
 - 3D Facial Surface Geometry estimation and face replacement.<br>
 [<img src="gl2facemesh/gl2facemesh.png" width=700>](https://github.com/terryky/tflite_gles_app/tree/master/gl2facemesh)
 
-### [gl2hair_segmentation](https://github.com/terryky/tflite_gles_app/tree/master/gl2hair_segmentation)
+### [Hair Segmentation](https://github.com/terryky/tflite_gles_app/tree/master/gl2hair_segmentation)
 - Hair segmentation and recoloring.<br>
 [<img src="gl2hair_segmentation/gl2hair_segmentation.jpg" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2hair_segmentation)
 
-### [gl2handpose](https://github.com/terryky/tflite_gles_app/tree/master/gl2handpose)
+### [3D Handpose](https://github.com/terryky/tflite_gles_app/tree/master/gl2handpose)
 - 3D Handpose Estimation from single RGB images.<br>
 [<img src="gl2handpose/gl2handpose.png" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2handpose)
 
-### [gl2objectron](https://github.com/terryky/tflite_gles_app/tree/master/gl2objectron)
+### [3D Object Detection](https://github.com/terryky/tflite_gles_app/tree/master/gl2objectron)
 - 3D Object Detection.
 - TensorRT port is [**HERE**](https://github.com/terryky/tflite_gles_app/tree/master/trt_objectron)<br>
 [<img src="gl2objectron/gl2objectron.png" width=300>](https://github.com/terryky/tflite_gles_app/tree/master/gl2objectron)
 
-### [gl2posenet](https://github.com/terryky/tflite_gles_app/tree/master/gl2posenet)
+### [Posenet](https://github.com/terryky/tflite_gles_app/tree/master/gl2posenet)
 - Pose Estimation.
 - TensorRT port is [**HERE**](https://github.com/terryky/tflite_gles_app/tree/master/trt_posenet)<br>
 [<img src="gl2posenet/gl2posenet.png" width=500>](https://github.com/terryky/tflite_gles_app/tree/master/gl2posenet)
 
-### [gl2segmentation](https://github.com/terryky/tflite_gles_app/tree/master/gl2segmentation)
-- Semantic image segmentation using Deeplab.<br>
+### [Semantic Segmentation](https://github.com/terryky/tflite_gles_app/tree/master/gl2segmentation)
+- Assign semantic labels to every pixel in the input image.<br>
 [<img src="gl2segmentation/gl2segmentation.png" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2segmentation)
 
-### [gl2style_transfer](https://github.com/terryky/tflite_gles_app/tree/master/gl2style_transfer)
-- Artistic Style Transfer.<br>
+### [Artistic Style Transfer](https://github.com/terryky/tflite_gles_app/tree/master/gl2style_transfer)
+- Create new artworks in artistic style.<br>
 [<img src="gl2style_transfer/gl2style_transfer.png" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2style_transfer)
 
 
@@ -349,46 +349,94 @@ You can select the platform by editing [Makefile.env](Makefile.env).
 
 ## 5. Performance of inference [ms]
 
-| application                          | condition    | Raspberry Pi 4 <br> [ms] | Jetson nano <br> [ms] |
+
+### **Blazeface**
+
+| Framework                            | Precision    | Raspberry Pi 4 <br> [ms] | Jetson nano <br> [ms] |
 | ------------------------------------ | :----------: | :----------------------: | :-------------------: |
-| **Blazeface**                        | CPU fp32     |   10                     |    10                 |
-|                                      | CPU int8     |    7                     |     7                 |
-|                                      | GPU Delegate |   70                     |    10                 |
-|                                      | TensorRT     |   --                     |                       |
-| **Classification**                   | CPU fp32     |   69                     |    50                 |
-| *(mobilenet_v1_1.0_224)*             | CPU int8     |   28                     |    29                 |
-|                                      | GPU Delegate |  360                     |    37                 |
-|                                      | TensorRT     |   --                     |    19                 |
-| **Detection**                        | CPU fp32     |  150                     |   113                 |
-| *(ssd_mobilenet_v1_coco)*            | CPU int8     |   62                     |    64                 |
-|                                      | GPU Delegate |  980                     |    90                 |
-|                                      | TensorRT     |   --                     |    32                 |
-| **Facemesh**                         | CPU fp32     |   29                     |    30                 |
-|                                      | CPU int8     |   24                     |    27                 |
-|                                      | GPU Delegate |  150                     |    20                 |
-|                                      | TensorRT     |   --                     |                       |
-| **Hair segmentation**                | CPU fp32     |  410                     |   400                 |
-|                                      | CPU int8     |                          |                       |
-|                                      | GPU Delegate |  270                     |    30                 |
-|                                      | TensorRT     |   --                     |                       |
-| **Handpose**                         | CPU fp32     |  116                     |    85                 |
-|                                      | CPU int8     |   80                     |    87                 |
-|                                      | GPU Delegate |  880                     |    90                 |
-|                                      | TensorRT     |   --                     |                       |
-| **Objectron**                        | CPU fp32     |  470                     |   302                 |
-|                                      | CPU int8     |  248                     |   249                 |
-|                                      | GPU Delegate | 1990                     |   235                 |
-|                                      | TensorRT     |   --                     |   108                 |
-| **Posenet**                          | CPU fp32     |   92                     |    70                 |
-| *(posenet_mobilenet_v1_100_257x257)* | CPU int8     |   53                     |    55                 |
-|                                      | GPU Delegate |  803                     |    80                 |
-|                                      | TensorRT     |   --                     |    18                 |
-| **Segmentation**                     | CPU fp32     |  108                     |    80                 |
-|                                      | CPU int8     |                          |                       |
-|                                      | GPU Delegate |  790                     |    90                 |
-|                                      | TensorRT     |   --                     |                       |
-| **Style transfer**                   | CPU fp32     | 1830                     |   950                 |
-|                                      | CPU int8     |                          |                       |
-|                                      | GPU Delegate | 2440                     |   215                 |
-|                                      | TensorRT     |   --                     |                       |
+| TensorFlow Lite                      | CPU fp32     |   10                     |    10                 |
+| TensorFlow Lite                      | CPU int8     |    7                     |     7                 |
+| TensorFlow Lite GPU Delegate         | GPU fp16     |   70                     |    10                 |
+| TensorRT                             | GPU fp16     |   --                     |     ?                 |
+
+### **Classification** *(mobilenet_v1_1.0_224)*
+
+| Framework                            | Precision    | Raspberry Pi 4 <br> [ms] | Jetson nano <br> [ms] |
+| ------------------------------------ | :----------: | :----------------------: | :-------------------: |
+| TensorFlow Lite                      | CPU fp32     |   69                     |    50                 |
+| TensorFlow Lite                      | CPU int8     |   28                     |    29                 |
+| TensorFlow Lite GPU Delegate         | GPU fp16     |  360                     |    37                 |
+| TensorRT                             | GPU fp16     |   --                     |    19                 |
+
+### **Object Detection** *(ssd_mobilenet_v1_coco)*
+
+| Framework                            | Precision    | Raspberry Pi 4 <br> [ms] | Jetson nano <br> [ms] |
+| ------------------------------------ | :----------: | :----------------------: | :-------------------: |
+| TensorFlow Lite                      | CPU fp32     |  150                     |   113                 |
+| TensorFlow Lite                      | CPU int8     |   62                     |    64                 |
+| TensorFlow Lite GPU Delegate         | GPU fp16     |  980                     |    90                 |
+| TensorRT                             | GPU fp16     |   --                     |    32                 |
+
+### **Facemesh**
+
+| Framework                            | Precision    | Raspberry Pi 4 <br> [ms] | Jetson nano <br> [ms] |
+| ------------------------------------ | :----------: | :----------------------: | :-------------------: |
+| TensorFlow Lite                      | CPU fp32     |   29                     |    30                 |
+| TensorFlow Lite                      | CPU int8     |   24                     |    27                 |
+| TensorFlow Lite GPU Delegate         | GPU fp16     |  150                     |    20                 |
+| TensorRT                             | GPU fp16     |   --                     |     ?                 |
+
+### **Hair Segmentation**
+
+| Framework                            | Precision    | Raspberry Pi 4 <br> [ms] | Jetson nano <br> [ms] |
+| ------------------------------------ | :----------: | :----------------------: | :-------------------: |
+| TensorFlow Lite                      | CPU fp32     |  410                     |   400                 |
+| TensorFlow Lite                      | CPU int8     |    ?                     |     ?                 |
+| TensorFlow Lite GPU Delegate         | GPU fp16     |  270                     |    30                 |
+| TensorRT                             | GPU fp16     |   --                     |     ?                 |
+
+### **3D Handpose**
+
+| Framework                            | Precision    | Raspberry Pi 4 <br> [ms] | Jetson nano <br> [ms] |
+| ------------------------------------ | :----------: | :----------------------: | :-------------------: |
+| TensorFlow Lite                      | CPU fp32     |  116                     |    85                 |
+| TensorFlow Lite                      | CPU int8     |   80                     |    87                 |
+| TensorFlow Lite GPU Delegate         | GPU fp16     |  880                     |    90                 |
+| TensorRT                             | GPU fp16     |   --                     |     ?                 |
+
+### **3D Object Detection**
+
+| Framework                            | Precision    | Raspberry Pi 4 <br> [ms] | Jetson nano <br> [ms] |
+| ------------------------------------ | :----------: | :----------------------: | :-------------------: |
+| TensorFlow Lite                      | CPU fp32     |  470                     |   302                 |
+| TensorFlow Lite                      | CPU int8     |  248                     |   249                 |
+| TensorFlow Lite GPU Delegate         | GPU fp16     | 1990                     |   235                 |
+| TensorRT                             | GPU fp16     |   --                     |   108                 |
+
+### **Posenet** *(posenet_mobilenet_v1_100_257x257)*
+
+| Framework                            | Precision    | Raspberry Pi 4 <br> [ms] | Jetson nano <br> [ms] |
+| ------------------------------------ | :----------: | :----------------------: | :-------------------: |
+| TensorFlow Lite                      | CPU fp32     |   92                     |    70                 |
+| TensorFlow Lite                      | CPU int8     |   53                     |    55                 |
+| TensorFlow Lite GPU Delegate         | GPU fp16     |  803                     |    80                 |
+| TensorRT                             | GPU fp16     |   --                     |    18                 |
+
+### **Semantic Segmentation** *(deeplabv3_257)*
+
+| Framework                            | Precision    | Raspberry Pi 4 <br> [ms] | Jetson nano <br> [ms] |
+| ------------------------------------ | :----------: | :----------------------: | :-------------------: |
+| TensorFlow Lite                      | CPU fp32     |  108                     |    80                 |
+| TensorFlow Lite                      | CPU int8     |    ?                     |     ?                 |
+| TensorFlow Lite GPU Delegate         | GPU fp16     |  790                     |    90                 |
+| TensorRT                             | GPU fp16     |   --                     |     ?                 |
+
+### **Artistic Style Transfer**
+
+| Framework                            | Precision    | Raspberry Pi 4 <br> [ms] | Jetson nano <br> [ms] |
+| ------------------------------------ | :----------: | :----------------------: | :-------------------: |
+| TensorFlow Lite                      | CPU fp32     | 1830                     |   950                 |
+| TensorFlow Lite                      | CPU int8     |    ?                     |     ?                 |
+| TensorFlow Lite GPU Delegate         | GPU fp16     | 2440                     |   215                 |
+| TensorRT                             | GPU fp16     |   --                     |     ?                 |
 
