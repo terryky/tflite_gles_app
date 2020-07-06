@@ -271,6 +271,7 @@ typedef struct _texparam
     int          upsidedown;
     float        color[4];
     float        rot;               /* degree */
+    float        px, py;            /* pivot */
     int          blendfunc_en;
     unsigned int blendfunc[4];      /* src_rgb, dst_rgb, src_alpha, dst_alpha */
     float        *user_texcoord;
@@ -339,9 +340,11 @@ draw_2d_texture_in (texparam_t *tparam)
     matrix_translate (matrix, x, y, 0.0f);
     if (rot != 0)
     {
-        matrix_translate (matrix, 0,  h * 0.5f, 0.0f);
+        float px = tparam->px;
+        float py = tparam->py;
+        matrix_translate (matrix,  px,  py, 0.0f);
         matrix_rotate (matrix, rot, 0.0f, 0.0f, 1.0f);
-        matrix_translate (matrix, 0, -h * 0.5f, 0.0f);
+        matrix_translate (matrix, -px, -py, 0.0f);
     }
     matrix_scale (matrix, w, h, 1.0f);
     matrix_mult (matrix, s_matprj, matrix);
@@ -452,6 +455,37 @@ draw_2d_texture_ex_texcoord (texture_2d_t *tex, int x, int y, int w, int h, floa
     tparam.textype = 1;
     tparam.texw    = tex->width;
     tparam.texh    = tex->height;
+    tparam.color[0]= 1.0f;
+    tparam.color[1]= 1.0f;
+    tparam.color[2]= 1.0f;
+    tparam.color[3]= 1.0f;
+    tparam.upsidedown = 0;
+    tparam.user_texcoord = user_texcoord;
+
+    if (tex->format == pixfmt_fourcc('Y', 'U', 'Y', 'V'))
+        tparam.textype = 4;
+
+    draw_2d_texture_in (&tparam);
+
+    return 0;
+}
+
+int
+draw_2d_texture_ex_texcoord_rot (texture_2d_t *tex, int x, int y, int w, int h, float *user_texcoord,
+                                 float px, float py, float deg)
+{
+    texparam_t tparam = {0};
+    tparam.x       = x;
+    tparam.y       = y;
+    tparam.w       = w;
+    tparam.h       = h;
+    tparam.texid   = tex->texid;
+    tparam.textype = 1;
+    tparam.texw    = tex->width;
+    tparam.texh    = tex->height;
+    tparam.rot     = deg;
+    tparam.px      = px * w;    /* relative pivot position (0 <= px <= 1) */
+    tparam.py      = py * h;    /* relative pivot position (0 <= py <= 1) */
     tparam.color[0]= 1.0f;
     tparam.color[1]= 1.0f;
     tparam.color[2]= 1.0f;
@@ -619,6 +653,8 @@ draw_2d_line (int x0, int y0, int x1, int y1, float *color, float line_width)
     tparam.w       = len;
     tparam.h       = line_width;
     tparam.rot     = RAD_TO_DEG (theta);
+    tparam.px      = 0;
+    tparam.py      = 0.5f * line_width;
     tparam.textype = 0;
     tparam.color[0]= color[0];
     tparam.color[1]= color[1];

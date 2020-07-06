@@ -14,6 +14,8 @@ int draw_2d_texture (int texid, int x, int y, int w, int h, int upsidedown);
 int draw_2d_texture_ex (texture_2d_t *tex, int x, int y, int w, int h, int upsidedown);
 int draw_2d_texture_texcoord (int texid, int x, int y, int w, int h, float *user_texcoord);
 int draw_2d_texture_ex_texcoord (texture_2d_t *tex, int x, int y, int w, int h, float *user_texcoord);
+int draw_2d_texture_ex_texcoord_rot (texture_2d_t *tex, int x, int y, int w, int h, float *user_texcoord, 
+                                     float px, float py, float deg);
 int draw_2d_texture_blendfunc (int texid, int x, int y, int w, int h,
                            int upsidedown, unsigned int *blendfunc);
 int draw_2d_texture_modulate (int texid, int x, int y, int w, int h,
