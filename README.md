@@ -47,7 +47,7 @@ Target platform: Linux PC / NVIDIA Jetson / RaspberryPi.
 
 ### [Selfie to Anime](https://github.com/terryky/tflite_gles_app/tree/master/gl2selfie2anime)
 - Generate anime-style face image.<br>
-[<img src="gl2selfie2anime/gl2selfie2anime.png" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2selfie2anime
+[<img src="gl2selfie2anime/gl2selfie2anime.png" width=500>](https://github.com/terryky/tflite_gles_app/tree/master/gl2selfie2anime)
 
 ### [Artistic Style Transfer](https://github.com/terryky/tflite_gles_app/tree/master/gl2style_transfer)
 - Create new artworks in artistic style.<br>
