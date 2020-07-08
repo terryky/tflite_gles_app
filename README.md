@@ -47,7 +47,7 @@ Target platform: Linux PC / NVIDIA Jetson / RaspberryPi.
 
 ### [Selfie to Anime](https://github.com/terryky/tflite_gles_app/tree/master/gl2selfie2anime)
 - Generate anime-style face image.<br>
-[<img src="gl2selfie2anime/gl2selfie2anime.png" width=500>](https://github.com/terryky/tflite_gles_app/tree/master/gl2selfie2anime)
+[<img src="gl2selfie2anime/gl2selfie2anime.png" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2selfie2anime)
 
 ### [Artistic Style Transfer](https://github.com/terryky/tflite_gles_app/tree/master/gl2style_transfer)
 - Create new artworks in artistic style.<br>
@@ -433,6 +433,15 @@ You can select the platform by editing [Makefile.env](Makefile.env).
 | TensorFlow Lite                      | CPU fp32     |  108                     |    80                 |
 | TensorFlow Lite                      | CPU int8     |    ?                     |     ?                 |
 | TensorFlow Lite GPU Delegate         | GPU fp16     |  790                     |    90                 |
+| TensorRT                             | GPU fp16     |   --                     |     ?                 |
+
+### **Selfie to Anime**
+
+| Framework                            | Precision    | Raspberry Pi 4 <br> [ms] | Jetson nano <br> [ms] |
+| ------------------------------------ | :----------: | :----------------------: | :-------------------: |
+| TensorFlow Lite                      | CPU fp32     |    ?                     |  7700                 |
+| TensorFlow Lite                      | CPU int8     |    ?                     |     ?                 |
+| TensorFlow Lite GPU Delegate         | GPU fp16     |    ?                     |     ?                 |
 | TensorRT                             | GPU fp16     |   --                     |     ?                 |
 
 ### **Artistic Style Transfer**
