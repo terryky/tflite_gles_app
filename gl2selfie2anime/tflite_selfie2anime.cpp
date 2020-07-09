@@ -11,7 +11,7 @@
  * https://github.com/margaretmz/selfie2anime-e2e-tutorial/blob/master/android/selfie2anime/app/src/main/ml/selfie2anime.tflite
  */
 #define FACE_DETECT_MODEL_PATH      "./model/face_detection_front.tflite"
-#define DEEPLAB_MODEL_PATH          "./model/selfie2anime.tflite"
+#define SELFIE2ANIME_MODEL_PATH     "./model/selfie2anime.tflite"
 
 
 static tflite_interpreter_t s_detect_interpreter;
@@ -76,7 +76,7 @@ init_tflite_selfie2anime()
     tflite_get_tensor_by_name (&s_detect_interpreter, 1, "classificators", &s_detect_tensor_scores);
 
     /* Selfie2Anime */
-    tflite_create_interpreter_from_file (&s_interpreter, DEEPLAB_MODEL_PATH);
+    tflite_create_interpreter_from_file (&s_interpreter, SELFIE2ANIME_MODEL_PATH);
     tflite_get_tensor_by_name (&s_interpreter, 0, "test_domain_A",  &s_tensor_input);
     tflite_get_tensor_by_name (&s_interpreter, 1, "generator_B/Tanh",  &s_tensor_segment);
 
