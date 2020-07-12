@@ -18,7 +18,7 @@
 // limitations under the License.
 
 
-#include "trt_common.h"
+#include "util_trt.h"
 #include "trt_objectron.h"
 #include <unistd.h>
 #include "Eigen/Dense"
@@ -28,7 +28,6 @@
 #define PLAN_MODEL_PATH     "./models/object_detection_3d_chair.plan"
 #define LABEL_MAP_PATH      "./models/class_label.txt"
 
-static Logger               gLogger;
 static IExecutionContext   *s_trt_context;
 static trt_tensor_t         s_tensor_input;
 static trt_tensor_t         s_tensor_offsetmap;
@@ -46,235 +45,34 @@ Eigen::Matrix<float, 8, 4, Eigen::RowMajor> epnp_alpha_;
 
 
 /* -------------------------------------------------- *
- *  wait counter thread
- * -------------------------------------------------- */
-static pthread_t s_wait_thread;
-static int       s_is_waiting = 1;
-
-static void *
-waitcounter_thread_main (void *)
-{
-    int cnt = 0;
-    while (s_is_waiting)
-    {
-        fprintf (stderr, "\r%d", cnt++);
-        sleep(1);
-    }
-    return NULL;
-}
-
-
-static int
-start_waitcounter_thread ()
-{
-    s_is_waiting = 1;
-    pthread_create (&s_wait_thread, NULL, waitcounter_thread_main, NULL);
-    return 0;
-}
-
-static int
-stop_waitcounter_thread ()
-{
-    s_is_waiting = 0;
-    return 0;
-}
-
-
-/* -------------------------------------------------- *
- *  allocate tensor buffer
- * -------------------------------------------------- */
-static int
-get_element_count (const Dims &dims)
-{
-    int elem_count = 1;
-    for (int i = 0; i < dims.nbDims; i++)
-        elem_count *= dims.d[i];
-
-    return elem_count;
-}
-
-
-static unsigned int
-get_element_size (DataType t)
-{
-    switch (t)
-    {
-    case DataType::kINT32: return 4;
-    case DataType::kFLOAT: return 4;
-    case DataType::kHALF:  return 2;
-    case DataType::kINT8:  return 1;
-    default:               return 0;
-    }
-}
-
-
-static void
-print_dims (const Dims &dims)
-{
-    for (int i = 0; i < dims.nbDims; i++)
-    {
-        if (i > 0)
-            fprintf (stderr, "x");
-
-        fprintf (stderr, "%d", dims.d[i]);
-    }
-}
-
-static const char *
-get_type_str (DataType t)
-{
-    switch (t)
-    {
-    case DataType::kINT32: return "kINT32";
-    case DataType::kFLOAT: return "kFLOAT";
-    case DataType::kHALF:  return "kHALF";
-    case DataType::kINT8:  return "kINT8";
-    default:               return "UNKNOWN";
-    }
-}
-
-
-void *
-safeCudaMalloc (size_t memSize)
-{
-    void* deviceMem;
-    cudaError_t err;
-
-    err = cudaMalloc(&deviceMem, memSize);
-    if (err != 0)
-    {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
-        return NULL;
-    }
-
-    if (deviceMem == nullptr)
-    {
-        std::cerr << "Out of memory" << std::endl;
-        exit(1);
-    }
-    return deviceMem;
-}
-
-
-/* -------------------------------------------------- *
- *  save/load "plan file"
- * -------------------------------------------------- */
-static int
-emit_plan_file (ICudaEngine *engine, const std::string &plan_file_name)
-{
-    IHostMemory *serialized_engine = engine->serialize();
-
-    std::ofstream planfile;
-    planfile.open (plan_file_name);
-    planfile.write((char *)serialized_engine->data(), serialized_engine->size());
-    planfile.close();
-
-    return 0;
-}
-
-
-static ICudaEngine *
-load_plan_file (const std::string &plan_file_name)
-{
-    std::ifstream planfile (plan_file_name);
-    if (!planfile.is_open())
-    {
-        fprintf (stderr, "ERR:%s(%d) Could not open plan file.\n", __FILE__, __LINE__);
-        return NULL;
-    }
-
-    std::stringstream planbuffer;
-    planbuffer << planfile.rdbuf();
-    std::string plan = planbuffer.str();
-
-    IRuntime *runtime = createInferRuntime (gLogger);
-
-    ICudaEngine *engine;
-    engine = runtime->deserializeCudaEngine ((void*)plan.data(), plan.size(), nullptr);
-
-    return engine;
-}
-
-
-/* -------------------------------------------------- *
  *  create cuda engine
  * -------------------------------------------------- */
-#define MAX_WORKSPACE (1 << 30)
-
-ICudaEngine *
-create_engine_from_uff (const std::string &uff_file)
-{
-    IBuilder           *builder = createInferBuilder(gLogger);
-    INetworkDefinition *network = builder->createNetwork();
-
-    const std::string input_layer_name   = "input";
-    const std::string output_layer_name0 = "Identity_1";
-    const std::string output_layer_name1 = "model/belief/Conv2D/conv2d";
-
-    IUffParser *parser = nvuffparser::createUffParser();
-    parser->registerInput (input_layer_name.c_str(),
-                           nvinfer1::Dims3(640, 480, 3), 
-                           nvuffparser::UffInputOrder::kNHWC);
-    parser->registerOutput(output_layer_name0.c_str());
-    parser->registerOutput(output_layer_name1.c_str());
-
-#if 1
-    if (!parser->parse(uff_file.c_str(), *network, nvinfer1::DataType::kHALF))
-    {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
-        return NULL;
-    }
-    builder->setFp16Mode(true);
-#else
-    if (!parser->parse(uff_file.c_str(), *network, nvinfer1::DataType::kFLOAT))
-    {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
-        return NULL;
-    }
-#endif
-
-    // builder->setInt8Mode (true);
-    // builder->setInt8Calibrator (NULL);
-    fprintf (stderr, " - HasFastFp16(): %d\n", builder->platformHasFastFp16());
-    fprintf (stderr, " - HasFastInt8(): %d\n", builder->platformHasFastInt8());
-
-    /* create the engine */
-    builder->setMaxBatchSize (1);
-    builder->setMaxWorkspaceSize (MAX_WORKSPACE);
-
-    fprintf (stderr, "Building CUDA Engine. please wait...\n");
-    start_waitcounter_thread();
-
-    ICudaEngine *engine = builder->buildCudaEngine (*network);
-    if (!engine)
-    {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
-        return NULL;
-    }
-
-    stop_waitcounter_thread();
-
-    network->destroy();
-    builder->destroy();
-    parser->destroy();
-
-    return engine;
-}
-
-
-int
+static int
 convert_uff_to_plan (const std::string &plan_file_name, const std::string &uff_file_name)
 {
-    ICudaEngine *engine;
+    std::vector<trt_uff_inputdef_t>  uff_input_array;
+    trt_uff_inputdef_t uff_input;
+    uff_input.name  = "input";
+    uff_input.dims  = nvinfer1::Dims3(640, 480, 3);
+    uff_input.order = nvuffparser::UffInputOrder::kNHWC;
+    uff_input_array.push_back (uff_input);
 
-    engine = create_engine_from_uff (uff_file_name);
+    std::vector<trt_uff_outputdef_t> uff_output_array;
+    trt_uff_outputdef_t uff_output[2];
+    uff_output[0].name = "Identity_1";
+    uff_output[1].name = "model/belief/Conv2D/conv2d";
+    uff_output_array.push_back (uff_output[0]);
+    uff_output_array.push_back (uff_output[1]);
+
+    ICudaEngine *engine;
+    engine = trt_create_engine_from_uff (uff_file_name, uff_input_array, uff_output_array);
     if (!engine)
     {
         fprintf (stderr, "ERR:%s(%d): Failed to load graph from file.\n", __FILE__, __LINE__);
         return -1;
     }
 
-    emit_plan_file (engine, plan_file_name);
+    trt_emit_plan_file (engine, plan_file_name);
 
     engine->destroy();
 
@@ -287,55 +85,28 @@ convert_uff_to_plan (const std::string &plan_file_name, const std::string &uff_f
  *  Create TensorRT Interpreter
  * -------------------------------------------------- */
 int
-trt_get_tensor_by_name (ICudaEngine *engine, const char *name, trt_tensor_t *ptensor)
-{
-    memset (ptensor, 0, sizeof (*ptensor));
-
-    int bind_idx = -1;
-    bind_idx = engine->getBindingIndex (name);
-    if (bind_idx < 0)
-    {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
-        return -1;
-    }
-    
-    ptensor->bind_idx = bind_idx;
-    ptensor->dtype    = engine->getBindingDataType   (bind_idx);
-    ptensor->dims     = engine->getBindingDimensions (bind_idx);
-
-    int element_size  = get_element_size  (ptensor->dtype);
-    int element_count = get_element_count (ptensor->dims);
-    ptensor->memsize  = element_size * element_count;
-
-    ptensor->gpu_mem = safeCudaMalloc(ptensor->memsize);
-    ptensor->cpu_mem = malloc (ptensor->memsize);
-
-    fprintf (stderr, "------------------------------\n");
-    fprintf (stderr, "[%s]\n", name);
-    fprintf (stderr, " bind_idx = %d\n", ptensor->bind_idx);
-    fprintf (stderr, " data type= %s\n", get_type_str (ptensor->dtype));
-    fprintf (stderr, " dimension= "); print_dims (ptensor->dims);
-    fprintf (stderr, "\n");
-    fprintf (stderr, "------------------------------\n");
-    
-    return 0;
-}
-
-int
 init_trt_objectron ()
 {
-    fprintf (stderr, "TensorRT version: %d.%d.%d.%d\n",
-        NV_TENSORRT_MAJOR, NV_TENSORRT_MINOR, NV_TENSORRT_PATCH, NV_TENSORRT_BUILD);
+    ICudaEngine *engine = NULL;
+
+    trt_initialize ();
+
+    /* Try to load Prebuilt TensorRT Engine */
+    fprintf (stderr, "loading prebuilt TensorRT engine...\n");
+    engine = trt_load_plan_file (PLAN_MODEL_PATH);
 
     /* Build TensorRT Engine */
-    if (0)
+    if (engine == NULL)
     {
         convert_uff_to_plan (PLAN_MODEL_PATH, UFF_MODEL_PATH);
-    }
 
-    /* Load Prebuilt TensorRT Engine */
-    fprintf (stderr, "loading cuda engine...\n");
-    ICudaEngine *engine = load_plan_file (PLAN_MODEL_PATH);
+        engine = trt_load_plan_file (PLAN_MODEL_PATH);
+        if (engine == NULL)
+        {
+            fprintf (stderr, "%s(%d)\n", __FILE__, __LINE__);
+            return -1;
+        }
+    }
 
     s_trt_context = engine->createExecutionContext();
 
@@ -722,35 +493,6 @@ pack_objectron_result (objectron_result_t *objectron_result, std::list<object_t>
 /* -------------------------------------------------- *
  * Invoke TensorRT
  * -------------------------------------------------- */
-int
-trt_copy_tensor_to_gpu (trt_tensor_t &tensor)
-{
-    cudaError_t err;
-
-    err = cudaMemcpy (tensor.gpu_mem, tensor.cpu_mem, tensor.memsize, cudaMemcpyHostToDevice);
-    if (err != 0)
-    {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
-        return -1;
-    }
-    return 0;
-}
-
-int
-trt_copy_tensor_from_gpu (trt_tensor_t &tensor)
-{
-    cudaError_t err;
-
-    err = cudaMemcpy (tensor.cpu_mem, tensor.gpu_mem, tensor.memsize, cudaMemcpyDeviceToHost);
-    if (err != 0)
-    {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
-        return -1;
-    }
-    return 0;
-}
-
-
 int
 invoke_objectron (objectron_result_t *objectron_result)
 {
