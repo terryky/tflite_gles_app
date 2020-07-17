@@ -33,8 +33,6 @@ LIBS     += -ldrm
 #
 # for FFmpeg (libav) video decode
 #
-ENABLE_VDEC ?= false
-#ENABLE_VDEC := true
 ifeq ($(ENABLE_VDEC), true)
 CFLAGS   += -DUSE_INPUT_VIDEO_DECODE
 FFMPEG_LIBS=    libavdevice                        \
