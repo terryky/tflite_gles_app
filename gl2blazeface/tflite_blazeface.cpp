@@ -64,7 +64,7 @@ create_blazeface_anchors(int input_w, int input_h)
  *  Create TFLite Interpreter
  * -------------------------------------------------- */
 int
-init_tflite_blazeface(int use_quantized_tflite)
+init_tflite_blazeface(int use_quantized_tflite, blazeface_config_t *config)
 {
     const char *blazeface_model;
 
@@ -86,6 +86,9 @@ init_tflite_blazeface(int use_quantized_tflite)
     int det_input_w = s_detect_tensor_input.dims[2];
     int det_input_h = s_detect_tensor_input.dims[1];
     create_blazeface_anchors (det_input_w, det_input_h);
+
+    config->score_thresh = 0.75f;
+    config->iou_thresh   = 0.3f;
 
     return 0;
 }
@@ -276,7 +279,7 @@ pack_face_result (blazeface_result_t *face_result, std::list<face_t> &face_list)
  * Invoke TensorFlow Lite
  * -------------------------------------------------- */
 int
-invoke_blazeface (blazeface_result_t *face_result)
+invoke_blazeface (blazeface_result_t *face_result, blazeface_config_t *config)
 {
     if (s_detect_interpreter.interpreter->Invoke() != kTfLiteOk)
     {
@@ -285,7 +288,7 @@ invoke_blazeface (blazeface_result_t *face_result)
     }
 
     /* decode boundary box and landmark keypoints */
-    float score_thresh = 0.75f;
+    float score_thresh = config->score_thresh;
     std::list<face_t> face_list;
 
     int input_img_w = s_detect_tensor_input.dims[2];
@@ -294,7 +297,7 @@ invoke_blazeface (blazeface_result_t *face_result)
 
 
 #if 1 /* USE NMS */
-    float iou_thresh = 0.3f;
+    float iou_thresh = config->iou_thresh;
     std::list<face_t> face_nms_list;
 
     non_max_suppression (face_list, face_nms_list, iou_thresh);

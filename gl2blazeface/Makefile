@@ -48,6 +48,24 @@ LIBS   += $(shell pkg-config --libs   $(FFMPEG_LIBS)) -lm
 SRCS   += video_decode.c
 endif
 
+# ---------------------
+#  for ImGui
+# ---------------------
+#ENABLE_IMGUI = true
+ifeq ($(ENABLE_IMGUI), true)
+CFLAGS   += -DUSE_IMGUI
+CFLAGS   += -DIMGUI_IMPL_OPENGL_ES2
+
+SRCS += render_imgui.cpp
+SRCS += $(MAKETOP)/third_party/imgui/imgui.cpp
+SRCS += $(MAKETOP)/third_party/imgui/imgui_draw.cpp
+SRCS += $(MAKETOP)/third_party/imgui/imgui_widgets.cpp
+SRCS += $(MAKETOP)/third_party/imgui/examples/imgui_impl_opengl3.cpp
+
+INCLUDES += -I$(MAKETOP)/third_party/imgui
+INCLUDES += -I$(MAKETOP)/third_party/imgui/examples
+endif
+
 
 # ---------------------
 #  for TFLite

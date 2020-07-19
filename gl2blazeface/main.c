@@ -16,6 +16,7 @@
 #include "tflite_blazeface.h"
 #include "camera_capture.h"
 #include "video_decode.h"
+#include "render_imgui.h"
 
 #define UNUSED(x) (void)(x)
 
@@ -158,10 +159,10 @@ feed_blazeface_image(texture_2d_t *srctex, int win_w, int win_h)
 
 
 static void
-render_detect_region (int ofstx, int ofsty, int texw, int texh, blazeface_result_t *detection)
+render_detect_region (int ofstx, int ofsty, int texw, int texh, blazeface_result_t *detection, imgui_data_t *imgui_data)
 {
-    float col_red[]   = {1.0f, 0.0f, 0.0f, 1.0f};
     float col_white[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    float *col_frame = imgui_data->frame_color;
 
     for (int i = 0; i < detection->num; i ++)
     {
@@ -173,12 +174,12 @@ render_detect_region (int ofstx, int ofsty, int texw, int texh, blazeface_result
         float score = face->score;
 
         /* rectangle region */
-        draw_2d_rect (x1, y1, x2-x1, y2-y1, col_red, 2.0f);
+        draw_2d_rect (x1, y1, x2-x1, y2-y1, col_frame, 2.0f);
 
         /* class name */
         char buf[512];
         sprintf (buf, "%d", (int)(score * 100));
-        draw_dbgstr_ex (buf, x1, y1, 1.0f, col_white, col_red);
+        draw_dbgstr_ex (buf, x1, y1, 1.0f, col_white, col_frame);
 
         /* key points */
         for (int j = 0; j < kFaceKeyNum; j ++)
@@ -187,7 +188,7 @@ render_detect_region (int ofstx, int ofsty, int texw, int texh, blazeface_result
             float y = face->keys[j].y * texh + ofsty;
 
             int r = 4;
-            draw_2d_fillrect (x - (r/2), y - (r/2), r, r, col_red);
+            draw_2d_fillrect (x - (r/2), y - (r/2), r, r, col_frame);
         }
     }
 }
@@ -236,6 +237,42 @@ adjust_texture (int win_w, int win_h, int texw, int texh,
     *dh = (int)scaled_h;
 }
 
+#if defined (USE_IMGUI)
+void
+mousemove_cb (int x, int y)
+{
+    imgui_mousemove (x, y);
+}
+
+void
+button_cb (int button, int state, int x, int y)
+{
+    imgui_mousebutton (button, state, x, y);
+}
+
+void
+keyboard_cb (int key, int state, int x, int y)
+{
+}
+#endif
+
+void
+setup_imgui (int win_w, int win_h, imgui_data_t *imgui_data)
+{
+#if defined (USE_IMGUI)
+    egl_set_motion_func (mousemove_cb);
+    egl_set_button_func (button_cb);
+    egl_set_key_func    (keyboard_cb);
+
+    init_imgui (win_w, win_h);
+#endif
+
+    imgui_data->frame_color[0] = 1.0f;
+    imgui_data->frame_color[1] = 0.0f;
+    imgui_data->frame_color[2] = 0.0f;
+    imgui_data->frame_color[3] = 1.0f;
+}
+
 
 /*--------------------------------------------------------------------------- *
  *      M A I N    F U N C T I O N
@@ -254,6 +291,7 @@ main(int argc, char *argv[])
     double ttime[10] = {0}, interval, invoke_ms;
     int use_quantized_tflite = 0;
     int enable_camera = 1;
+    imgui_data_t imgui_data = {0};
     UNUSED (argc);
     UNUSED (*argv);
 #if defined (USE_INPUT_VIDEO_DECODE)
@@ -299,7 +337,9 @@ main(int argc, char *argv[])
     init_pmeter (win_w, win_h, 500);
     init_dbgstr (win_w, win_h);
 
-    init_tflite_blazeface (use_quantized_tflite);
+    init_tflite_blazeface (use_quantized_tflite, &imgui_data.blazeface_config);
+
+    setup_imgui (win_w, win_h, &imgui_data);
 
 #if defined (USE_GL_DELEGATE) || defined (USE_GPU_DELEGATEV2)
     /* we need to recover framebuffer because GPU Delegate changes the context */
@@ -371,7 +411,7 @@ main(int argc, char *argv[])
         feed_blazeface_image (&captex, win_w, win_h);
 
         ttime[2] = pmeter_get_time_ms ();
-        invoke_blazeface (&face_ret);
+        invoke_blazeface (&face_ret, &imgui_data.blazeface_config);
         ttime[3] = pmeter_get_time_ms ();
         invoke_ms = ttime[3] - ttime[2];
 
@@ -379,13 +419,16 @@ main(int argc, char *argv[])
 
         /* visualize the object detection results. */
         draw_2d_texture_ex (&captex, draw_x, draw_y, draw_w, draw_h, 0);
-        render_detect_region (draw_x, draw_y, draw_w, draw_h, &face_ret);
+        render_detect_region (draw_x, draw_y, draw_w, draw_h, &face_ret, &imgui_data);
 
         draw_pmeter (0, 40);
 
         sprintf (strbuf, "Interval:%5.1f [ms]\nTFLite  :%5.1f [ms]", interval, invoke_ms);
         draw_dbgstr (strbuf, 10, 10);
 
+#if defined (USE_IMGUI)
+        invoke_imgui (&imgui_data);
+#endif
         egl_swap();
     }
 
