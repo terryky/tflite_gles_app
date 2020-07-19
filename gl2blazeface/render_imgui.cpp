@@ -49,8 +49,8 @@ render_gui (imgui_data_t *imgui_data)
 {
     ImGui::Begin("Blazeface config");
 
-    ImGui::SliderFloat("Score thresh", &imgui_data->config.score_thresh, 0.0f, 1.0f);
-    ImGui::SliderFloat("IOU   thresh", &imgui_data->config.iou_thresh,   0.0f, 1.0f);
+    ImGui::SliderFloat("Score thresh", &imgui_data->blazeface_config.score_thresh, 0.0f, 1.0f);
+    ImGui::SliderFloat("IOU   thresh", &imgui_data->blazeface_config.iou_thresh,   0.0f, 1.0f);
 
     ImVec4 frame_color;
     frame_color.x = imgui_data->frame_color[0];
