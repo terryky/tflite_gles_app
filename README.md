@@ -53,6 +53,9 @@ Target platform: Linux PC / NVIDIA Jetson / RaspberryPi.
 - Create new artworks in artistic style.<br>
 [<img src="gl2style_transfer/gl2style_transfer.png" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2style_transfer)
 
+### [Text Detection](https://github.com/terryky/tflite_gles_app/tree/master/gl2text_detection)
+- Text detection from natural scenes.<br>
+[<img src="gl2text_detection/gl2text_detection.jpg" width=300>](https://github.com/terryky/tflite_gles_app/tree/master/gl2text_detection)
 
 
 
