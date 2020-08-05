@@ -635,6 +635,56 @@ draw_2d_rect (int x, int y, int w, int h, float *color, float line_width)
     return 0;
 }
 
+int
+draw_2d_rect_rot (int x, int y, int w, int h, float *color, float line_width,
+                  int px, int py, float rot_degree)
+{
+    int ttype = 0;
+    shader_obj_t *sobj = &s_sobj[ttype];
+    float matrix[16];
+
+    glUseProgram (sobj->program);
+    glUniform4fv (s_loc_color[ttype], 1, color);
+
+    glEnable (GL_BLEND);
+    glBlendFuncSeparate (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+               GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+    matrix_identity (matrix);
+    if (rot_degree != 0)
+    {
+        matrix_translate (matrix,  px,  py, 0);
+        matrix_rotate (matrix, rot_degree, 0.0f, 0.0f, 1.0f);
+        matrix_translate (matrix, -px, -py, 0);
+    }
+
+    matrix_mult (matrix, s_matprj, matrix);
+    glUniformMatrix4fv (s_loc_mtx[ttype], 1, GL_FALSE, matrix);
+
+    glLineWidth (line_width);
+    float x1 = x;
+    float x2 = x + w;
+    float y1 = y;
+    float y2 = y + h;
+    if (sobj->loc_vtx >= 0)
+    {
+        float vtx[10] = {x1, y1,
+                         x2, y1,
+                         x2, y2,
+                         x1, y2,
+                         x1, y1};
+
+        glEnableVertexAttribArray (sobj->loc_vtx);
+        glVertexAttribPointer (sobj->loc_vtx, 2, GL_FLOAT, GL_FALSE, 0, vtx);
+        glDrawArrays (GL_LINE_STRIP, 0, 5);
+    }
+
+    glDisable (GL_BLEND);
+
+    GLASSERT ();
+    return 0;
+}
+
 
 int
 draw_2d_line (int x0, int y0, int x1, int y1, float *color, float line_width)
