@@ -9,7 +9,7 @@
 /* 
  * https://tfhub.dev/sayakpaul/lite-model/east-text-detector/int8/1
  */
-#define EAST_TEXTDET_MODEL_PATH        "./east_textdet_model/lite-model_east-text-detector_int8_1.tflite"
+#define EAST_TEXTDET_MODEL_PATH        "./east_textdet_model/lite-model_east-text-detector_fp16_1.tflite"
 #define EAST_TEXTDET_QUANT_MODEL_PATH  "./east_textdet_model/lite-model_east-text-detector_int8_1.tflite"
 
 static tflite_interpreter_t s_detect_interpreter;
