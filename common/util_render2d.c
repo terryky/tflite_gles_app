@@ -716,3 +716,92 @@ draw_2d_line (int x0, int y0, int x1, int y1, float *color, float line_width)
     return 0;
 }
 
+
+int
+draw_2d_fillcircle (int x, int y, int radius, float *color)
+{
+#define DIVNUM 20
+    int ttype = 0;
+    shader_obj_t *sobj = &s_sobj[ttype];
+    float matrix[16];
+    float vtx[(DIVNUM+2) * 2];
+
+    glUseProgram (sobj->program);
+    glUniform4fv (s_loc_color[ttype], 1, color);
+
+    glEnable (GL_BLEND);
+    glBlendFuncSeparate (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+               GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+    matrix_identity (matrix);
+    matrix_mult (matrix, s_matprj, matrix);
+    glUniformMatrix4fv (s_loc_mtx[ttype], 1, GL_FALSE, matrix);
+
+    if (sobj->loc_vtx >= 0)
+    {
+        vtx[0] = x;
+        vtx[1] = y;
+        for (int i = 0; i <= DIVNUM; i ++)
+        {
+            float delta = 2 * M_PI / (float)DIVNUM;
+            float theta = delta * i;
+
+            vtx[(i+1) * 2 + 0] = radius * cos (theta) + x;
+            vtx[(i+1) * 2 + 1] = radius * sin (theta) + y;
+        }
+
+        glEnableVertexAttribArray (sobj->loc_vtx);
+        glVertexAttribPointer (sobj->loc_vtx, 2, GL_FLOAT, GL_FALSE, 0, vtx);
+        glDrawArrays (GL_TRIANGLE_FAN, 0, DIVNUM + 2);
+    }
+
+    glDisable (GL_BLEND);
+
+    GLASSERT ();
+    return 0;
+}
+
+int
+draw_2d_circle (int x, int y, int radius, float *color, float line_width)
+{
+#define DIVNUM 10
+    int ttype = 0;
+    shader_obj_t *sobj = &s_sobj[ttype];
+    float matrix[16];
+    float vtx[(DIVNUM+2) * 2];
+
+    glUseProgram (sobj->program);
+    glUniform4fv (s_loc_color[ttype], 1, color);
+
+    glEnable (GL_BLEND);
+    glBlendFuncSeparate (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+               GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+
+    matrix_identity (matrix);
+    matrix_mult (matrix, s_matprj, matrix);
+    glUniformMatrix4fv (s_loc_mtx[ttype], 1, GL_FALSE, matrix);
+
+    glLineWidth (line_width);
+    if (sobj->loc_vtx >= 0)
+    {
+        for (int i = 0; i <= DIVNUM; i ++)
+        {
+            float delta = 2 * M_PI / (float)DIVNUM;
+            float theta = delta * i;
+
+            vtx[i * 2 + 0] = radius * cos (theta) + x;
+            vtx[i * 2 + 1] = radius * sin (theta) + y;
+        }
+
+        glEnableVertexAttribArray (sobj->loc_vtx);
+        glVertexAttribPointer (sobj->loc_vtx, 2, GL_FLOAT, GL_FALSE, 0, vtx);
+        glDrawArrays (GL_LINE_STRIP, 0, DIVNUM + 1);
+    }
+    glLineWidth (1);
+
+    glDisable (GL_BLEND);
+
+    GLASSERT ();
+    return 0;
+}
+

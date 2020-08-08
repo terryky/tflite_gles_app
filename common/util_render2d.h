@@ -26,6 +26,8 @@ int draw_2d_rect (int x, int y, int w, int h, float *color, float line_width);
 int draw_2d_rect_rot (int x, int y, int w, int h, float *color, float line_width,
                       int px, int py, float rot_degree);
 int draw_2d_line (int x0, int y0, int x1, int y1, float *color, float line_width);
+int draw_2d_fillcircle (int x, int y, int radius, float *color);
+int draw_2d_circle (int x, int y, int radius, float *color, float line_width);
 
  #endif /* _UTIL_RENDER_2D_H_ */
  
