@@ -31,6 +31,10 @@ Target platform: Linux PC / NVIDIA Jetson / RaspberryPi.
 - 3D Handpose Estimation from single RGB images.<br>
 [<img src="gl2handpose/gl2handpose.png" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2handpose)
 
+### [Iris Detection](https://github.com/terryky/tflite_gles_app/tree/master/gl2iris_landmark)
+- Eye position estimation by detecting the iris.<br>
+[<img src="gl2iris_landmark/gl2iris_landmark.png" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2iris_landmark)
+
 ### [3D Object Detection](https://github.com/terryky/tflite_gles_app/tree/master/gl2objectron)
 - 3D Object Detection.
 - TensorRT port is [**HERE**](https://github.com/terryky/tflite_gles_app/tree/master/trt_objectron)<br>
