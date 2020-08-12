@@ -424,10 +424,20 @@ compute_face_rect (face_t &face)
     }
 }
 
+static bool
+sort_right_major (face_t &v1, face_t &v2)
+{
+    if (v1.keys[kRightEye].x > v2.keys[kRightEye].x)
+        return true;
+    else
+        return false;
+}
 
 static void
 pack_face_result (face_detect_result_t *facedet_result, std::list<face_t> &face_list)
 {
+    face_list.sort (sort_right_major);
+
     int num_faces = 0;
     for (auto itr = face_list.begin(); itr != face_list.end(); itr ++)
     {
