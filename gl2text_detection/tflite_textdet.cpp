@@ -17,6 +17,7 @@ static tflite_interpreter_t s_detect_interpreter;
 static tflite_tensor_t      s_detect_tensor_input;
 static tflite_tensor_t      s_detect_tensor_scores;
 static tflite_tensor_t      s_detect_tensor_geometry;
+static tflite_tensor_t      s_detect_tensor_angle;
 
 
 
@@ -32,17 +33,25 @@ init_tflite_textdet(int use_quantized_tflite, detect_config_t *config)
     if (use_quantized_tflite)
     {
         textdet_model = EAST_TEXTDET_QUANT_MODEL_PATH;
+
+        /* Angle and geometry are independent */
+        tflite_create_interpreter_from_file (&s_detect_interpreter, textdet_model);
+        tflite_get_tensor_by_name (&s_detect_interpreter, 0, "input_images",                  &s_detect_tensor_input);
+        tflite_get_tensor_by_name (&s_detect_interpreter, 1, "feature_fusion/Conv_7/Sigmoid", &s_detect_tensor_scores);
+        tflite_get_tensor_by_name (&s_detect_interpreter, 1, "feature_fusion/mul_6",          &s_detect_tensor_geometry);
+        tflite_get_tensor_by_name (&s_detect_interpreter, 1, "feature_fusion/mul_7",          &s_detect_tensor_angle);
     }
     else
     {
         textdet_model = EAST_TEXTDET_MODEL_PATH;
+
+        /* Angle and geometry are concatinated */
+        tflite_create_interpreter_from_file (&s_detect_interpreter, textdet_model);
+        tflite_get_tensor_by_name (&s_detect_interpreter, 0, "input_images",                  &s_detect_tensor_input);
+        tflite_get_tensor_by_name (&s_detect_interpreter, 1, "feature_fusion/Conv_7/Sigmoid", &s_detect_tensor_scores);
+        tflite_get_tensor_by_name (&s_detect_interpreter, 1, "feature_fusion/concat_3",       &s_detect_tensor_geometry);
     }
 
-    /* Text detect */
-    tflite_create_interpreter_from_file (&s_detect_interpreter, textdet_model);
-    tflite_get_tensor_by_name (&s_detect_interpreter, 0, "input_images",                  &s_detect_tensor_input);
-    tflite_get_tensor_by_name (&s_detect_interpreter, 1, "feature_fusion/Conv_7/Sigmoid", &s_detect_tensor_scores);
-    tflite_get_tensor_by_name (&s_detect_interpreter, 1, "feature_fusion/concat_3",       &s_detect_tensor_geometry);
 
     config->score_thresh = 0.75f;
     config->iou_thresh   = 0.3f;
@@ -65,12 +74,37 @@ get_textdet_input_buf (int *w, int *h)
 static float *
 get_geometry_ptr (int x, int y)
 {
-    int score_w = s_detect_tensor_geometry.dims[2];
-    int score_c = s_detect_tensor_geometry.dims[3];
-    int idx = (y * score_w * score_c) + (x * score_c);
+    int geom_w = s_detect_tensor_geometry.dims[2];
+    int geom_c = s_detect_tensor_geometry.dims[3];
+    int idx = (y * geom_w * geom_c) + (x * geom_c);
     float *geom_ptr = (float *)s_detect_tensor_geometry.ptr;
 
     return &geom_ptr[idx];
+}
+
+static float *
+get_angle_ptr (int x, int y)
+{
+    int geom_c = s_detect_tensor_geometry.dims[3];
+
+    /* concatinated geometry (geom[4] + angle[1]) */
+    if (geom_c > 4)
+    {
+        int geom_w = s_detect_tensor_geometry.dims[2];
+        int idx = (y * geom_w * geom_c) + (x * geom_c);
+        float *geom_ptr = (float *)s_detect_tensor_geometry.ptr;
+
+        return &geom_ptr[idx + 4];
+    }
+    /* angle independent of geometry */
+    else
+    {
+        int angle_w = s_detect_tensor_angle.dims[2];
+        int angle_c = s_detect_tensor_angle.dims[3];
+        int idx = (y * angle_w * angle_c) + (x * angle_c);
+        float *geom_ptr = (float *)s_detect_tensor_angle.ptr;
+        return &geom_ptr[idx];
+    }
 }
 
 /*
@@ -95,11 +129,12 @@ decode_bounds (std::list<detect_region_t> &detect_list, float score_thresh, int 
             if (score < score_thresh)
                 continue;
 
-            float *geom_ptr = get_geometry_ptr (x, y);
+            float *geom_ptr  = get_geometry_ptr (x, y);
+            float *angle_ptr = get_angle_ptr (x, y);
 
             float offset_x = x * 4;
             float offset_y = y * 4;
-            float angle = geom_ptr[4];
+            float angle = angle_ptr[0];
             float h = geom_ptr[0] + geom_ptr[2];
             float w = geom_ptr[1] + geom_ptr[3];
 
