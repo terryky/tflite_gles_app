@@ -464,3 +464,12 @@ You can select the platform by editing [Makefile.env](Makefile.env).
 | TensorFlow Lite GPU Delegate         | GPU fp16     | 2440                     |   215                 |
 | TensorRT                             | GPU fp16     |   --                     |     ?                 |
 
+### **Text Detection** *(east_text_detection_320x320)*
+
+| Framework                            | Precision    | Raspberry Pi 4 <br> [ms] | Jetson nano <br> [ms] |
+| ------------------------------------ | :----------: | :----------------------: | :-------------------: |
+| TensorFlow Lite                      | CPU fp32     | 1020                     |   680                 |
+| TensorFlow Lite                      | CPU int8     |  378                     |   368                 |
+| TensorFlow Lite GPU Delegate         | GPU fp16     | 4665                     |   388                 |
+| TensorRT                             | GPU fp16     |   --                     |     ?                 |
+
