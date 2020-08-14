@@ -40,6 +40,10 @@ Target platform: Linux PC / NVIDIA Jetson / RaspberryPi.
 - TensorRT port is [**HERE**](https://github.com/terryky/tflite_gles_app/tree/master/trt_objectron)<br>
 [<img src="gl2objectron/gl2objectron.png" width=300>](https://github.com/terryky/tflite_gles_app/tree/master/gl2objectron)
 
+### [Blazepose](https://github.com/terryky/tflite_gles_app/tree/master/gl2blazepose)
+- Pose Estimation (upper body).<br>
+[<img src="gl2blazepose/gl2blazepose.png" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2blazepose)
+
 ### [Posenet](https://github.com/terryky/tflite_gles_app/tree/master/gl2posenet)
 - Pose Estimation.
 - TensorRT port is [**HERE**](https://github.com/terryky/tflite_gles_app/tree/master/trt_posenet)<br>
