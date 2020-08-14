@@ -9,12 +9,18 @@
 /* 
  * https://github.com/google/mediapipe/tree/master/mediapipe/modules/pose_detection
  */
-#define POSE_DETECT_MODEL_PATH        "./model/pose_detection.tflite"
+#define POSE_DETECT_MODEL_PATH      "./model/pose_detection.tflite"
+#define POSE_LANDMARK_MODEL_PATH    "./model/pose_landmark_upper_body.tflite"
 
 static tflite_interpreter_t s_detect_interpreter;
 static tflite_tensor_t      s_detect_tensor_input;
 static tflite_tensor_t      s_detect_tensor_scores;
 static tflite_tensor_t      s_detect_tensor_bboxes;
+
+static tflite_interpreter_t s_landmark_interpreter;
+static tflite_tensor_t      s_landmark_tensor_input;
+static tflite_tensor_t      s_landmark_tensor_landmark;
+static tflite_tensor_t      s_landmark_tensor_landmarkflag;
 
 static std::list<fvec2> s_anchors;
 
@@ -65,14 +71,17 @@ int
 init_tflite_blazepose(int use_quantized_tflite, blazepose_config_t *config)
 {
     const char *detectpose_model;
+    const char *landmark_model;
 
     if (use_quantized_tflite)
     {
         detectpose_model = POSE_DETECT_MODEL_PATH;
+        landmark_model   = POSE_LANDMARK_MODEL_PATH;
     }
     else
     {
         detectpose_model = POSE_DETECT_MODEL_PATH;
+        landmark_model   = POSE_LANDMARK_MODEL_PATH;
     }
 
     /* Pose detect */
@@ -80,6 +89,12 @@ init_tflite_blazepose(int use_quantized_tflite, blazepose_config_t *config)
     tflite_get_tensor_by_name (&s_detect_interpreter, 0, "input",          &s_detect_tensor_input);
     tflite_get_tensor_by_name (&s_detect_interpreter, 1, "regressors",     &s_detect_tensor_bboxes);
     tflite_get_tensor_by_name (&s_detect_interpreter, 1, "classificators", &s_detect_tensor_scores);
+
+    /* Pose Landmark */
+    tflite_create_interpreter_from_file (&s_landmark_interpreter, landmark_model);
+    tflite_get_tensor_by_name (&s_landmark_interpreter, 0, "input_1",         &s_landmark_tensor_input);
+    tflite_get_tensor_by_name (&s_landmark_interpreter, 1, "ld_3d",           &s_landmark_tensor_landmark);
+    tflite_get_tensor_by_name (&s_landmark_interpreter, 1, "output_poseflag", &s_landmark_tensor_landmarkflag);
 
     int det_input_w = s_detect_tensor_input.dims[2];
     int det_input_h = s_detect_tensor_input.dims[1];
@@ -97,6 +112,15 @@ get_pose_detect_input_buf (int *w, int *h)
     *w = s_detect_tensor_input.dims[2];
     *h = s_detect_tensor_input.dims[1];
     return s_detect_tensor_input.ptr;
+}
+
+
+void *
+get_pose_landmark_input_buf (int *w, int *h)
+{
+    *w = s_landmark_tensor_input.dims[2];
+    *h = s_landmark_tensor_input.dims[1];
+    return s_landmark_tensor_input.ptr;
 }
 
 
@@ -264,6 +288,106 @@ non_max_suppression (std::list<detect_region_t> &region_list, std::list<detect_r
     return 0;
 }
 
+
+/* -------------------------------------------------- *
+ *  extract ROI
+ * -------------------------------------------------- */
+static float
+normalize_radians (float angle)
+{
+    return angle - 2 * M_PI * std::floor((angle - (-M_PI)) / (2 * M_PI));
+}
+
+static void
+compute_rotation (detect_region_t &region)
+{
+    float x0 = region.keys[kMidHipCenter].x;
+    float y0 = region.keys[kMidHipCenter].y;
+    float x1 = region.keys[kMidShoulderCenter].x;
+    float y1 = region.keys[kMidShoulderCenter].y;
+
+    float target_angle = M_PI * 0.5f;
+    float rotation = target_angle - std::atan2(-(y1 - y0), x1 - x0);
+
+    region.rotation = normalize_radians (rotation);
+}
+
+static void
+rot_vec (fvec2 &vec, float rotation)
+{
+    float sx = vec.x;
+    float sy = vec.y;
+    vec.x = sx * std::cos(rotation) - sy * std::sin(rotation);
+    vec.y = sx * std::sin(rotation) + sy * std::cos(rotation);
+}
+
+static void
+compute_detect_rect (detect_region_t &region)
+{
+    int input_img_w = s_detect_tensor_input.dims[2];
+    int input_img_h = s_detect_tensor_input.dims[1];
+    float x_center = region.keys[kMidShoulderCenter].x * input_img_w;
+    float y_center = region.keys[kMidShoulderCenter].y * input_img_h;
+    float x_scale  = region.keys[kUpperBodySizeRot].x * input_img_w;
+    float y_scale  = region.keys[kUpperBodySizeRot].y * input_img_h;
+
+    // Bounding box size as double distance from center to scale point.
+    float box_size = std::sqrt((x_scale - x_center) * (x_scale - x_center) +
+                               (y_scale - y_center) * (y_scale - y_center)) * 2.0;
+
+    float width    = box_size;
+    float height   = box_size;
+    float detect_cx;
+    float detect_cy;
+    float rotation = region.rotation;
+    float shift_x =  0.0f;
+    float shift_y =  0.0f;
+
+    if (rotation == 0.0f)
+    {
+        detect_cx = x_center + (width  * shift_x);
+        detect_cy = y_center + (height * shift_y);
+    }
+    else
+    {
+        float dx = (width  * shift_x) * std::cos(rotation) -
+                   (height * shift_y) * std::sin(rotation);
+        float dy = (width  * shift_x) * std::sin(rotation) +
+                   (height * shift_y) * std::cos(rotation);
+        detect_cx = x_center + dx;
+        detect_cy = y_center + dy;
+    }
+
+    float long_side = std::max (width, height);
+    width  = long_side;
+    height = long_side;
+    float detect_w = width  * 1.5f;
+    float detect_h = height * 1.5f;
+
+    region.detect_cx = detect_cx / (float)input_img_w;
+    region.detect_cy = detect_cy / (float)input_img_h;
+    region.detect_w  = detect_w  / (float)input_img_w;
+    region.detect_h  = detect_h  / (float)input_img_h;
+
+    float dx = detect_w * 0.5f;
+    float dy = detect_h * 0.5f;
+    region.detect_pos[0].x = - dx;  region.detect_pos[0].y = - dy;
+    region.detect_pos[1].x = + dx;  region.detect_pos[1].y = - dy;
+    region.detect_pos[2].x = + dx;  region.detect_pos[2].y = + dy;
+    region.detect_pos[3].x = - dx;  region.detect_pos[3].y = + dy;
+
+    for (int i = 0; i < 4; i ++)
+    {
+        rot_vec (region.detect_pos[i], rotation);
+        region.detect_pos[i].x += detect_cx;
+        region.detect_pos[i].y += detect_cy;
+
+        region.detect_pos[i].x /= (float)input_img_h;
+        region.detect_pos[i].y /= (float)input_img_h;
+    }
+}
+
+
 static void
 pack_detect_result (pose_detect_result_t *detect_result, std::list<detect_region_t> &region_list)
 {
@@ -271,6 +395,10 @@ pack_detect_result (pose_detect_result_t *detect_result, std::list<detect_region
     for (auto itr = region_list.begin(); itr != region_list.end(); itr ++)
     {
         detect_region_t region = *itr;
+
+        compute_rotation (region);
+        compute_detect_rect (region);
+
         memcpy (&detect_result->poses[num_regions], &region, sizeof (region));
         num_regions ++;
         detect_result->num = num_regions;
@@ -282,7 +410,7 @@ pack_detect_result (pose_detect_result_t *detect_result, std::list<detect_region
 
 
 /* -------------------------------------------------- *
- * Invoke TensorFlow Lite
+ * Invoke TensorFlow Lite (Pose detection)
  * -------------------------------------------------- */
 int
 invoke_pose_detect (pose_detect_result_t *detect_result, blazepose_config_t *config)
@@ -311,6 +439,38 @@ invoke_pose_detect (pose_detect_result_t *detect_result, blazepose_config_t *con
 #else
     pack_detect_result (detect_result, region_list);
 #endif
+
+    return 0;
+}
+
+
+
+/* -------------------------------------------------- *
+ * Invoke TensorFlow Lite (Pose landmark)
+ * -------------------------------------------------- */
+int
+invoke_pose_landmark (pose_landmark_result_t *landmark_result)
+{
+    if (s_landmark_interpreter.interpreter->Invoke() != kTfLiteOk)
+    {
+        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+
+    float *poseflag_ptr = (float *)s_landmark_tensor_landmarkflag.ptr;
+    float *landmark_ptr = (float *)s_landmark_tensor_landmark.ptr;
+    int img_w = s_landmark_tensor_input.dims[2];
+    int img_h = s_landmark_tensor_input.dims[1];
+
+    landmark_result->score = *poseflag_ptr;
+    for (int i = 0; i < POSE_JOINT_NUM; i ++)
+    {
+        landmark_result->joint[i].x = landmark_ptr[4 * i + 0] / (float)img_w;
+        landmark_result->joint[i].y = landmark_ptr[4 * i + 1] / (float)img_h;
+        landmark_result->joint[i].z = landmark_ptr[4 * i + 2];
+        //fprintf (stderr, "[%2d] (%8.1f, %8.1f, %8.1f)\n", i,
+        //    landmark_ptr[4 * i + 0], landmark_ptr[4 * i + 1], landmark_ptr[4 * i + 2]);
+    }
 
     return 0;
 }
