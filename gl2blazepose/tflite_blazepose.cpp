@@ -295,6 +295,11 @@ non_max_suppression (std::list<detect_region_t> &region_list, std::list<detect_r
 
 /* -------------------------------------------------- *
  *  extract ROI
+ *  based on:
+ *   - mediapipe/calculators/util/alignment_points_to_rects_calculator.cc
+ *       AlignmentPointsRectsCalculator::DetectionToNormalizedRect()
+ *   - mediapipe\calculators\util\rect_transformation_calculator.cc
+ *       RectTransformationCalculator::TransformNormalizedRect()
  * -------------------------------------------------- */
 static float
 normalize_radians (float angle)
@@ -326,31 +331,32 @@ rot_vec (fvec2 &vec, float rotation)
 }
 
 static void
-compute_detect_rect (detect_region_t &region)
+compute_detect_to_roi (detect_region_t &region)
 {
     int input_img_w = s_detect_tensor_input.dims[2];
     int input_img_h = s_detect_tensor_input.dims[1];
     float x_center = region.keys[kMidShoulderCenter].x * input_img_w;
     float y_center = region.keys[kMidShoulderCenter].y * input_img_h;
-    float x_scale  = region.keys[kUpperBodySizeRot].x * input_img_w;
-    float y_scale  = region.keys[kUpperBodySizeRot].y * input_img_h;
+    float x_scale  = region.keys[kUpperBodySizeRot] .x * input_img_w;
+    float y_scale  = region.keys[kUpperBodySizeRot] .y * input_img_h;
 
     // Bounding box size as double distance from center to scale point.
     float box_size = std::sqrt((x_scale - x_center) * (x_scale - x_center) +
                                (y_scale - y_center) * (y_scale - y_center)) * 2.0;
 
+    /* RectTransformationCalculator::TransformNormalizedRect() */
     float width    = box_size;
     float height   = box_size;
-    float detect_cx;
-    float detect_cy;
     float rotation = region.rotation;
     float shift_x =  0.0f;
     float shift_y =  0.0f;
+    float roi_cx;
+    float roi_cy;
 
     if (rotation == 0.0f)
     {
-        detect_cx = x_center + (width  * shift_x);
-        detect_cy = y_center + (height * shift_y);
+        roi_cx = x_center + (width  * shift_x);
+        roi_cy = y_center + (height * shift_y);
     }
     else
     {
@@ -358,36 +364,42 @@ compute_detect_rect (detect_region_t &region)
                    (height * shift_y) * std::sin(rotation);
         float dy = (width  * shift_x) * std::sin(rotation) +
                    (height * shift_y) * std::cos(rotation);
-        detect_cx = x_center + dx;
-        detect_cy = y_center + dy;
+        roi_cx = x_center + dx;
+        roi_cy = y_center + dy;
     }
 
+    /*
+     *  calculate ROI width and height.
+     *  scale parameter is based on
+     *      "mediapipe/modules/pose_landmark/pose_detection_to_roi.pbtxt"
+     */
+    float scale_x = 1.5f;
+    float scale_y = 1.5f;
     float long_side = std::max (width, height);
-    width  = long_side;
-    height = long_side;
-    float detect_w = width  * 1.5f;
-    float detect_h = height * 1.5f;
+    float roi_w = long_side * scale_x;
+    float roi_h = long_side * scale_y;
 
-    region.detect_cx = detect_cx / (float)input_img_w;
-    region.detect_cy = detect_cy / (float)input_img_h;
-    region.detect_w  = detect_w  / (float)input_img_w;
-    region.detect_h  = detect_h  / (float)input_img_h;
+    region.roi_center.x = roi_cx / (float)input_img_w;
+    region.roi_center.y = roi_cy / (float)input_img_h;
+    region.roi_size.x   = roi_w  / (float)input_img_w;
+    region.roi_size.y   = roi_h  / (float)input_img_h;
 
-    float dx = detect_w * 0.5f;
-    float dy = detect_h * 0.5f;
-    region.detect_pos[0].x = - dx;  region.detect_pos[0].y = - dy;
-    region.detect_pos[1].x = + dx;  region.detect_pos[1].y = - dy;
-    region.detect_pos[2].x = + dx;  region.detect_pos[2].y = + dy;
-    region.detect_pos[3].x = - dx;  region.detect_pos[3].y = + dy;
+    /* calculate ROI coordinates */
+    float dx = roi_w * 0.5f;
+    float dy = roi_h * 0.5f;
+    region.roi_coord[0].x = - dx;  region.roi_coord[0].y = - dy;
+    region.roi_coord[1].x = + dx;  region.roi_coord[1].y = - dy;
+    region.roi_coord[2].x = + dx;  region.roi_coord[2].y = + dy;
+    region.roi_coord[3].x = - dx;  region.roi_coord[3].y = + dy;
 
     for (int i = 0; i < 4; i ++)
     {
-        rot_vec (region.detect_pos[i], rotation);
-        region.detect_pos[i].x += detect_cx;
-        region.detect_pos[i].y += detect_cy;
+        rot_vec (region.roi_coord[i], rotation);
+        region.roi_coord[i].x += roi_cx;
+        region.roi_coord[i].y += roi_cy;
 
-        region.detect_pos[i].x /= (float)input_img_h;
-        region.detect_pos[i].y /= (float)input_img_h;
+        region.roi_coord[i].x /= (float)input_img_h;
+        region.roi_coord[i].y /= (float)input_img_h;
     }
 }
 
@@ -401,7 +413,7 @@ pack_detect_result (pose_detect_result_t *detect_result, std::list<detect_region
         detect_region_t region = *itr;
 
         compute_rotation (region);
-        compute_detect_rect (region);
+        compute_detect_to_roi (region);
 
         memcpy (&detect_result->poses[num_regions], &region, sizeof (region));
         num_regions ++;

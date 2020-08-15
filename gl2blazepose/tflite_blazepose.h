@@ -39,11 +39,9 @@ typedef struct _detect_region_t
     fvec2 keys[kPoseDetectKeyNum];
 
     float  rotation;
-    float  detect_cx;
-    float  detect_cy;
-    float  detect_w;
-    float  detect_h;
-    fvec2  detect_pos[4];
+    fvec2  roi_center;
+    fvec2  roi_size;
+    fvec2  roi_coord[4];
 } detect_region_t;
 
 typedef struct _pose_detect_result_t
@@ -70,8 +68,8 @@ int init_tflite_blazepose (int use_quantized_tflite, blazepose_config_t *config)
 void *get_pose_detect_input_buf (int *w, int *h);
 int  invoke_pose_detect (pose_detect_result_t *detect_result, blazepose_config_t *config);
 
-void  *get_pose_landmark_input_buf (int *w, int *h);
-int   invoke_pose_landmark (pose_landmark_result_t *pose_landmark_result);
+void *get_pose_landmark_input_buf (int *w, int *h);
+int  invoke_pose_landmark (pose_landmark_result_t *pose_landmark_result);
 
 #ifdef __cplusplus
 }

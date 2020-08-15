@@ -180,14 +180,14 @@ feed_pose_landmark_image(texture_2d_t *srctex, int win_w, int win_h, pose_detect
     if (detection->num > pose_id)
     {
         detect_region_t *region = &(detection->poses[pose_id]);
-        float x0 = region->detect_pos[0].x;
-        float y0 = region->detect_pos[0].y;
-        float x1 = region->detect_pos[1].x; //    0--------1
-        float y1 = region->detect_pos[1].y; //    |        |
-        float x2 = region->detect_pos[2].x; //    |        |
-        float y2 = region->detect_pos[2].y; //    3--------2
-        float x3 = region->detect_pos[3].x;
-        float y3 = region->detect_pos[3].y;
+        float x0 = region->roi_coord[0].x;
+        float y0 = region->roi_coord[0].y;
+        float x1 = region->roi_coord[1].x; //    0--------1
+        float y1 = region->roi_coord[1].y; //    |        |
+        float x2 = region->roi_coord[2].x; //    |        |
+        float y2 = region->roi_coord[2].y; //    3--------2
+        float x3 = region->roi_coord[3].x;
+        float y3 = region->roi_coord[3].y;
         texcoord[0] = x3;   texcoord[1] = y3;
         texcoord[2] = x0;   texcoord[3] = y0;
         texcoord[4] = x2;   texcoord[5] = y2;
@@ -258,15 +258,15 @@ render_detect_region (int ofstx, int ofsty, int texw, int texh, pose_detect_resu
         for (int j0 = 0; j0 < 4; j0 ++)
         {
             int j1 = (j0 + 1) % 4;
-            float x1 = region->detect_pos[j0].x * texw + ofstx;
-            float y1 = region->detect_pos[j0].y * texh + ofsty;
-            float x2 = region->detect_pos[j1].x * texw + ofstx;
-            float y2 = region->detect_pos[j1].y * texh + ofsty;
+            float x1 = region->roi_coord[j0].x * texw + ofstx;
+            float y1 = region->roi_coord[j0].y * texh + ofsty;
+            float x2 = region->roi_coord[j1].x * texw + ofstx;
+            float y2 = region->roi_coord[j1].y * texh + ofsty;
 
             draw_2d_line (x1, y1, x2, y2, col_red, 2.0f);
         }
-        float cx =  region->detect_cx * texw + ofstx;
-        float cy =  region->detect_cy * texh + ofsty;
+        float cx =  region->roi_center.x * texw + ofstx;
+        float cy =  region->roi_center.y * texh + ofsty;
         r = 10;
         draw_2d_fillrect (cx - (r/2), cy - (r/2), r, r, col_red);
     }
@@ -275,10 +275,10 @@ render_detect_region (int ofstx, int ofsty, int texw, int texh, pose_detect_resu
 static void
 transform_pose_landmark (fvec2 *transformed_pos, pose_landmark_result_t *landmark, detect_region_t *region)
 {
-    float scale_x = region->detect_w;
-    float scale_y = region->detect_h;
-    float pivot_x = region->detect_cx;
-    float pivot_y = region->detect_cy;
+    float scale_x = region->roi_size.x;
+    float scale_y = region->roi_size.y;
+    float pivot_x = region->roi_center.x;
+    float pivot_y = region->roi_center.y;
     float rotation= region->rotation;
 
     float mat[16];
@@ -382,14 +382,14 @@ render_cropped_pose_image (texture_2d_t *srctex, int ofstx, int ofsty, int texw,
         return;
 
     detect_region_t *region = &(detection->poses[pose_id]);
-    float x0 = region->detect_pos[0].x;
-    float y0 = region->detect_pos[0].y;
-    float x1 = region->detect_pos[1].x; //    0--------1
-    float y1 = region->detect_pos[1].y; //    |        |
-    float x2 = region->detect_pos[2].x; //    |        |
-    float y2 = region->detect_pos[2].y; //    3--------2
-    float x3 = region->detect_pos[3].x;
-    float y3 = region->detect_pos[3].y;
+    float x0 = region->roi_coord[0].x;
+    float y0 = region->roi_coord[0].y;
+    float x1 = region->roi_coord[1].x; //    0--------1
+    float y1 = region->roi_coord[1].y; //    |        |
+    float x2 = region->roi_coord[2].x; //    |        |
+    float y2 = region->roi_coord[2].y; //    3--------2
+    float x3 = region->roi_coord[3].x;
+    float y3 = region->roi_coord[3].y;
     texcoord[0] = x0;   texcoord[1] = y0;
     texcoord[2] = x3;   texcoord[3] = y3;
     texcoord[4] = x1;   texcoord[5] = y1;
