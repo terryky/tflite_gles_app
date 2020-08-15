@@ -4,6 +4,7 @@
  * ------------------------------------------------ */
 #include "util_tflite.h"
 #include "tflite_blazepose.h"
+#include "glue_mediapipe.h"
 #include <list>
 
 /* 
@@ -25,44 +26,38 @@ static tflite_tensor_t      s_landmark_tensor_input;
 static tflite_tensor_t      s_landmark_tensor_landmark;
 static tflite_tensor_t      s_landmark_tensor_landmarkflag;
 
-static std::list<fvec2> s_anchors;
+static std::vector<Anchor>  s_anchors;
 
-/*
- * determine where the anchor points are scatterd.
- *   https://github.com/tensorflow/tfjs-models/blob/master/blazeface/src/face.ts
- */
+
 static int
 create_ssd_anchors(int input_w, int input_h)
 {
-    /* ANCHORS_CONFIG  */
-    int strides[2] = {8, 16};
-    int anchors[2] = {2,  6};
+    /*
+     *  Anchor parameters are based on:
+     *      mediapipe/modules/pose_detection/pose_detection_cpu.pbtxt
+     */
+    SsdAnchorsCalculatorOptions anchor_options;
+    anchor_options.num_layers = 4;
+    anchor_options.min_scale = 0.1484375;
+    anchor_options.max_scale = 0.75;
+    anchor_options.input_size_height = 128;
+    anchor_options.input_size_width  = 128;
+    anchor_options.anchor_offset_x  = 0.5f;
+    anchor_options.anchor_offset_y  = 0.5f;
+//  anchor_options.feature_map_width .push_back(0);
+//  anchor_options.feature_map_height.push_back(0);
+    anchor_options.strides.push_back( 8);
+    anchor_options.strides.push_back(16);
+    anchor_options.strides.push_back(16);
+    anchor_options.strides.push_back(16);
+    anchor_options.aspect_ratios.push_back(1.0);
+    anchor_options.reduce_boxes_in_lowest_layer = false;
+    anchor_options.interpolated_scale_aspect_ratio = 1.0;
+    anchor_options.fixed_anchor_size = true;
 
-    int numtotal = 0;
+    GenerateAnchors (&s_anchors, anchor_options);
 
-    for (int i = 0; i < 2; i ++)
-    {
-        int stride = strides[i];
-        int gridCols = (input_w + stride -1) / stride;
-        int gridRows = (input_h + stride -1) / stride;
-        int anchorNum = anchors[i];
-
-        fvec2 anchor;
-        for (int gridY = 0; gridY < gridRows; gridY ++)
-        {
-            anchor.y = stride * (gridY + 0.5f);
-            for (int gridX = 0; gridX < gridCols; gridX ++)
-            {
-                anchor.x = stride * (gridX + 0.5f);
-                for (int n = 0; n < anchorNum; n ++)
-                {
-                    s_anchors.push_back (anchor);
-                    numtotal ++;
-                }
-            }
-        }
-    }
-    return numtotal;
+    return 0;
 }
 
 
@@ -162,7 +157,7 @@ decode_bounds (std::list<detect_region_t> &region_list, float score_thresh, int 
     int i = 0;
     for (auto itr = s_anchors.begin(); itr != s_anchors.end(); i ++, itr ++)
     {
-        fvec2 anchor = *itr;
+        Anchor anchor = *itr;
         float score0 = scores_ptr[i];
         float score = 1.0f / (1.0f + exp(-score0));
 
@@ -176,8 +171,8 @@ decode_bounds (std::list<detect_region_t> &region_list, float score_thresh, int 
             float w  = p[2];
             float h  = p[3];
 
-            float cx = sx + anchor.x;
-            float cy = sy + anchor.y;
+            float cx = sx + anchor.x_center * input_img_w;
+            float cy = sy + anchor.y_center * input_img_h;
 
             cx /= (float)input_img_w;
             cy /= (float)input_img_h;
@@ -199,8 +194,8 @@ decode_bounds (std::list<detect_region_t> &region_list, float score_thresh, int 
             {
                 float lx = p[4 + (2 * j) + 0];
                 float ly = p[4 + (2 * j) + 1];
-                lx += anchor.x;
-                ly += anchor.y;
+                lx += anchor.x_center * input_img_w;
+                ly += anchor.y_center * input_img_h;
                 lx /= (float)input_img_w;
                 ly /= (float)input_img_h;
 

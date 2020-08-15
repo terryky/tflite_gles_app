@@ -6,6 +6,7 @@ TARGET = gl2blazepose
 SRCS = 
 SRCS += main.c
 SRCS += tflite_blazepose.cpp
+SRCS += glue_mediapipe.cpp
 SRCS += $(MAKETOP)/common/assertgl.c
 SRCS += $(MAKETOP)/common/assertegl.c
 SRCS += $(MAKETOP)/common/util_egl.c
