@@ -22,7 +22,7 @@
 
 #include <list>
 #include <vector>
-
+#include "tflite_blazepose.h"
 
 typedef struct Anchor
 {
@@ -80,5 +80,10 @@ typedef struct SsdAnchorsCalculatorOptions
 
 int GenerateAnchors(std::vector<Anchor>* anchors, const SsdAnchorsCalculatorOptions& options);
 
+
+
+
+int non_max_suppression (std::list<detect_region_t> &region_list,
+                         std::list<detect_region_t> &region_nms_list, float iou_thresh);
 
 #endif /* GLUE_MEDIAPIPE_H_ */
