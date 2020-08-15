@@ -8,9 +8,12 @@
 
 /* 
  * https://github.com/google/mediapipe/tree/master/mediapipe/modules/pose_detection
+ * https://github.com/PINTO0309/PINTO_model_zoo/tree/master/53_BlazePose/03_integer_quantization
  */
 #define POSE_DETECT_MODEL_PATH      "./model/pose_detection.tflite"
 #define POSE_LANDMARK_MODEL_PATH    "./model/pose_landmark_upper_body.tflite"
+
+#define POSE_DETECT_QUANT_MODEL_PATH    "./model/pose_detection_128x128_integer_quant.tflite"
 
 static tflite_interpreter_t s_detect_interpreter;
 static tflite_tensor_t      s_detect_tensor_input;
@@ -75,20 +78,26 @@ init_tflite_blazepose(int use_quantized_tflite, blazepose_config_t *config)
 
     if (use_quantized_tflite)
     {
-        detectpose_model = POSE_DETECT_MODEL_PATH;
+        detectpose_model = POSE_DETECT_QUANT_MODEL_PATH;
         landmark_model   = POSE_LANDMARK_MODEL_PATH;
+
+        /* Pose detect */
+        tflite_create_interpreter_from_file (&s_detect_interpreter, detectpose_model);
+        tflite_get_tensor_by_name (&s_detect_interpreter, 0, "input",          &s_detect_tensor_input);
+        tflite_get_tensor_by_name (&s_detect_interpreter, 1, "Identity_1",     &s_detect_tensor_bboxes);
+        tflite_get_tensor_by_name (&s_detect_interpreter, 1, "Identity",       &s_detect_tensor_scores);
     }
     else
     {
         detectpose_model = POSE_DETECT_MODEL_PATH;
         landmark_model   = POSE_LANDMARK_MODEL_PATH;
-    }
 
-    /* Pose detect */
-    tflite_create_interpreter_from_file (&s_detect_interpreter, detectpose_model);
-    tflite_get_tensor_by_name (&s_detect_interpreter, 0, "input",          &s_detect_tensor_input);
-    tflite_get_tensor_by_name (&s_detect_interpreter, 1, "regressors",     &s_detect_tensor_bboxes);
-    tflite_get_tensor_by_name (&s_detect_interpreter, 1, "classificators", &s_detect_tensor_scores);
+        /* Pose detect */
+        tflite_create_interpreter_from_file (&s_detect_interpreter, detectpose_model);
+        tflite_get_tensor_by_name (&s_detect_interpreter, 0, "input",          &s_detect_tensor_input);
+        tflite_get_tensor_by_name (&s_detect_interpreter, 1, "regressors",     &s_detect_tensor_bboxes);
+        tflite_get_tensor_by_name (&s_detect_interpreter, 1, "classificators", &s_detect_tensor_scores);
+    }
 
     /* Pose Landmark */
     tflite_create_interpreter_from_file (&s_landmark_interpreter, landmark_model);
