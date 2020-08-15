@@ -335,20 +335,20 @@ render_pose_landmark (int ofstx, int ofsty, int texw, int texh, pose_landmark_re
     render_bone (ofstx, ofsty, texw, texh, transformed_pos, 23, 11, col_cyan);
 
     /* right arm */
-    render_bone (ofstx, ofsty, texw, texh, transformed_pos, 11, 13, col_lime);
-    render_bone (ofstx, ofsty, texw, texh, transformed_pos, 13, 15, col_lime);
-    render_bone (ofstx, ofsty, texw, texh, transformed_pos, 15, 21, col_lime);
-    render_bone (ofstx, ofsty, texw, texh, transformed_pos, 15, 19, col_lime);
-    render_bone (ofstx, ofsty, texw, texh, transformed_pos, 15, 17, col_lime);
-    render_bone (ofstx, ofsty, texw, texh, transformed_pos, 17, 19, col_lime);
+    render_bone (ofstx, ofsty, texw, texh, transformed_pos, 11, 13, col_orange);
+    render_bone (ofstx, ofsty, texw, texh, transformed_pos, 13, 15, col_orange);
+    render_bone (ofstx, ofsty, texw, texh, transformed_pos, 15, 21, col_orange);
+    render_bone (ofstx, ofsty, texw, texh, transformed_pos, 15, 19, col_orange);
+    render_bone (ofstx, ofsty, texw, texh, transformed_pos, 15, 17, col_orange);
+    render_bone (ofstx, ofsty, texw, texh, transformed_pos, 17, 19, col_orange);
 
     /* left arm */
-    render_bone (ofstx, ofsty, texw, texh, transformed_pos, 12, 14, col_orange);
-    render_bone (ofstx, ofsty, texw, texh, transformed_pos, 14, 16, col_orange);
-    render_bone (ofstx, ofsty, texw, texh, transformed_pos, 16, 22, col_orange);
-    render_bone (ofstx, ofsty, texw, texh, transformed_pos, 16, 20, col_orange);
-    render_bone (ofstx, ofsty, texw, texh, transformed_pos, 16, 18, col_orange);
-    render_bone (ofstx, ofsty, texw, texh, transformed_pos, 18, 20, col_orange);
+    render_bone (ofstx, ofsty, texw, texh, transformed_pos, 12, 14, col_lime);
+    render_bone (ofstx, ofsty, texw, texh, transformed_pos, 14, 16, col_lime);
+    render_bone (ofstx, ofsty, texw, texh, transformed_pos, 16, 22, col_lime);
+    render_bone (ofstx, ofsty, texw, texh, transformed_pos, 16, 20, col_lime);
+    render_bone (ofstx, ofsty, texw, texh, transformed_pos, 16, 18, col_lime);
+    render_bone (ofstx, ofsty, texw, texh, transformed_pos, 18, 20, col_lime);
 
     /* face */
     render_bone (ofstx, ofsty, texw, texh, transformed_pos,  9, 10, col_blue);
@@ -485,7 +485,7 @@ setup_imgui (int win_w, int win_h, imgui_data_t *imgui_data)
 int
 main(int argc, char *argv[])
 {
-    char input_name_default[] = "assets/pexels.jpg";
+    char input_name_default[] = "assets/pexels-alexy-almond-3758048.jpg";
     char *input_name = NULL;
     int count;
     int win_w = 900;
@@ -639,13 +639,13 @@ main(int argc, char *argv[])
 
 
         /* --------------------------------------- *
-         *  render scene (left half)
+         *  render scene
          * --------------------------------------- */
         glClear (GL_COLOR_BUFFER_BIT);
 
         /* visualize the object detection results. */
         draw_2d_texture_ex (&captex, draw_x, draw_y, draw_w, draw_h, 0);
-        //render_detect_region (draw_x, draw_y, draw_w, draw_h, &detect_ret, &imgui_data);
+        render_detect_region (draw_x, draw_y, draw_w, draw_h, &detect_ret, &imgui_data);
         render_pose_landmark (draw_x, draw_y, draw_w, draw_h, &landmark_ret[0], &detect_ret, 0);
 
         /* draw cropped image of the pose area */
