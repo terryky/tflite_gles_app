@@ -298,7 +298,7 @@ decode_keypoints (std::list<palm_t> &palm_list, float score_thresh)
             float h  = p[3];
 
             float cx = sx + anchor.x_center * img_w;
-            float cy = sy + anchor.y_center * img_w;
+            float cy = sy + anchor.y_center * img_h;
 
             cx /= (float)img_w;
             cy /= (float)img_h;
@@ -321,7 +321,7 @@ decode_keypoints (std::list<palm_t> &palm_list, float score_thresh)
                 float lx = p[4 + (2 * j) + 0];
                 float ly = p[4 + (2 * j) + 1];
                 lx += anchor.x_center * img_w;
-                ly += anchor.y_center * img_w;
+                ly += anchor.y_center * img_h;
                 lx /= (float)img_w;
                 ly /= (float)img_h;
 
