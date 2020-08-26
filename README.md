@@ -477,3 +477,7 @@ You can select the platform by editing [Makefile.env](Makefile.env).
 | TensorFlow Lite GPU Delegate         | GPU fp16     | 4665                     |   388                 |
 | TensorRT                             | GPU fp16     |   --                     |     ?                 |
 
+
+## 6. Related Articles
+- [Raspberry Pi4 単体で TensorFlow Lite はどれくらいの速度で動く？(Qiita)](https://qiita.com/terryky/items/243000fcfcb89af11510)
+- [注目AIボードとラズパイ4の実力テスト(CQ出版社 Interface 2020/10月号 pp.48-51)](https://interface.cqpub.co.jp/magazine/202010/)
