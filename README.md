@@ -9,6 +9,11 @@ Target platform: Linux PC / NVIDIA Jetson / RaspberryPi.
 - Lightweight Face Detection.<br>
 [<img src="gl2blazeface/gl2blazeface.png" width=500>](https://github.com/terryky/tflite_gles_app/tree/master/gl2blazeface)
 
+### [DBFace](https://github.com/terryky/tflite_gles_app/tree/master/gl2dbface)
+- Higher accurate Face Detection.<br>
+- TensorRT port is [**HERE**](https://github.com/terryky/tflite_gles_app/tree/master/trt_dbface)<br>
+[<img src="gl2dbface/gl2dbface.jpg" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2dbface)
+
 ### [Image Classification](https://github.com/terryky/tflite_gles_app/tree/master/gl2classification)
 - Image Classfication using Moilenet.<br>
 - TensorRT port is [**HERE**](https://github.com/terryky/tflite_gles_app/tree/master/trt_classification)<br>
