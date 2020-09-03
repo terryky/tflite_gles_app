@@ -1,6 +1,6 @@
 /* ------------------------------------------------ *
  * The MIT License (MIT)
- * Copyright (c) 2019 terryky1220@gmail.com
+ * Copyright (c) 2020 terryky1220@gmail.com
  * ------------------------------------------------ */
 #include <stdio.h>
 #include <stdlib.h>
@@ -120,10 +120,10 @@ init_video_texture (texture_2d_t *captex, const char *fname)
 
 /* resize image to DNN network input size and convert to fp32. */
 void
-feed_blazeface_image(texture_2d_t *srctex, int win_w, int win_h)
+feed_dbface_image(texture_2d_t *srctex, int win_w, int win_h)
 {
     int x, y, w, h;
-    float *buf_fp32 = (float *)get_blazeface_input_buf (&w, &h);
+    float *buf_fp32 = (float *)get_dbface_input_buf (&w, &h);
     unsigned char *buf_ui8 = NULL;
     static unsigned char *pui8 = NULL;
 
@@ -148,9 +148,9 @@ feed_blazeface_image(texture_2d_t *srctex, int win_w, int win_h)
             int g = *buf_ui8 ++;
             int b = *buf_ui8 ++;
             buf_ui8 ++;          /* skip alpha */
-            *buf_fp32 ++ = ((float)r / 255.0f - 0.408) / 0.289;
-            *buf_fp32 ++ = ((float)g / 255.0f - 0.447) / 0.274;
-            *buf_fp32 ++ = ((float)b / 255.0f - 0.470) / 0.278;
+            *buf_fp32 ++ = (float)(r - mean) / std;
+            *buf_fp32 ++ = (float)(g - mean) / std;
+            *buf_fp32 ++ = (float)(b - mean) / std;
         }
     }
 
@@ -159,7 +159,7 @@ feed_blazeface_image(texture_2d_t *srctex, int win_w, int win_h)
 
 
 static void
-render_detect_region (int ofstx, int ofsty, int texw, int texh, blazeface_result_t *detection, imgui_data_t *imgui_data)
+render_detect_region (int ofstx, int ofsty, int texw, int texh, dbface_result_t *detection, imgui_data_t *imgui_data)
 {
     float col_white[] = {1.0f, 1.0f, 1.0f, 1.0f};
     float *col_frame = imgui_data->frame_color;
@@ -179,7 +179,7 @@ render_detect_region (int ofstx, int ofsty, int texw, int texh, blazeface_result
         /* class name */
         char buf[512];
         sprintf (buf, "%d", (int)(score * 100));
-        draw_dbgstr_ex (buf, x1, y1, 1.0f, col_white, col_frame);
+        draw_dbgstr_ex (buf, x1, y1-22, 1.0f, col_white, col_frame);
 
         /* key points */
         for (int j = 0; j < kFaceKeyNum; j ++)
@@ -267,9 +267,9 @@ setup_imgui (int win_w, int win_h, imgui_data_t *imgui_data)
     init_imgui (win_w, win_h);
 #endif
 
-    imgui_data->frame_color[0] = 1.0f;
-    imgui_data->frame_color[1] = 0.0f;
-    imgui_data->frame_color[2] = 0.0f;
+    imgui_data->frame_color[0] = 0.0f;
+    imgui_data->frame_color[1] = 0.5f;
+    imgui_data->frame_color[2] = 1.0f;
     imgui_data->frame_color[3] = 1.0f;
 }
 
@@ -280,12 +280,11 @@ setup_imgui (int win_w, int win_h, imgui_data_t *imgui_data)
 int
 main(int argc, char *argv[])
 {
-    char input_name_default[] = "pakutaso_sotsugyou.jpg";
+    char input_name_default[] = "./assets/pexels-matheus-bertelli-2467506.jpg";
     char *input_name = NULL;
     int count;
     int win_w = 900;
     int win_h = 900;
-    int texid;
     int texw, texh, draw_x, draw_y, draw_w, draw_h;
     texture_2d_t captex = {0};
     double ttime[10] = {0}, interval, invoke_ms;
@@ -337,12 +336,12 @@ main(int argc, char *argv[])
     init_pmeter (win_w, win_h, 500);
     init_dbgstr (win_w, win_h);
 
-    init_tflite_blazeface (use_quantized_tflite, &imgui_data.blazeface_config);
+    init_tflite_dbface (use_quantized_tflite, &imgui_data.dbface_config);
 
     setup_imgui (win_w, win_h, &imgui_data);
 
 #if defined (USE_GL_DELEGATE) || defined (USE_GPU_DELEGATEV2)
-    /* we need to recover framebuffer because GPU Delegate changes the context */
+    /* we need to recover framebuffer because GPU Delegate changes the FBO binding */
     glBindFramebuffer (GL_FRAMEBUFFER, 0);
     glViewport (0, 0, win_w, win_h);
 #endif
@@ -369,6 +368,7 @@ main(int argc, char *argv[])
     else
 #endif
     {
+        int texid;
         load_jpg_texture (input_name, &texid, &texw, &texh);
         captex.texid  = texid;
         captex.width  = texw;
@@ -379,9 +379,12 @@ main(int argc, char *argv[])
 
     glClearColor (0.f, 0.f, 0.f, 1.0f);
 
+    /* --------------------------------------- *
+     *  Render Loop
+     * --------------------------------------- */
     for (count = 0; ; count ++)
     {
-        blazeface_result_t face_ret = {0};
+        dbface_result_t face_ret = {0};
         char strbuf[512];
 
         PMETER_RESET_LAP ();
@@ -407,20 +410,28 @@ main(int argc, char *argv[])
         }
 #endif
 
-        /* invoke pose estimation using TensorflowLite */
-        feed_blazeface_image (&captex, win_w, win_h);
+        /* --------------------------------------- *
+         *  Face detection
+         * --------------------------------------- */
+        feed_dbface_image (&captex, win_w, win_h);
 
         ttime[2] = pmeter_get_time_ms ();
-        invoke_blazeface (&face_ret, &imgui_data.blazeface_config);
+        invoke_dbface (&face_ret, &imgui_data.dbface_config);
         ttime[3] = pmeter_get_time_ms ();
         invoke_ms = ttime[3] - ttime[2];
 
+        /* --------------------------------------- *
+         *  render scene
+         * --------------------------------------- */
         glClear (GL_COLOR_BUFFER_BIT);
 
         /* visualize the object detection results. */
         draw_2d_texture_ex (&captex, draw_x, draw_y, draw_w, draw_h, 0);
         render_detect_region (draw_x, draw_y, draw_w, draw_h, &face_ret, &imgui_data);
 
+        /* --------------------------------------- *
+         *  post process
+         * --------------------------------------- */
         draw_pmeter (0, 40);
 
         sprintf (strbuf, "Interval:%5.1f [ms]\nTFLite  :%5.1f [ms]", interval, invoke_ms);

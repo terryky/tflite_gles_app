@@ -13,7 +13,7 @@ extern "C" {
 
 typedef struct _imgui_data_t
 {
-    blazeface_config_t blazeface_config;
+    dbface_config_t dbface_config;
     float frame_color[4];
 } imgui_data_t;
 

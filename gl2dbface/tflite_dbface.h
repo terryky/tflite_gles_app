@@ -1,6 +1,6 @@
 /* ------------------------------------------------ *
  * The MIT License (MIT)
- * Copyright (c) 2019 terryky1220@gmail.com
+ * Copyright (c) 2020 terryky1220@gmail.com
  * ------------------------------------------------ */
 #ifndef TFLITE_BLAZEFACE_H_
 #define TFLITE_BLAZEFACE_H_
@@ -34,25 +34,25 @@ typedef struct _face_t
     fvec2 keys[kFaceKeyNum];
 } face_t;
 
-typedef struct _blazeface_result_t
+typedef struct _dbface_result_t
 {
     int num;
     face_t faces[MAX_FACE_NUM];
-} blazeface_result_t;
+} dbface_result_t;
 
-typedef struct _blazeface_config_t
+typedef struct _dbface_config_t
 {
     float score_thresh;
     float iou_thresh;
-} blazeface_config_t;
+} dbface_config_t;
 
-extern int init_tflite_blazeface (int use_quantized_tflite, blazeface_config_t *config);
-extern void  *get_blazeface_input_buf (int *w, int *h);
+int init_tflite_dbface (int use_quantized_tflite, dbface_config_t *config);
 
-extern int invoke_blazeface (blazeface_result_t *blazeface_result, blazeface_config_t *config);
-    
+void *get_dbface_input_buf (int *w, int *h);
+int invoke_dbface (dbface_result_t *dbface_result, dbface_config_t *config);
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* TFLITE_BLAZEFACE_H_ */
+#endif /* TRT_DBFACE_H_ */

@@ -1,16 +1,20 @@
 /* ------------------------------------------------ *
  * The MIT License (MIT)
- * Copyright (c) 2019 terryky1220@gmail.com
+ * Copyright (c) 2020 terryky1220@gmail.com
  * ------------------------------------------------ */
 #include "util_tflite.h"
 #include "tflite_dbface.h"
 #include <list>
 
 /* 
- * https://github.com/PINTO0309/PINTO_model_zoo/tree/master/30_BlazeFace/04_full_integer_quantization
+ * https://github.com/PINTO0309/PINTO_model_zoo/tree/master/041_DBFace/01_float32
+ * https://github.com/PINTO0309/PINTO_model_zoo/tree/master/041_DBFace/03_integer_quantization
  */
-#define BLAZEFACE_MODEL_PATH        "./model/dbface_keras_256x256_float32_nhwc.tflite"
-#define BLAZEFACE_QUANT_MODEL_PATH  "./model/dbface_keras_256x256_integer_quant_nhwc.tflite"
+//#define DBFACE_MODEL_PATH        "./model/dbface_keras_256x256_float32_nhwc.tflite"
+//#define DBFACE_QUANT_MODEL_PATH  "./model/dbface_keras_256x256_integer_quant_nhwc.tflite"
+
+#define DBFACE_MODEL_PATH        "./model/dbface_keras_480x640_float32_nhwc.tflite"
+#define DBFACE_QUANT_MODEL_PATH  "./model/dbface_keras_480x640_integer_quant_nhwc.tflite"
 
 static tflite_interpreter_t s_detect_interpreter;
 static tflite_tensor_t      s_detect_tensor_input;
@@ -19,7 +23,6 @@ static tflite_tensor_t      s_detect_tensor_box;
 static tflite_tensor_t      s_detect_tensor_landmark;
 
 
-static std::list<fvec2> s_anchors;
 
 
 
@@ -27,34 +30,34 @@ static std::list<fvec2> s_anchors;
  *  Create TFLite Interpreter
  * -------------------------------------------------- */
 int
-init_tflite_blazeface(int use_quantized_tflite, blazeface_config_t *config)
+init_tflite_dbface(int use_quantized_tflite, dbface_config_t *config)
 {
-    const char *blazeface_model;
+    const char *dbface_model;
 
     if (use_quantized_tflite)
     {
-        blazeface_model = BLAZEFACE_QUANT_MODEL_PATH;
+        dbface_model = DBFACE_QUANT_MODEL_PATH;
     }
     else
     {
-        blazeface_model = BLAZEFACE_MODEL_PATH;
+        dbface_model = DBFACE_MODEL_PATH;
     }
 
     /* Face detect */
-    tflite_create_interpreter_from_file (&s_detect_interpreter, blazeface_model);
+    tflite_create_interpreter_from_file (&s_detect_interpreter, dbface_model);
     tflite_get_tensor_by_name (&s_detect_interpreter, 0, "input",          &s_detect_tensor_input);
     tflite_get_tensor_by_name (&s_detect_interpreter, 1, "Identity_2",     &s_detect_tensor_hm);
     tflite_get_tensor_by_name (&s_detect_interpreter, 1, "Identity_1",     &s_detect_tensor_box);
     tflite_get_tensor_by_name (&s_detect_interpreter, 1, "Identity",       &s_detect_tensor_landmark);
 
-    config->score_thresh = 0.4f;
-    config->iou_thresh   = 0.5f;
+    config->score_thresh = 0.3f;
+    config->iou_thresh   = 0.3f;
 
     return 0;
 }
 
 void *
-get_blazeface_input_buf (int *w, int *h)
+get_dbface_input_buf (int *w, int *h)
 {
     *w = s_detect_tensor_input.dims[2];
     *h = s_detect_tensor_input.dims[1];
@@ -97,7 +100,7 @@ _exp (float v)
 
 
 static int
-decode_bounds (std::list<face_t> &face_list, float score_thresh, int input_img_w, int input_img_h)
+decode_bounds (std::list<face_t> &face_list, float score_thresh)
 {
     face_t face_item;
     float  *scores_ptr = (float *)s_detect_tensor_hm.ptr;
@@ -234,7 +237,7 @@ non_max_suppression (std::list<face_t> &face_list, std::list<face_t> &face_sel_l
 }
 
 static void
-pack_face_result (blazeface_result_t *face_result, std::list<face_t> &face_list)
+pack_face_result (dbface_result_t *face_result, std::list<face_t> &face_list)
 {
     int num_faces = 0;
     for (auto itr = face_list.begin(); itr != face_list.end(); itr ++)
@@ -254,7 +257,7 @@ pack_face_result (blazeface_result_t *face_result, std::list<face_t> &face_list)
  * Invoke TensorFlow Lite
  * -------------------------------------------------- */
 int
-invoke_blazeface (blazeface_result_t *face_result, blazeface_config_t *config)
+invoke_dbface (dbface_result_t *face_result, dbface_config_t *config)
 {
     if (s_detect_interpreter.interpreter->Invoke() != kTfLiteOk)
     {
@@ -266,10 +269,7 @@ invoke_blazeface (blazeface_result_t *face_result, blazeface_config_t *config)
     float score_thresh = config->score_thresh;
     std::list<face_t> face_list;
 
-    int input_img_w = s_detect_tensor_input.dims[2];
-    int input_img_h = s_detect_tensor_input.dims[1];
-    decode_bounds (face_list, score_thresh, input_img_w, input_img_h);
-
+    decode_bounds (face_list, score_thresh);
 
 #if 1 /* USE NMS */
     float iou_thresh = config->iou_thresh;
