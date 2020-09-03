@@ -193,7 +193,9 @@ ICudaEngine *
 trt_create_engine_from_onnx (const std::string &onnx_file)
 {
     IBuilder           *builder = createInferBuilder (s_Logger);
-    INetworkDefinition *network = builder->createNetwork ();
+    //INetworkDefinition *network = builder->createNetwork ();
+    const auto explicitBatch = 1U << static_cast<uint32_t>(nvinfer1::NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
+    INetworkDefinition *network = builder->createNetworkV2(explicitBatch);
     IBuilderConfig     *config  = builder->createBuilderConfig ();
 
     nvonnxparser::IParser *parser = nvonnxparser::createParser (*network, s_Logger);
