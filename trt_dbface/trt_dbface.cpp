@@ -174,10 +174,10 @@ decode_bounds (std::list<face_t> &face_list, float score_thresh)
             float *lm = get_landmark_ptr (idx);
             for (int j = 0; j < kFaceKeyNum; j ++)
             {
-                float lx = lm[j * 2   ];
-                float ly = lm[j * 2 + 1];
-                lx = (_exp (lx * 4) + x) / (float)score_w;
-                ly = (_exp (ly * 4) + y) / (float)score_h;
+                float lx = lm[j    ] * 4;
+                float ly = lm[j + 5] * 4;
+                lx = (_exp (lx) + x) / (float)score_w;
+                ly = (_exp (ly) + y) / (float)score_h;
 
                 face_item.keys[j].x = lx;
                 face_item.keys[j].y = ly;
