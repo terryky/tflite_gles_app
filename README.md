@@ -54,6 +54,11 @@ Target platform: Linux PC / NVIDIA Jetson / RaspberryPi.
 - TensorRT port is [**HERE**](https://github.com/terryky/tflite_gles_app/tree/master/trt_posenet)<br>
 [<img src="gl2posenet/gl2posenet.png" width=500>](https://github.com/terryky/tflite_gles_app/tree/master/gl2posenet)
 
+### [3D Human Pose Estimation](https://github.com/terryky/tflite_gles_app/tree/master/gl2pose_estimation_3d)
+- Single-Shot 3D Human Pose Estimation.
+- TensorRT port is [**HERE**](https://github.com/terryky/tflite_gles_app/tree/master/trt_pose_estimation_3d)<br>
+[<img src="gl2pose_estimation_3d/gl2pose_estimation_3d.jpg" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2pose_estimation_3d)
+
 ### [Semantic Segmentation](https://github.com/terryky/tflite_gles_app/tree/master/gl2segmentation)
 - Assign semantic labels to every pixel in the input image.<br>
 [<img src="gl2segmentation/gl2segmentation.png" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2segmentation)
