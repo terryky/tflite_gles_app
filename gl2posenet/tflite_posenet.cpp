@@ -14,8 +14,8 @@
  *   https://storage.googleapis.com/download.tensorflow.org/models/tflite/posenet_mobilenet_v1_100_513x513_multi_kpt_stripped.tflite
  *
  * [int8 quant]
- *   https://github.com/PINTO0309/PINTO_model_zoo/tree/master/03_posenet/01_posenet_v1/03_integer_quantization
- *   https://github.com/PINTO0309/PINTO_model_zoo/tree/master/03_posenet/03_posenet/03_integer_quantization
+ *   https://github.com/PINTO0309/PINTO_model_zoo/tree/master/003_posenet/01_posenet_v1/03_integer_quantization
+ *   https://github.com/PINTO0309/PINTO_model_zoo/tree/master/003_posenet/03_posenet/03_integer_quantization
  */
 #define POSENET_MODEL_PATH          "./posenet_model/posenet_mobilenet_v1_100_257x257_multi_kpt_stripped.tflite"
 //#define POSENET_QUANT_MODEL_PATH  "./posenet_model/posenet_mobilenet_v1_100_257x257_multi_kpt_stripped_integer_quant.tflite"

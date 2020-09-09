@@ -8,7 +8,7 @@
 
 /* 
  * https://github.com/google/mediapipe/tree/master/mediapipe/models/face_detection_front.tflite
- * https://github.com/PINTO0309/PINTO_model_zoo/tree/master/30_BlazeFace/04_full_integer_quantization
+ * https://github.com/PINTO0309/PINTO_model_zoo/tree/master/030_BlazeFace/04_full_integer_quantization
  */
 #define BLAZEFACE_MODEL_PATH        "./blazeface_model/face_detection_front.tflite"
 #define BLAZEFACE_QUANT_MODEL_PATH  "./blazeface_model/face_detection_front_128_full_integer_quant.tflite"

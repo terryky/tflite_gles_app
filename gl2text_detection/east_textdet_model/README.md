@@ -5,5 +5,5 @@
 
 
 ## int8 quantized model
-- https://github.com/PINTO0309/PINTO_model_zoo/tree/master/51_East_Text_Detection/03_integer_quantization
+- https://github.com/PINTO0309/PINTO_model_zoo/tree/master/051_East_Text_Detection/03_integer_quantization
 
