@@ -5,6 +5,6 @@
 
 
 ## int8 quantized model
-- https://github.com/PINTO0309/PINTO_model_zoo/tree/master/30_BlazeFace/04_full_integer_quantization
-- https://github.com/PINTO0309/PINTO_model_zoo/tree/master/32_FaceMesh/04_full_integer_quantization
+- https://github.com/PINTO0309/PINTO_model_zoo/tree/master/030_BlazeFace/04_full_integer_quantization
+- https://github.com/PINTO0309/PINTO_model_zoo/tree/master/032_FaceMesh/04_full_integer_quantization
 

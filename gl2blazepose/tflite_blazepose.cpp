@@ -9,7 +9,7 @@
 
 /* 
  * https://github.com/google/mediapipe/tree/master/mediapipe/modules/pose_detection
- * https://github.com/PINTO0309/PINTO_model_zoo/tree/master/53_BlazePose/03_integer_quantization
+ * https://github.com/PINTO0309/PINTO_model_zoo/tree/master/053_BlazePose/03_integer_quantization
  */
 #define POSE_DETECT_MODEL_PATH      "./model/pose_detection.tflite"
 #define POSE_LANDMARK_MODEL_PATH    "./model/pose_landmark_upper_body.tflite"

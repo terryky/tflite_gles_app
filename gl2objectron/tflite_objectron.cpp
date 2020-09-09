@@ -26,7 +26,7 @@
 /* 
  * https://github.com/google/mediapipe/blob/master/mediapipe/models/object_detection_3d_chair.tflite
  * https://github.com/google/mediapipe/blob/master/mediapipe/models/object_detection_3d_sneakers.tflite
- * https://github.com/PINTO0309/PINTO_model_zoo/blob/master/36_Objectron/03_integer_quantization
+ * https://github.com/PINTO0309/PINTO_model_zoo/blob/master/036_Objectron/03_integer_quantization
  */
 #if 1 /* [1] chair or [0] shoes */
 #define DETECT_3D_MODEL_PATH        "./objectron_model/object_detection_3d_chair.tflite"

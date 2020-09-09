@@ -5,5 +5,5 @@
 
 
 ## int8 quantized model
-- https://github.com/PINTO0309/PINTO_model_zoo/tree/master/53_BlazePose/03_integer_quantization
+- https://github.com/PINTO0309/PINTO_model_zoo/tree/master/053_BlazePose/03_integer_quantization
 
