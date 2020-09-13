@@ -75,13 +75,13 @@ winsys_swap()
         case ButtonPress:
             if (s_button_func)
             {
-                s_button_func (event.xbutton.button, 1, event.xbutton.x, event.xbutton.y);
+                s_button_func (0/*event.xbutton.button*/, 1, event.xbutton.x, event.xbutton.y);
             }
             break;
         case ButtonRelease:
             if (s_button_func)
             {
-                s_button_func (event.xbutton.button, 0, event.xbutton.x, event.xbutton.y);
+                s_button_func (0/*event.xbutton.button*/, 0, event.xbutton.x, event.xbutton.y);
             }
             break;
         case MotionNotify:
