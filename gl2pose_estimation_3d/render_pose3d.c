@@ -271,11 +271,15 @@ init_cube (float aspect)
 
 
 int
-draw_bone (float *mtxGlobal, float *p0, float *p1, float radius, float *color)
+draw_bone (float *mtxGlobal, float *p0, float *p1, float radius, float *color, int is_shadow)
 {
     float matMV[16], matPMV[16], matMVI3x3[9];
 
-    glEnable (GL_DEPTH_TEST);
+    if (is_shadow)
+        glDisable (GL_DEPTH_TEST);
+    else
+        glEnable (GL_DEPTH_TEST);
+
     glEnable (GL_CULL_FACE);
     glFrontFace (GL_CW);
 
@@ -314,8 +318,8 @@ draw_bone (float *mtxGlobal, float *p0, float *p1, float radius, float *color)
     glUniform3f (s_loc_color, color[0], color[1], color[2]);
     glUniform1f (s_loc_alpha, color[3]);
 
-    glEnable (GL_BLEND);
-    glEnable (GL_DEPTH_TEST);
+    if (color[3] < 1.0f)
+        glEnable (GL_BLEND);
 
     glBindTexture (GL_TEXTURE_2D, s_texid_dummy);
 
@@ -334,19 +338,25 @@ draw_bone (float *mtxGlobal, float *p0, float *p1, float radius, float *color)
     glBindBuffer (GL_ARRAY_BUFFER, 0);
     glBindBuffer (GL_ELEMENT_ARRAY_BUFFER, 0);
 
-    glDisable (GL_BLEND);
     glFrontFace (GL_CCW);
+    glDisable (GL_BLEND);
+    glDisable (GL_DEPTH_TEST);
+    glDisable (GL_CULL_FACE);
 
     return 0;
 }
 
 
 int
-draw_sphere (float *mtxGlobal, float *p0, float radius, float *color)
+draw_sphere (float *mtxGlobal, float *p0, float radius, float *color, int is_shadow)
 {
     float matMV[16], matPMV[16], matMVI3x3[9];
 
-    glEnable (GL_DEPTH_TEST);
+    if (is_shadow)
+        glDisable (GL_DEPTH_TEST);
+    else
+        glEnable (GL_DEPTH_TEST);
+
     glEnable (GL_CULL_FACE);
     glFrontFace (GL_CW);
 
@@ -392,8 +402,10 @@ draw_sphere (float *mtxGlobal, float *p0, float radius, float *color)
     glBindBuffer (GL_ARRAY_BUFFER, 0);
     glBindBuffer (GL_ELEMENT_ARRAY_BUFFER, 0);
 
-    glDisable (GL_BLEND);
     glFrontFace (GL_CCW);
+    glDisable (GL_BLEND);
+    glDisable (GL_DEPTH_TEST);
+    glDisable (GL_CULL_FACE);
 
     return 0;
 }

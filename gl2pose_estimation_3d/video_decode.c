@@ -92,7 +92,7 @@ open_video_file (const char *fname)
     s_video_h = dec_ctx->height;
     s_video_fmt = s_dec_ctx->pix_fmt;
 
-#if 1
+#if 0
     if (s_video_w > s_video_h)
         s_crop_w = s_crop_h = s_video_h;
     else

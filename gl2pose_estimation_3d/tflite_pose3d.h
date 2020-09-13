@@ -1,6 +1,6 @@
 /* ------------------------------------------------ *
  * The MIT License (MIT)
- * Copyright (c) 2019 terryky1220@gmail.com
+ * Copyright (c) 2020 terryky1220@gmail.com
  * ------------------------------------------------ */
 #ifndef TFLITE_POSE3D_H_
 #define TFLITE_POSE3D_H_
@@ -78,11 +78,10 @@ typedef struct _posenet_result_t
 
 
 
-extern int init_tflite_posenet (int use_quantized_tflite);
-extern void  *get_posenet_input_buf (int *w, int *h);
+int  init_tflite_pose3d (int use_quantized_tflite);
+void *get_pose3d_input_buf (int *w, int *h);
+int invoke_pose3d (posenet_result_t *pose_result);
 
-extern int invoke_posenet (posenet_result_t *pose_result);
-    
 #ifdef __cplusplus
 }
 #endif

@@ -1,10 +1,9 @@
 /* ------------------------------------------------ *
  * The MIT License (MIT)
- * Copyright (c) 2019 terryky1220@gmail.com
+ * Copyright (c) 2020 terryky1220@gmail.com
  * ------------------------------------------------ */
 #include "util_tflite.h"
 #include "tflite_pose3d.h"
-#include <list>
 #include <float.h>
 
 #define POSENET_MODEL_PATH          "./model/human_pose_estimation_3d_0001_256x448_float.tflite"
@@ -19,33 +18,23 @@ static int     s_img_h = 0;
 static int     s_hmp_w = 0;
 static int     s_hmp_h = 0;
 
-typedef struct part_score_t {
-    float score;
-    int   idx_x;
-    int   idx_y;
-    int   key_id;
-} part_score_t;
-
-typedef struct keypoint_t {
-    float pos_x;
-    float pos_y;
-    float score;
-    int   valid;
-} keypoint_t;
 
 
 
 
+/* -------------------------------------------------- *
+ *  Create TensorFlow Lite Interpreter
+ * -------------------------------------------------- */
 int
-init_tflite_posenet(int use_quantized_tflite)
+init_tflite_pose3d (int use_quantized_tflite)
 {
     const char *posenet_model;
 
     posenet_model = POSENET_MODEL_PATH;
     tflite_create_interpreter_from_file (&s_interpreter, posenet_model);
-    tflite_get_tensor_by_name (&s_interpreter, 0, "data",       &s_tensor_input);
-    tflite_get_tensor_by_name (&s_interpreter, 1, "Identity_1", &s_tensor_heatmap); /* (32, 56, 19) */
-    tflite_get_tensor_by_name (&s_interpreter, 1, "Identity",   &s_tensor_offsets); /* (32, 56, 57) */
+    tflite_get_tensor_by_name (&s_interpreter, 0, "data",       &s_tensor_input);   /* (1, 256, 448, 3) */
+    tflite_get_tensor_by_name (&s_interpreter, 1, "Identity",   &s_tensor_offsets); /* (1,  32,  56, 57) */
+    tflite_get_tensor_by_name (&s_interpreter, 1, "Identity_1", &s_tensor_heatmap); /* (1,  32,  56, 19) */
 
     /* input image dimention */
     s_img_w = s_tensor_input.dims[2];
@@ -61,13 +50,17 @@ init_tflite_posenet(int use_quantized_tflite)
 }
 
 void *
-get_posenet_input_buf (int *w, int *h)
+get_pose3d_input_buf (int *w, int *h)
 {
     *w = s_tensor_input.dims[2];
     *h = s_tensor_input.dims[1];
     return s_tensor_input.ptr;
 }
 
+
+/* -------------------------------------------------- *
+ * Invoke TensorFlow Lite
+ * -------------------------------------------------- */
 static float
 get_heatmap_score (int idx_y, int idx_x, int key_id)
 {
@@ -191,8 +184,12 @@ decode_single_pose (posenet_result_t *pose_result)
     pose_result->pose[0].pose_score = 1.0f;
 }
 
+
+/* -------------------------------------------------- *
+ * Invoke TensorFlow Lite
+ * -------------------------------------------------- */
 int
-invoke_posenet (posenet_result_t *pose_result)
+invoke_pose3d (posenet_result_t *pose_result)
 {
     if (s_interpreter.interpreter->Invoke() != kTfLiteOk)
     {

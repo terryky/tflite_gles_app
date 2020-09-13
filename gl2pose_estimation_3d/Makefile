@@ -5,8 +5,8 @@ TARGET = gl2pose_estimation_3d
 
 SRCS = 
 SRCS += main.c
-SRCS += render_pose3d.c
 SRCS += tflite_pose3d.cpp
+SRCS += render_pose3d.c
 SRCS += shapes.c
 SRCS += $(MAKETOP)/common/assertgl.c
 SRCS += $(MAKETOP)/common/assertegl.c

@@ -26,9 +26,9 @@
 static void
 update_capture_texture (texture_2d_t *captex)
 {
-    int   cap_w, cap_h;
+    int      cap_w, cap_h;
     uint32_t cap_fmt;
-    void *cap_buf;
+    void     *cap_buf;
 
     get_capture_dimension (&cap_w, &cap_h);
     get_capture_pixformat (&cap_fmt);
@@ -121,10 +121,10 @@ init_video_texture (texture_2d_t *captex, const char *fname)
 
 /* resize image to DNN network input size and convert to fp32. */
 void
-feed_posenet_image(texture_2d_t *srctex, int win_w, int win_h)
+feed_pose3d_image(texture_2d_t *srctex, int win_w, int win_h)
 {
     int x, y, w, h;
-    float *buf_fp32 = (float *)get_posenet_input_buf (&w, &h);
+    float *buf_fp32 = (float *)get_pose3d_input_buf (&w, &h);
     unsigned char *buf_ui8 = NULL;
     static unsigned char *pui8 = NULL;
 
@@ -234,8 +234,12 @@ render_2d_scene (int x, int y, int w, int h, posenet_result_t *pose_ret)
 
             float keyx = pose_ret->pose[i].key[j].x * w + x;
             float keyy = pose_ret->pose[i].key[j].y * h + y;
+            float score= pose_ret->pose[i].key[j].score;
+
             int r = 9;
+            colj[3] = score;
             draw_2d_fillrect (keyx - (r/2), keyy - (r/2), r, r, colj);
+            colj[3] = 1.0;
         }
     }
 }
@@ -340,7 +344,8 @@ compute_3d_hand_pos (posenet_result_t *dst_pose, int texw, int texh, posenet_res
 
 
 static void
-render_3d_bone (float *mtxGlobal, pose_t *pose, int idx0, int idx1, float *color, float rad)
+render_3d_bone (float *mtxGlobal, pose_t *pose, int idx0, int idx1,
+                float *color, float rad, int is_shadow)
 {
     float *pos0 = (float *)&(pose->key3d[idx0]);
     float *pos1 = (float *)&(pose->key3d[idx1]);
@@ -348,11 +353,10 @@ render_3d_bone (float *mtxGlobal, pose_t *pose, int idx0, int idx1, float *color
     /* if the confidence score is low, draw more transparently. */
     float s0 = pose->key3d[idx0].score;
     float s1 = pose->key3d[idx1].score;
-    float s  = (s0 + s1) * 0.5f;
     float a  = color[3];
 
-    color[3] = (s > 0.1f) ? a : 0.1f;
-    draw_bone (mtxGlobal, pos0, pos1, rad, color);
+    color[3] = ((s0 > 0.1f) && (s1 > 0.1f)) ? a : 0.1f;
+    draw_bone (mtxGlobal, pos0, pos1, rad, color, is_shadow);
     color[3] = a;
 }
 
@@ -402,7 +406,7 @@ render_hand_landmark3d (int ofstx, int ofsty, int texw, int texh, posenet_result
     float col_cyan  [] = {0.0f, 1.0f, 1.0f, 1.0f};
     float col_violet[] = {1.0f, 0.0f, 1.0f, 1.0f};
     float col_blue[]   = {0.0f, 0.5f, 1.0f, 1.0f};
-    float col_gray[]   = {0.0f, 0.0f, 0.0f, 0.5f};
+    float col_gray[]   = {0.0f, 0.0f, 0.0f, 0.2f};
     float col_node[]   = {1.0f, 1.0f, 1.0f, 1.0f};
 
     /* transform to 3D coordinate */
@@ -410,7 +414,7 @@ render_hand_landmark3d (int ofstx, int ofsty, int texw, int texh, posenet_result
     compute_3d_hand_pos (&pose_draw, texw, texh, pose_ret);
 
     pose_t *pose = &pose_draw.pose[0];
-    for (int is_shadow = 0; is_shadow < 2; is_shadow ++)
+    for (int is_shadow = 1; is_shadow >= 0; is_shadow --)
     {
         float *colj;
         float *coln = col_node;
@@ -428,6 +432,7 @@ render_hand_landmark3d (int ofstx, int ofsty, int texw, int texh, posenet_result
             shadow_matrix (mtxShadow, light_dir, ground_pos, ground_nrm);
 
             float shadow_y = - 0.5f * texh;
+            //shadow_y += pose->key3d[kNeck].y * 0.5f;
             matrix_translate (mtxGlobal, 0.0, shadow_y, 0);
             matrix_mult (mtxGlobal, mtxGlobal, mtxShadow);
 
@@ -458,38 +463,38 @@ render_hand_landmark3d (int ofstx, int ofsty, int texw, int texh, posenet_result
             float rad = (i < 14) ? 15.0 : 3.0;
             float alp = colj[3];
             colj[3] = (score > 0.1f) ? alp : 0.1f;
-            draw_sphere (mtxGlobal, vec, rad, colj);
+            draw_sphere (mtxGlobal, vec, rad, colj, is_shadow);
             colj[3] = alp;
         }
 
         /* right arm */
-        render_3d_bone (mtxGlobal, pose,  1,  2, coln, 5.0f);
-        render_3d_bone (mtxGlobal, pose,  2,  3, coln, 5.0f);
-        render_3d_bone (mtxGlobal, pose,  3,  4, coln, 5.0f);
+        render_3d_bone (mtxGlobal, pose,  1,  2, coln, 5.0f, is_shadow);
+        render_3d_bone (mtxGlobal, pose,  2,  3, coln, 5.0f, is_shadow);
+        render_3d_bone (mtxGlobal, pose,  3,  4, coln, 5.0f, is_shadow);
 
         /* left arm */
-        render_3d_bone (mtxGlobal, pose,  1,  5, coln, 5.0f);
-        render_3d_bone (mtxGlobal, pose,  5,  6, coln, 5.0f);
-        render_3d_bone (mtxGlobal, pose,  6,  7, coln, 5.0f);
+        render_3d_bone (mtxGlobal, pose,  1,  5, coln, 5.0f, is_shadow);
+        render_3d_bone (mtxGlobal, pose,  5,  6, coln, 5.0f, is_shadow);
+        render_3d_bone (mtxGlobal, pose,  6,  7, coln, 5.0f, is_shadow);
 
         /* right leg */
-        render_3d_bone (mtxGlobal, pose,  1,  8, coln, 5.0f);
-        render_3d_bone (mtxGlobal, pose,  8,  9, coln, 5.0f);
-        render_3d_bone (mtxGlobal, pose,  9, 10, coln, 5.0f);
+        render_3d_bone (mtxGlobal, pose,  1,  8, coln, 5.0f, is_shadow);
+        render_3d_bone (mtxGlobal, pose,  8,  9, coln, 5.0f, is_shadow);
+        render_3d_bone (mtxGlobal, pose,  9, 10, coln, 5.0f, is_shadow);
 
         /* left leg */
-        render_3d_bone (mtxGlobal, pose,  1, 11, coln, 5.0f);
-        render_3d_bone (mtxGlobal, pose, 11, 12, coln, 5.0f);
-        render_3d_bone (mtxGlobal, pose, 12, 13, coln, 5.0f);
+        render_3d_bone (mtxGlobal, pose,  1, 11, coln, 5.0f, is_shadow);
+        render_3d_bone (mtxGlobal, pose, 11, 12, coln, 5.0f, is_shadow);
+        render_3d_bone (mtxGlobal, pose, 12, 13, coln, 5.0f, is_shadow);
 
         /* neck */
-        render_3d_bone (mtxGlobal, pose,  1,  0, coln, 5.0f);
+        render_3d_bone (mtxGlobal, pose,  1,  0, coln, 5.0f, is_shadow);
 
         /* eye */
-        //render_3d_bone (mtxGlobal, pose,  0, 14, coln, 1.0f);
-        //render_3d_bone (mtxGlobal, pose, 14, 16, coln, 1.0f);
-        //render_3d_bone (mtxGlobal, pose,  0, 15, coln, 1.0f);
-        //render_3d_bone (mtxGlobal, pose, 15, 17, coln, 1.0f);
+        //render_3d_bone (mtxGlobal, pose,  0, 14, coln, 1.0f, is_shadow);
+        //render_3d_bone (mtxGlobal, pose, 14, 16, coln, 1.0f, is_shadow);
+        //render_3d_bone (mtxGlobal, pose,  0, 15, coln, 1.0f, is_shadow);
+        //render_3d_bone (mtxGlobal, pose, 15, 17, coln, 1.0f, is_shadow);
     }
 }
 
@@ -564,8 +569,8 @@ main(int argc, char *argv[])
     char input_name_default[] = "pakutaso_person.jpg";
     char *input_name = NULL;
     int count;
-    int win_w = 448*2;
-    int win_h = 256*2;
+    int win_w = 900;
+    int win_h = 900;
     int texw, texh, draw_x, draw_y, draw_w, draw_h;
     texture_2d_t captex = {0};
     double ttime[10] = {0}, interval, invoke_ms;
@@ -617,7 +622,7 @@ main(int argc, char *argv[])
     init_dbgstr (win_w, win_h);
     init_cube ((float)win_w / (float)win_h);
 
-    init_tflite_posenet (use_quantized_tflite);
+    init_tflite_pose3d (use_quantized_tflite);
 
 #if defined (USE_GL_DELEGATE) || defined (USE_GPU_DELEGATEV2)
     /* we need to recover framebuffer because GPU Delegate changes the FBO binding */
@@ -692,11 +697,13 @@ main(int argc, char *argv[])
         }
 #endif
 
-        /* invoke pose estimation using TensorflowLite */
-        feed_posenet_image (&captex, win_w, win_h);
+        /* --------------------------------------- *
+         *  Pose estimation
+         * --------------------------------------- */
+        feed_pose3d_image (&captex, win_w, win_h);
 
         ttime[2] = pmeter_get_time_ms ();
-        invoke_posenet (&pose_ret);
+        invoke_pose3d (&pose_ret);
         ttime[3] = pmeter_get_time_ms ();
         invoke_ms = ttime[3] - ttime[2];
 
