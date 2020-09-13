@@ -8,6 +8,7 @@ SRCS += main.c
 SRCS += trt_pose3d.cpp
 SRCS += render_pose3d.c
 SRCS += shapes.c
+SRCS += touch_event.c
 SRCS += $(MAKETOP)/common/assertgl.c
 SRCS += $(MAKETOP)/common/assertegl.c
 SRCS += $(MAKETOP)/common/util_egl.c
@@ -53,7 +54,7 @@ endif
 # ---------------------
 #  for ImGui
 # ---------------------
-#ENABLE_IMGUI = true
+ENABLE_IMGUI = true
 ifeq ($(ENABLE_IMGUI), true)
 CFLAGS   += -DUSE_IMGUI
 CFLAGS   += -DIMGUI_IMPL_OPENGL_ES2
