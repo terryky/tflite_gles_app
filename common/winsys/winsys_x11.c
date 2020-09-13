@@ -21,6 +21,9 @@
 static Display *s_xdpy;
 static Window  s_xwin;
 
+static void (*s_motion_func)(int x, int y) = NULL;
+static void (*s_button_func)(int button, int state, int x, int y) = NULL;
+static void (*s_key_func)(int key, int state, int x, int y) = NULL;
 
 void *
 winsys_init_native_display (void)
@@ -51,8 +54,9 @@ winsys_init_native_window (void *dpy, int win_w, int win_h)
                                        0, 0, win_w, win_h, 
                                        1, black, white);
     XMapWindow (xdpy, xwin);
+    XSelectInput (xdpy, xwin, ButtonPressMask | ButtonReleaseMask | Button1MotionMask);
     XFlush (xdpy);
-    
+
     s_xwin = xwin;
 
     return (void *)xwin;
@@ -62,6 +66,35 @@ winsys_init_native_window (void *dpy, int win_w, int win_h)
 int 
 winsys_swap()
 {
+    XEvent event;
+    while (XPending (s_xdpy))
+    {
+        XNextEvent (s_xdpy, &event);
+        switch (event.type)
+        {
+        case ButtonPress:
+            if (s_button_func)
+            {
+                s_button_func (event.xbutton.button, 1, event.xbutton.x, event.xbutton.y);
+            }
+            break;
+        case ButtonRelease:
+            if (s_button_func)
+            {
+                s_button_func (event.xbutton.button, 0, event.xbutton.x, event.xbutton.y);
+            }
+            break;
+        case MotionNotify:
+            if (s_motion_func)
+            {
+                s_motion_func (event.xmotion.x, event.xmotion.y);
+            }
+            break;
+        default:
+            /* Unknown event type, ignore it */
+            break;
+        }
+    }
     return 0;
 }
 
@@ -70,4 +103,24 @@ winsys_create_native_pixmap (int width, int height)
 {
     return NULL;
 }
+
+
+
+
+void egl_set_motion_func (void (*func)(int x, int y))
+{
+    s_motion_func = func;
+}
+
+void egl_set_button_func (void (*func)(int button, int state, int x, int y))
+{
+    s_button_func = func;
+}
+
+void egl_set_key_func (void (*func)(int key, int state, int x, int y))
+{
+    s_key_func = func;
+}
+
+
 
