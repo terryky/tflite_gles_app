@@ -63,6 +63,10 @@ Target platform: Linux PC / NVIDIA Jetson / RaspberryPi.
 - Assign semantic labels to every pixel in the input image.<br>
 [<img src="gl2segmentation/gl2segmentation.png" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2segmentation)
 
+### [Face Segmentation](https://github.com/terryky/tflite_gles_app/tree/master/gl2face_segmentation)
+- Face parts segmentation based on BiSeNet V2.<br>
+[<img src="gl2face_segmentation/gl2face_segmentation.jpg" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2face_segmentation)
+
 ### [Selfie to Anime](https://github.com/terryky/tflite_gles_app/tree/master/gl2selfie2anime)
 - Generate anime-style face image.<br>
 [<img src="gl2selfie2anime/gl2selfie2anime.png" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2selfie2anime)
