@@ -252,7 +252,7 @@ tflite_create_interpreter_from_file (tflite_interpreter_t *p, const char *model_
     if (modify_graph_with_delegate (p, NULL) < 0)
     {
         DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
-        return -1;
+        //return -1;
     }
 
     p->interpreter->SetNumThreads(4);
@@ -355,6 +355,10 @@ tflite_get_tensor_by_name (tflite_interpreter_t *p, int io, const char *name, tf
     case kTfLiteFloat32:
         ptr = (io == 0) ? interpreter->typed_input_tensor <float>(io_idx) :
                           interpreter->typed_output_tensor<float>(io_idx);
+        break;
+    case kTfLiteInt64:
+        ptr = (io == 0) ? interpreter->typed_input_tensor <int64_t>(io_idx) :
+                          interpreter->typed_output_tensor<int64_t>(io_idx);
         break;
     default:
         DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
