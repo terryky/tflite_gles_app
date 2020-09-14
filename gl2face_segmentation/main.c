@@ -301,30 +301,55 @@ render_animface_image (texture_2d_t *srctex, int ofstx, int ofsty, int texw, int
     int x, y;
     unsigned int imgbuf[segmap_h][segmap_w];
 
+#if 1
     unsigned char alpha = 200;
     unsigned char color[19 * 4] = 
     {
         0,   0,   0,   32,     /* [0 ] background */
-        200, 0,   0,   alpha,  /* [1 ] skin */
+        128, 0,   0,   alpha,  /* [1 ] skin */
         0,   200, 0,   alpha,  /* [2 ] l_brow */
         200, 200, 0,   alpha,  /* [3 ] r_brow */
         0,   0,   200, alpha,  /* [4 ] l_eye */
         200, 0,   200, alpha,  /* [5 ] r_eye */
         0,   200, 200, alpha,  /* [6 ] eye_g */
-        200, 200, 200, alpha,  /* [7 ] l_ear */
-        128, 0,   0,   alpha,  /* [8 ] r_ear */
+        0,   64,  0,   alpha,  /* [7 ] l_ear */
+        64,  0,   0,   alpha,  /* [8 ] r_ear */
         192, 0,   0,   alpha,  /* [9 ] ear_r */
         128, 255, 0,   alpha,  /* [10] nose */
-        192, 128, 0,   alpha,  /* [11] mouth */
+        192, 128, 64,  alpha,  /* [11] mouth */
         64,  0,   128, alpha,  /* [12] u_lip */
         192, 0,   128, alpha,  /* [13] l_lip */
         64,  128, 128, alpha,  /* [14] neck */
         192, 128, 128, alpha,  /* [15] neck_l */
         0,   64,  0,   alpha,  /* [16] cloth */
-        128, 64,  0,   alpha,  /* [17] hair */
+        128, 128, 128, alpha,  /* [17] hair */
         0,   192, 0,   alpha,  /* [18] hat */
     };
-
+#else
+    unsigned char alpha = 190;
+    unsigned char color[19 * 4] = 
+    {
+        0,   0,   0,   0,      /* [0 ] background */
+        240, 240, 250, alpha,  /* [1 ] skin */
+        0,   0,   0,   255,    /* [2 ] l_brow */
+        0,   0,   0,   255,    /* [3 ] r_brow */
+        0,   0,   200, 0,      /* [4 ] l_eye */
+        200, 0,   200, 0,      /* [5 ] r_eye */
+        0,   200, 200, 0,      /* [6 ] eye_g */
+        200, 200, 200, 0,      /* [7 ] l_ear */
+        128, 0,   0,   0,      /* [8 ] r_ear */
+        192, 0,   0,   0,      /* [9 ] ear_r */
+        250, 250, 255, alpha,  /* [10] nose */
+        192, 128, 0,   0,      /* [11] mouth */
+        200, 0,   0,   alpha,  /* [12] u_lip */
+        200, 0,   0,   alpha,  /* [13] l_lip */
+        255, 255, 255, 0,      /* [14] neck */
+        255, 255, 255, 0,      /* [15] neck_l */
+        255, 255, 0,   0,      /* [16] cloth */
+        0,   0,   0,   alpha,  /* [17] hair */
+        0,   192, 0,   0,      /* [18] hat */
+    };
+#endif
     /* find the most confident class for each pixel. */
     for (y = 0; y < segmap_h; y ++)
     {
