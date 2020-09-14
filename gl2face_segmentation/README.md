@@ -5,3 +5,10 @@ Face parts segmentation based on BiSeNet V2:
 
  ![capture image](gl2face_segmentation.jpg "capture image")
 
+#### stream input example
+
+```
+$ ./gl2face_segmentation -v assets/pexels_3763031.mp4
+```
+ ![capture image](gl2face_segmentation_mov.gif "capture image")
+
