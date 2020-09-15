@@ -26,7 +26,7 @@ static int     s_hmp_h = 0;
  *  Create TensorFlow Lite Interpreter
  * -------------------------------------------------- */
 int
-init_tflite_pose3d (int use_quantized_tflite)
+init_tflite_pose3d (int use_quantized_tflite, pose3d_config_t *config)
 {
     const char *posenet_model;
 

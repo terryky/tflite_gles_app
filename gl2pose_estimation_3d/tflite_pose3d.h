@@ -78,7 +78,14 @@ typedef struct _posenet_result_t
 
 
 
-int  init_tflite_pose3d (int use_quantized_tflite);
+typedef struct _pose3d_config_t
+{
+    float score_thresh;
+    float iou_thresh;
+} pose3d_config_t;
+
+
+int  init_tflite_pose3d (int use_quantized_tflite, pose3d_config_t *config);
 void *get_pose3d_input_buf (int *w, int *h);
 int invoke_pose3d (posenet_result_t *pose_result);
 

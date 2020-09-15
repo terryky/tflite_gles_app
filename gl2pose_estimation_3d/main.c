@@ -18,8 +18,23 @@
 #include "camera_capture.h"
 #include "render_pose3d.h"
 #include "video_decode.h"
+#include "touch_event.h"
+#include "render_imgui.h"
 
 #define UNUSED(x) (void)(x)
+
+typedef struct letterbox_tex_region_t
+{
+    float width;      /* full rect width  with margin */
+    float height;     /* full rect height with margin */
+    float tex_x;      /* start position of valid texture */
+    float tex_y;      /* start position of valid texture */
+    float tex_w;      /* width  of valid texture */
+    float tex_h;      /* height of valid texture */
+} letterbox_tex_region_t;
+
+static letterbox_tex_region_t s_srctex_region;
+static imgui_data_t s_gui_prop = {0};
 
 
 #if defined (USE_INPUT_CAMERA_CAPTURE)
@@ -123,27 +138,53 @@ init_video_texture (texture_2d_t *captex, const char *fname)
 void
 feed_pose3d_image(texture_2d_t *srctex, int win_w, int win_h)
 {
-    int x, y, w, h;
-    float *buf_fp32 = (float *)get_pose3d_input_buf (&w, &h);
+    int dst_w, dst_h;
+    float *buf_fp32 = (float *)get_pose3d_input_buf (&dst_w, &dst_h);
     unsigned char *buf_ui8 = NULL;
     static unsigned char *pui8 = NULL;
 
+    float dst_aspect = (float)dst_w / (float)dst_h;
+    float tex_aspect = (float)srctex->width / (float)srctex->height;
+    float scaled_w, scaled_h;
+    float offset_x, offset_y;
+
+    if (dst_aspect > tex_aspect)
+    {
+        float scale = (float)dst_h / (float)srctex->height;
+        scaled_w = scale * srctex->width;
+        scaled_h = scale * srctex->height;
+        offset_x = (dst_w - scaled_w) * 0.5;
+        offset_y = 0;
+    }
+    else
+    {
+        float scale = (float)dst_w / (float)srctex->width;
+        scaled_w = scale * srctex->width;
+        scaled_h = scale * srctex->height;
+        offset_x = 0;
+        offset_y = (dst_h - scaled_h) * 0.5;
+    }
+
     if (pui8 == NULL)
-        pui8 = (unsigned char *)malloc(w * h * 4);
+        pui8 = (unsigned char *)malloc(dst_w * dst_h * 4);
 
     buf_ui8 = pui8;
 
-    draw_2d_texture_ex (srctex, 0, win_h - h, w, h, 1);
+    /* draw valid texture area */
+    float dx = offset_x;
+    float dy = win_h - dst_h + offset_y;
+    draw_2d_texture_ex (srctex, dx, dy, scaled_w, scaled_h, 1);
 
+    /* read full rect with margin */
     glPixelStorei (GL_PACK_ALIGNMENT, 4);
-    glReadPixels (0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, buf_ui8);
+    glReadPixels (0, 0, dst_w, dst_h, GL_RGBA, GL_UNSIGNED_BYTE, buf_ui8);
 
     /* convert UI8 [0, 255] ==> FP32 [0, 1] */
     float mean =   0.0f;
     float std  = 255.0f;
-    for (y = 0; y < h; y ++)
+    for (int y = 0; y < dst_h; y ++)
     {
-        for (x = 0; x < w; x ++)
+        for (int x = 0; x < dst_w; x ++)
         {
             int r = *buf_ui8 ++;
             int g = *buf_ui8 ++;
@@ -154,6 +195,13 @@ feed_pose3d_image(texture_2d_t *srctex, int win_w, int win_h)
             *buf_fp32 ++ = (float)(b - mean) / std;
         }
     }
+
+    s_srctex_region.width  = dst_w;     /* full rect width  with margin */
+    s_srctex_region.height = dst_h;     /* full rect height with margin */
+    s_srctex_region.tex_x  = offset_x;  /* start position of valid texture */
+    s_srctex_region.tex_y  = offset_y;  /* start position of valid texture */
+    s_srctex_region.tex_w  = scaled_w;  /* width  of valid texture */
+    s_srctex_region.tex_h  = scaled_h;  /* height of valid texture */
 
     return;
 }
@@ -189,6 +237,16 @@ render_2d_scene (int x, int y, int w, int h, posenet_result_t *pose_ret)
     float col_cyan[]   = {0.0f, 1.0f, 1.0f, 1.0f};
     float col_violet[] = {1.0f, 0.0f, 1.0f, 1.0f};
     float col_blue[]   = {0.0f, 0.5f, 1.0f, 1.0f};
+
+    {
+        float ratio_w = s_srctex_region.width  / s_srctex_region.tex_w;
+        float ratio_h = s_srctex_region.height / s_srctex_region.tex_h;
+        float scale = (float)w / s_srctex_region.tex_w;
+        w *= ratio_w;
+        h *= ratio_h;
+        x -= s_srctex_region.tex_x * scale;
+        y -= s_srctex_region.tex_y * scale;
+    }
 
     for (int i = 0; i < pose_ret->num; i ++)
     {
@@ -313,14 +371,16 @@ render_posenet_heatmap (int ofstx, int ofsty, int draw_w, int draw_h, posenet_re
 }
 
 static void
-compute_3d_hand_pos (posenet_result_t *dst_pose, int texw, int texh, posenet_result_t *src_pose)
+compute_3d_skelton_pos (posenet_result_t *dst_pose, posenet_result_t *src_pose)
 {
+    /*
+     *  because key3d[kNeck] is always zero,
+     *  we need to add offsets (key2d[kNeck]) to translate it to the global world. 
+     */
     float neck_x = src_pose->pose[0].key[kNeck].x;
     float neck_y = src_pose->pose[0].key[kNeck].y;
     float xoffset = (neck_x - 0.5f);
     float yoffset = (neck_y - 0.5f);
-    float zoffset = 1000;
-    float scale = texh;
 
     for (int i = 0; i < kPoseKeyNum; i ++)
     {
@@ -329,9 +389,9 @@ compute_3d_hand_pos (posenet_result_t *dst_pose, int texw, int texh, posenet_res
         float z = src_pose->pose[0].key3d[i].z;
         float s = src_pose->pose[0].key3d[i].score;
 
-        x = (x + xoffset) * scale;
-        y = (y + yoffset) * scale;
-        z = z * scale + zoffset;
+        x = (x + xoffset) * s_gui_prop.pose_scale_x * 2;
+        y = (y + yoffset) * s_gui_prop.pose_scale_y * 2;
+        z = z * s_gui_prop.pose_scale_z;
         y = -y;
         z = -z;
 
@@ -396,10 +456,9 @@ shadow_matrix (float *m, float *light_dir, float *ground_pos, float *ground_nrm)
 }
 
 static void
-render_hand_landmark3d (int ofstx, int ofsty, int texw, int texh, posenet_result_t *pose_ret)
+render_hand_landmark3d (int ofstx, int ofsty, posenet_result_t *pose_ret)
 {
-    float mtxGlobal[16];
-    float rotation     = 0;
+    float mtxGlobal[16], mtxTouch[16];
     float col_red []   = {1.0f, 0.0f, 0.0f, 1.0f};
     float col_yellow[] = {1.0f, 1.0f, 0.0f, 1.0f};
     float col_green [] = {0.0f, 1.0f, 0.0f, 1.0f};
@@ -409,9 +468,11 @@ render_hand_landmark3d (int ofstx, int ofsty, int texw, int texh, posenet_result
     float col_gray[]   = {0.0f, 0.0f, 0.0f, 0.2f};
     float col_node[]   = {1.0f, 1.0f, 1.0f, 1.0f};
 
+    get_touch_event_matrix (mtxTouch);
+
     /* transform to 3D coordinate */
     posenet_result_t pose_draw;
-    compute_3d_hand_pos (&pose_draw, texw, texh, pose_ret);
+    compute_3d_skelton_pos (&pose_draw, pose_ret);
 
     pose_t *pose = &pose_draw.pose[0];
     for (int is_shadow = 1; is_shadow >= 0; is_shadow --)
@@ -420,7 +481,8 @@ render_hand_landmark3d (int ofstx, int ofsty, int texw, int texh, posenet_result
         float *coln = col_node;
 
         matrix_identity (mtxGlobal);
-        matrix_rotate   (mtxGlobal, rotation, 0.0f, 0.0f, 1.0f);
+        matrix_translate (mtxGlobal, 0.0, 0.0, -s_gui_prop.camera_pos_z);
+        matrix_mult (mtxGlobal, mtxGlobal, mtxTouch);
 
         if (is_shadow)
         {
@@ -431,7 +493,7 @@ render_hand_landmark3d (int ofstx, int ofsty, int texw, int texh, posenet_result
 
             shadow_matrix (mtxShadow, light_dir, ground_pos, ground_nrm);
 
-            float shadow_y = - 0.5f * texh;
+            float shadow_y = - s_gui_prop.pose_scale_y;
             //shadow_y += pose->key3d[kNeck].y * 0.5f;
             matrix_translate (mtxGlobal, 0.0, shadow_y, 0);
             matrix_mult (mtxGlobal, mtxGlobal, mtxShadow);
@@ -460,7 +522,7 @@ render_hand_landmark3d (int ofstx, int ofsty, int texw, int texh, posenet_result
                 else              colj = col_yellow;
             }
 
-            float rad = (i < 14) ? 15.0 : 3.0;
+            float rad = (i < 14) ? s_gui_prop.joint_radius : s_gui_prop.joint_radius / 3;
             float alp = colj[3];
             colj[3] = (score > 0.1f) ? alp : 0.1f;
             draw_sphere (mtxGlobal, vec, rad, colj, is_shadow);
@@ -468,27 +530,28 @@ render_hand_landmark3d (int ofstx, int ofsty, int texw, int texh, posenet_result
         }
 
         /* right arm */
-        render_3d_bone (mtxGlobal, pose,  1,  2, coln, 5.0f, is_shadow);
-        render_3d_bone (mtxGlobal, pose,  2,  3, coln, 5.0f, is_shadow);
-        render_3d_bone (mtxGlobal, pose,  3,  4, coln, 5.0f, is_shadow);
+        float rad = s_gui_prop.bone_radius;
+        render_3d_bone (mtxGlobal, pose,  1,  2, coln, rad, is_shadow);
+        render_3d_bone (mtxGlobal, pose,  2,  3, coln, rad, is_shadow);
+        render_3d_bone (mtxGlobal, pose,  3,  4, coln, rad, is_shadow);
 
         /* left arm */
-        render_3d_bone (mtxGlobal, pose,  1,  5, coln, 5.0f, is_shadow);
-        render_3d_bone (mtxGlobal, pose,  5,  6, coln, 5.0f, is_shadow);
-        render_3d_bone (mtxGlobal, pose,  6,  7, coln, 5.0f, is_shadow);
+        render_3d_bone (mtxGlobal, pose,  1,  5, coln, rad, is_shadow);
+        render_3d_bone (mtxGlobal, pose,  5,  6, coln, rad, is_shadow);
+        render_3d_bone (mtxGlobal, pose,  6,  7, coln, rad, is_shadow);
 
         /* right leg */
-        render_3d_bone (mtxGlobal, pose,  1,  8, coln, 5.0f, is_shadow);
-        render_3d_bone (mtxGlobal, pose,  8,  9, coln, 5.0f, is_shadow);
-        render_3d_bone (mtxGlobal, pose,  9, 10, coln, 5.0f, is_shadow);
+        render_3d_bone (mtxGlobal, pose,  1,  8, coln, rad, is_shadow);
+        render_3d_bone (mtxGlobal, pose,  8,  9, coln, rad, is_shadow);
+        render_3d_bone (mtxGlobal, pose,  9, 10, coln, rad, is_shadow);
 
         /* left leg */
-        render_3d_bone (mtxGlobal, pose,  1, 11, coln, 5.0f, is_shadow);
-        render_3d_bone (mtxGlobal, pose, 11, 12, coln, 5.0f, is_shadow);
-        render_3d_bone (mtxGlobal, pose, 12, 13, coln, 5.0f, is_shadow);
+        render_3d_bone (mtxGlobal, pose,  1, 11, coln, rad, is_shadow);
+        render_3d_bone (mtxGlobal, pose, 11, 12, coln, rad, is_shadow);
+        render_3d_bone (mtxGlobal, pose, 12, 13, coln, rad, is_shadow);
 
         /* neck */
-        render_3d_bone (mtxGlobal, pose,  1,  0, coln, 5.0f, is_shadow);
+        render_3d_bone (mtxGlobal, pose,  1,  0, coln, rad, is_shadow);
 
         /* eye */
         //render_3d_bone (mtxGlobal, pose,  0, 14, coln, 1.0f, is_shadow);
@@ -499,20 +562,69 @@ render_hand_landmark3d (int ofstx, int ofsty, int texw, int texh, posenet_result
 }
 
 static void
-render_3d_scene (int ofstx, int ofsty, int texw, int texh, posenet_result_t *pose_ret)
+render_3d_scene (int ofstx, int ofsty, posenet_result_t *pose_ret)
 {
-    float mtxGlobal[16];
-    float floor_size_x = texw/2; //100.0f;
-    float floor_size_y = texw/2; //100.0f;
-    float floor_size_z = texw/2; //100.0f;
+    float mtxGlobal[16], mtxTouch[16];
+    float floor_size_x = 300.0f;
+    float floor_size_y = 300.0f;
+    float floor_size_z = 300.0f;
+
+    get_touch_event_matrix (mtxTouch);
 
     /* background */
     matrix_identity (mtxGlobal);
-    matrix_translate (mtxGlobal, 0, floor_size_y * 0.9f, 0);
+    matrix_translate (mtxGlobal, 0, 0, -s_gui_prop.camera_pos_z);
+    matrix_mult (mtxGlobal, mtxGlobal, mtxTouch);
+    matrix_translate (mtxGlobal, 0, -s_gui_prop.pose_scale_y, 0);
     matrix_scale  (mtxGlobal, floor_size_x, floor_size_y, floor_size_z);
-    draw_floor (mtxGlobal);
+    matrix_translate (mtxGlobal, 0, 1.0, 0);
+    draw_floor (mtxGlobal, floor_size_x/10, floor_size_y/10);
 
-    render_hand_landmark3d (ofstx, ofsty, texw, texh, pose_ret);
+    render_hand_landmark3d (ofstx, ofsty, pose_ret);
+
+    if (s_gui_prop.draw_axis)
+    {
+        /* (xyz)-AXIS */
+        matrix_identity (mtxGlobal);
+        matrix_translate (mtxGlobal, 0, 0, -s_gui_prop.camera_pos_z);
+        matrix_mult (mtxGlobal, mtxGlobal, mtxTouch);
+        for (int i = -1; i <= 1; i ++)
+        {
+            for (int j = -1; j <= 1; j ++)
+            {
+                float col_base[] = {0.1, 0.5, 0.5, 0.5};
+                float dx = s_gui_prop.pose_scale_x;
+                float dy = s_gui_prop.pose_scale_y;
+                float dz = s_gui_prop.pose_scale_z;
+                float rad = 1;
+
+                {
+                    float v0[3] = {-dx, i * dy, j * dz};
+                    float v1[3] = { dx, i * dy, j * dz};
+                    float col_red[] = {1.0, 0.0, 0.0, 1.0};
+                    float *col = (i == 0 && j == 0) ? col_red : col_base;
+                    draw_line (mtxGlobal, v0, v1, col);
+                    draw_sphere (mtxGlobal, v1, rad, col, 0);
+                }
+                {
+                    float v0[3] = {i * dx, -dy, j * dz};
+                    float v1[3] = {i * dx,  dy, j * dz};
+                    float col_green[] = {0.0, 1.0, 0.0, 1.0};
+                    float *col = (i == 0 && j == 0) ? col_green : col_base;
+                    draw_line (mtxGlobal, v0, v1, col);
+                    draw_sphere (mtxGlobal, v1, rad, col, 0);
+                }
+                {
+                    float v0[3] = {i * dx, j * dy, -dz};
+                    float v1[3] = {i * dx, j * dy,  dz};
+                    float col_blue[] = {0.0, 0.0, 1.0, 1.0};
+                    float *col = (i == 0 && j == 0) ? col_blue : col_base;
+                    draw_line (mtxGlobal, v0, v1, col);
+                    draw_sphere (mtxGlobal, v1, rad, col, 0);
+                }
+            }
+        }
+    }
 }
 
 
@@ -557,6 +669,63 @@ adjust_texture (int win_w, int win_h, int texw, int texh,
     *dy = (int)offset_y;
     *dw = (int)scaled_w;
     *dh = (int)scaled_h;
+}
+
+void
+mousemove_cb (int x, int y)
+{
+#if defined (USE_IMGUI)
+    imgui_mousemove (x, y);
+    if (imgui_is_anywindow_hovered ())
+        return;
+#endif
+
+    touch_event_move (0, x, y);
+}
+
+void
+button_cb (int button, int state, int x, int y)
+{
+#if defined (USE_IMGUI)
+    imgui_mousebutton (button, state, x, y);
+#endif
+
+    if (state)
+        touch_event_start (0, x, y);
+    else
+        touch_event_end (0);
+}
+
+void
+keyboard_cb (int key, int state, int x, int y)
+{
+}
+
+void
+setup_imgui (int win_w, int win_h)
+{
+    egl_set_motion_func (mousemove_cb);
+    egl_set_button_func (button_cb);
+    egl_set_key_func    (keyboard_cb);
+
+    init_touch_event (win_w, win_h);
+
+#if defined (USE_IMGUI)
+    init_imgui (win_w, win_h);
+#endif
+
+    s_gui_prop.frame_color[0] = 0.0f;
+    s_gui_prop.frame_color[1] = 0.5f;
+    s_gui_prop.frame_color[2] = 1.0f;
+    s_gui_prop.frame_color[3] = 1.0f;
+    s_gui_prop.pose_scale_x = 100.0f;
+    s_gui_prop.pose_scale_y = 100.0f;
+    s_gui_prop.pose_scale_z = 100.0f;
+    s_gui_prop.camera_pos_z = 300.0f;
+    s_gui_prop.joint_radius = 8.0f;
+    s_gui_prop.bone_radius  = 2.0f;
+    s_gui_prop.draw_axis    = 0;
+    s_gui_prop.draw_pmeter  = 1;
 }
 
 
@@ -622,7 +791,9 @@ main(int argc, char *argv[])
     init_dbgstr (win_w, win_h);
     init_cube ((float)win_w / (float)win_h);
 
-    init_tflite_pose3d (use_quantized_tflite);
+    init_tflite_pose3d (use_quantized_tflite, &s_gui_prop.pose3d_config);
+
+    setup_imgui (win_w * 2, win_h);
 
 #if defined (USE_GL_DELEGATE) || defined (USE_GPU_DELEGATEV2)
     /* we need to recover framebuffer because GPU Delegate changes the FBO binding */
@@ -724,18 +895,25 @@ main(int argc, char *argv[])
          *  render scene  (right half)
          * --------------------------------------- */
         glViewport (win_w, 0, win_w, win_h);
-        render_3d_scene (draw_x, draw_y, draw_w, draw_h, &pose_ret);
+        render_3d_scene (draw_x, draw_y, &pose_ret);
 
 
         /* --------------------------------------- *
          *  post process
          * --------------------------------------- */
         glViewport (0, 0, win_w, win_h);
-        draw_pmeter (0, 40);
+
+        if (s_gui_prop.draw_pmeter)
+        {
+            draw_pmeter (0, 40);
+        }
 
         sprintf (strbuf, "Interval:%5.1f [ms]\nTFLite  :%5.1f [ms]", interval, invoke_ms);
         draw_dbgstr (strbuf, 10, 10);
 
+#if defined (USE_IMGUI)
+        invoke_imgui (&s_gui_prop);
+#endif
         egl_swap();
     }
 
