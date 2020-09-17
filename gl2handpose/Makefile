@@ -5,9 +5,10 @@ TARGET = gl2handpose
 
 SRCS = 
 SRCS += main.c
-SRCS += render_handpose.c
 SRCS += tflite_handpose.cpp
+SRCS += render_handpose.c
 SRCS += shapes.c
+SRCS += touch_event.c
 SRCS += custom_ops/transpose_conv_bias.cc
 SRCS += $(MAKETOP)/common/assertgl.c
 SRCS += $(MAKETOP)/common/assertegl.c
@@ -32,6 +33,24 @@ SRCS     += camera_capture.c
 SRCS     += $(MAKETOP)/common/util_v4l2.c
 SRCS     += $(MAKETOP)/common/util_drm.c
 LIBS     += -ldrm
+
+# ---------------------
+#  for ImGui
+# ---------------------
+ENABLE_IMGUI = true
+ifeq ($(ENABLE_IMGUI), true)
+CFLAGS   += -DUSE_IMGUI
+CFLAGS   += -DIMGUI_IMPL_OPENGL_ES2
+
+SRCS += render_imgui.cpp
+SRCS += $(MAKETOP)/third_party/imgui/imgui.cpp
+SRCS += $(MAKETOP)/third_party/imgui/imgui_draw.cpp
+SRCS += $(MAKETOP)/third_party/imgui/imgui_widgets.cpp
+SRCS += $(MAKETOP)/third_party/imgui/examples/imgui_impl_opengl3.cpp
+
+INCLUDES += -I$(MAKETOP)/third_party/imgui
+INCLUDES += -I$(MAKETOP)/third_party/imgui/examples
+endif
 
 
 # ---------------------

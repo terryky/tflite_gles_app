@@ -56,6 +56,12 @@ typedef struct _hand_landmark_result_t
 
 
 
+typedef struct _pose3d_config_t
+{
+    float score_thresh;
+    float iou_thresh;
+} pose3d_config_t;
+
 int   init_tflite_hand_landmark (int use_quantized_tflite);
 
 void  *get_palm_detection_input_buf (int *w, int *h);

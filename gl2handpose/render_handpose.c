@@ -247,7 +247,7 @@ init_cube (float aspect)
     s_loc_alpha   = glGetUniformLocation(s_sobj.program, "u_alpha" );
     s_loc_lightpos= glGetUniformLocation(s_sobj.program, "u_LightPos" );
 
-    matrix_proj_perspective (s_matPrj, 30.0f, aspect, 10.f, 10000.f);
+    matrix_proj_perspective (s_matPrj, 72.0f, aspect, 1.f, 10000.f);
 
     int texw, texh;
     load_png_texture ("floortile.png", &s_texid_floor, &texw, &texh);
@@ -271,11 +271,15 @@ init_cube (float aspect)
 
 
 int
-draw_bone (float *mtxGlobal, float *p0, float *p1, float radius, float *color)
+draw_bone (float *mtxGlobal, float *p0, float *p1, float radius, float *color, int is_shadow)
 {
     float matMV[16], matPMV[16], matMVI3x3[9];
 
-    glEnable (GL_DEPTH_TEST);
+    if (is_shadow)
+        glDisable (GL_DEPTH_TEST);
+    else
+        glEnable (GL_DEPTH_TEST);
+
     glEnable (GL_CULL_FACE);
     glFrontFace (GL_CW);
 
@@ -302,10 +306,10 @@ draw_bone (float *mtxGlobal, float *p0, float *p1, float radius, float *color)
         matrix_mult (matMV, matLook, matMV);
     }
 
+    compute_invmat3x3 (matMVI3x3, matMV);
+
     matrix_mult (matMV, mtxGlobal, matMV);
     matrix_mult (matPMV, s_matPrj, matMV);
-
-    compute_invmat3x3 (matMVI3x3, matMV);
 
     glUniformMatrix4fv (s_loc_mtx_mv,   1, GL_FALSE, matMV );
     glUniformMatrix4fv (s_loc_mtx_pmv,  1, GL_FALSE, matPMV);
@@ -314,8 +318,8 @@ draw_bone (float *mtxGlobal, float *p0, float *p1, float radius, float *color)
     glUniform3f (s_loc_color, color[0], color[1], color[2]);
     glUniform1f (s_loc_alpha, color[3]);
 
-    glEnable (GL_BLEND);
-    glEnable (GL_DEPTH_TEST);
+    if (color[3] < 1.0f)
+        glEnable (GL_BLEND);
 
     glBindTexture (GL_TEXTURE_2D, s_texid_dummy);
 
@@ -334,19 +338,25 @@ draw_bone (float *mtxGlobal, float *p0, float *p1, float radius, float *color)
     glBindBuffer (GL_ARRAY_BUFFER, 0);
     glBindBuffer (GL_ELEMENT_ARRAY_BUFFER, 0);
 
-    glDisable (GL_BLEND);
     glFrontFace (GL_CCW);
+    glDisable (GL_BLEND);
+    glDisable (GL_DEPTH_TEST);
+    glDisable (GL_CULL_FACE);
 
     return 0;
 }
 
 
 int
-draw_sphere (float *mtxGlobal, float *p0, float radius, float *color)
+draw_sphere (float *mtxGlobal, float *p0, float radius, float *color, int is_shadow)
 {
     float matMV[16], matPMV[16], matMVI3x3[9];
 
-    glEnable (GL_DEPTH_TEST);
+    if (is_shadow)
+        glDisable (GL_DEPTH_TEST);
+    else
+        glEnable (GL_DEPTH_TEST);
+
     glEnable (GL_CULL_FACE);
     glFrontFace (GL_CW);
 
@@ -360,15 +370,15 @@ draw_sphere (float *mtxGlobal, float *p0, float radius, float *color)
     matrix_translate (matMV, p0[0], p0[1], p0[2]);
     matrix_scale     (matMV, radius, radius, radius);
 
+    compute_invmat3x3 (matMVI3x3, matMV);
+
     matrix_mult (matMV, mtxGlobal, matMV);
     matrix_mult (matPMV, s_matPrj, matMV);
-
-    compute_invmat3x3 (matMVI3x3, matMV);
 
     glUniformMatrix4fv (s_loc_mtx_mv,   1, GL_FALSE, matMV );
     glUniformMatrix4fv (s_loc_mtx_pmv,  1, GL_FALSE, matPMV);
     glUniformMatrix3fv (s_loc_mtx_nrm,  1, GL_FALSE, matMVI3x3);
-    glUniform3f (s_loc_lightpos, 1.0f, 1.0f, 5.0f);
+    glUniform3f (s_loc_lightpos, 1.0f, 1.0f, 1.0f);
     glUniform3f (s_loc_color, color[0], color[1], color[2]);
     glUniform1f (s_loc_alpha, color[3]);
 
@@ -392,24 +402,26 @@ draw_sphere (float *mtxGlobal, float *p0, float radius, float *color)
     glBindBuffer (GL_ARRAY_BUFFER, 0);
     glBindBuffer (GL_ELEMENT_ARRAY_BUFFER, 0);
 
-    glDisable (GL_BLEND);
     glFrontFace (GL_CCW);
+    glDisable (GL_BLEND);
+    glDisable (GL_DEPTH_TEST);
+    glDisable (GL_CULL_FACE);
 
     return 0;
 }
 
 
 int
-draw_floor (float *mtxGlobal)
+draw_floor (float *mtxGlobal, float div_u, float div_v)
 {
     int i;
     float matMV[16], matPMV[16], matMVI3x3[9];
     GLfloat floor_uv [] =
     {
           0.0f,  0.0f,
-          0.0f, 40.0f,
-         40.0f,  0.0f,
-         40.0f, 40.0f,
+          0.0f, div_v,
+         div_u,  0.0f,
+         div_u, div_v,
     };
 
     glDisable (GL_DEPTH_TEST);
@@ -425,15 +437,15 @@ draw_floor (float *mtxGlobal)
     glVertexAttribPointer (s_sobj.loc_uv , 2, GL_FLOAT, GL_FALSE, 0, floor_uv );
 
     matrix_identity (matMV);
+    compute_invmat3x3 (matMVI3x3, matMV);
+
     matrix_mult (matMV, mtxGlobal, matMV);
     matrix_mult (matPMV, s_matPrj, matMV);
-
-    compute_invmat3x3 (matMVI3x3, matMV);
 
     glUniformMatrix4fv (s_loc_mtx_mv,   1, GL_FALSE, matMV );
     glUniformMatrix4fv (s_loc_mtx_pmv,  1, GL_FALSE, matPMV);
     glUniformMatrix3fv (s_loc_mtx_nrm,  1, GL_FALSE, matMVI3x3);
-    glUniform3f (s_loc_lightpos, 0.0f, 5.0f, 1.0f);
+    glUniform3f (s_loc_lightpos, 1.0f, 2.0f, 3.0f);
     glUniform3f (s_loc_color, 0.9f, 0.9f, 0.9f);
     glUniform1f (s_loc_alpha, 1.0f);
 
@@ -454,59 +466,6 @@ draw_floor (float *mtxGlobal)
     return 0;
 }
 
-
-
-int
-draw_line (float *mtxGlobal, float *p0, float *p1, float *color)
-{
-    float matMV[16], matPMV[16], matMVI3x3[9];
-    GLfloat floor_vtx [6];
-
-    floor_vtx[0] = p0[0];
-    floor_vtx[1] = p0[1];
-    floor_vtx[2] = p0[2];
-    floor_vtx[3] = p1[0];
-    floor_vtx[4] = p1[1];
-    floor_vtx[5] = p1[2];
-
-
-    glEnable (GL_DEPTH_TEST);
-    glDisable (GL_CULL_FACE);
-        
-    glUseProgram( s_sobj.program );
-
-    glEnableVertexAttribArray (s_sobj.loc_vtx);
-    glEnableVertexAttribArray (s_sobj.loc_uv );
-    glDisableVertexAttribArray(s_sobj.loc_nrm);
-    glVertexAttribPointer (s_sobj.loc_vtx, 3, GL_FLOAT, GL_FALSE, 0, floor_vtx);
-    glVertexAttribPointer (s_sobj.loc_uv , 2, GL_FLOAT, GL_FALSE, 0, s_uv );
-    glVertexAttrib4fv (s_sobj.loc_nrm, s_nrm);
-
-    matrix_identity (matMV);
-    matrix_mult (matMV, mtxGlobal, matMV);
-    matrix_mult (matPMV, s_matPrj, matMV);
-
-    compute_invmat3x3 (matMVI3x3, matMV);
-
-    glUniformMatrix4fv (s_loc_mtx_mv,   1, GL_FALSE, matMV );
-    glUniformMatrix4fv (s_loc_mtx_pmv,  1, GL_FALSE, matPMV);
-    glUniformMatrix3fv (s_loc_mtx_nrm,  1, GL_FALSE, matMVI3x3);
-    glUniform3f (s_loc_lightpos, 0.0f, 5.0f, 1.0f);
-    glUniform3f (s_loc_color, color[0], color[1], color[2]);
-    glUniform1f (s_loc_alpha, color[3]);
-
-    glDisable (GL_BLEND);
-
-    glLineWidth(3.0f);
-    glEnable (GL_BLEND);
-
-    glBindTexture (GL_TEXTURE_2D, s_texid_dummy);
-    glDrawArrays (GL_LINES, 0, 2);
-
-    glDisable (GL_BLEND);
-    glLineWidth(1.0f);
-    return 0;
-}
 
 int
 draw_triangle (float *mtxGlobal, float *p0, float *p1, float *p2, float *color)
@@ -534,10 +493,10 @@ draw_triangle (float *mtxGlobal, float *p0, float *p1, float *p2, float *color)
     glVertexAttrib4fv (s_sobj.loc_nrm, s_nrm);
 
     matrix_identity (matMV);
+    compute_invmat3x3 (matMVI3x3, matMV);
+
     matrix_mult (matMV, mtxGlobal, matMV);
     matrix_mult (matPMV, s_matPrj, matMV);
-
-    compute_invmat3x3 (matMVI3x3, matMV);
 
     glUniformMatrix4fv (s_loc_mtx_mv,   1, GL_FALSE, matMV );
     glUniformMatrix4fv (s_loc_mtx_pmv,  1, GL_FALSE, matPMV);
@@ -556,3 +515,49 @@ draw_triangle (float *mtxGlobal, float *p0, float *p1, float *p2, float *color)
     return 0;
 }
 
+int
+draw_line (float *mtxGlobal, float *p0, float *p1, float *color)
+{
+    float matMV[16], matPMV[16], matMVI3x3[9];
+    GLfloat floor_vtx [9];
+
+    for (int i = 0; i < 3; i ++)
+    {
+        floor_vtx[0 + i] = p0[i];
+        floor_vtx[3 + i] = p1[i];
+    }
+
+    glEnable (GL_DEPTH_TEST);
+    glDisable (GL_CULL_FACE);
+
+    glUseProgram( s_sobj.program );
+
+    glEnableVertexAttribArray (s_sobj.loc_vtx);
+    glEnableVertexAttribArray (s_sobj.loc_uv );
+    glDisableVertexAttribArray(s_sobj.loc_nrm);
+    glVertexAttribPointer (s_sobj.loc_vtx, 3, GL_FLOAT, GL_FALSE, 0, floor_vtx);
+    glVertexAttribPointer (s_sobj.loc_uv , 2, GL_FLOAT, GL_FALSE, 0, s_uv );
+    glVertexAttrib4fv (s_sobj.loc_nrm, s_nrm);
+
+    matrix_identity (matMV);
+    compute_invmat3x3 (matMVI3x3, matMV);
+
+    matrix_mult (matMV, mtxGlobal, matMV);
+    matrix_mult (matPMV, s_matPrj, matMV);
+
+    glUniformMatrix4fv (s_loc_mtx_mv,   1, GL_FALSE, matMV );
+    glUniformMatrix4fv (s_loc_mtx_pmv,  1, GL_FALSE, matPMV);
+    glUniformMatrix3fv (s_loc_mtx_nrm,  1, GL_FALSE, matMVI3x3);
+    glUniform3f (s_loc_lightpos, 1.0f, 1.0f, 1.0f);
+    glUniform3f (s_loc_color, color[0], color[1], color[2]);
+    glUniform1f (s_loc_alpha, color[3]);
+
+    glEnable (GL_BLEND);
+
+    glBindTexture (GL_TEXTURE_2D, s_texid_dummy);
+    glDrawArrays (GL_LINES, 0, 2);
+
+    glDisable (GL_BLEND);
+
+    return 0;
+}

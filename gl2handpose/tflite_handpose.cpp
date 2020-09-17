@@ -547,7 +547,7 @@ detect_palm (palm_detection_result_t *palm_result)
     decode_keypoints (palm_list, score_thresh);
 
 #if 1 /* USE NMS */
-    float iou_thresh = 0.3f;
+    float iou_thresh = 0.03f;
     std::list<palm_t> palm_nms_list;
 
     non_max_suppression (palm_list, palm_nms_list, iou_thresh);
@@ -617,7 +617,7 @@ invoke_hand_landmark (hand_landmark_result_t *hand_result)
     {
         hand_result->joint[i].x = landmark_ptr[3 * i + 0] / (float)img_w;
         hand_result->joint[i].y = landmark_ptr[3 * i + 1] / (float)img_h;
-        hand_result->joint[i].z = landmark_ptr[3 * i + 2];
+        hand_result->joint[i].z = landmark_ptr[3 * i + 2] / (float)img_w;
         //fprintf (stderr, "[%2d] (%8.1f, %8.1f, %8.1f)\n", i, 
         //    landmark_ptr[3 * i + 0], landmark_ptr[3 * i + 1], landmark_ptr[3 * i + 2]);
     }

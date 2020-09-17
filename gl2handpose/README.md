@@ -12,7 +12,7 @@ $ ./gl2handpose
  ![capture image](gl2handpose_mov.gif "capture image")
 
 
-## multi hands mode (not stable yet)
+## multi hands mode.
 
 ```
 $ ./gl2handpose -m

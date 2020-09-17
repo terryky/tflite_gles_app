@@ -17,17 +17,21 @@
 #include "tflite_handpose.h"
 #include "camera_capture.h"
 #include "render_handpose.h"
+#include "touch_event.h"
+#include "render_imgui.h"
 
 #define UNUSED(x) (void)(x)
+
+static imgui_data_t s_gui_prop = {0};
 
 
 #if defined (USE_INPUT_CAMERA_CAPTURE)
 static void
 update_capture_texture (texture_2d_t *captex)
 {
-    int   cap_w, cap_h;
+    int      cap_w, cap_h;
     uint32_t cap_fmt;
-    void *cap_buf;
+    void     *cap_buf;
 
     get_capture_dimension (&cap_w, &cap_h);
     get_capture_pixformat (&cap_fmt);
@@ -169,83 +173,161 @@ feed_hand_landmark_image(texture_2d_t *srctex, int win_w, int win_h, palm_detect
 
 
 static void
-render_palm_region (int ofstx, int ofsty, int texw, int texh, palm_detection_result_t *detection)
+render_palm_region (int ofstx, int ofsty, int texw, int texh, palm_t *palm)
 {
     float col_blue[]  = {0.0f, 0.0f, 1.0f, 1.0f};
     float col_red[]   = {1.0f, 0.0f, 0.0f, 1.0f};
     float col_white[] = {1.0f, 1.0f, 1.0f, 1.0f};
 
-    for (int i = 0; i < detection->num; i ++)
-    {
-        palm_t *palm = &(detection->palms[i]);
-        float x1 = palm->rect.topleft.x  * texw + ofstx;
-        float y1 = palm->rect.topleft.y  * texh + ofsty;
-        float x2 = palm->rect.btmright.x * texw + ofstx;
-        float y2 = palm->rect.btmright.y * texh + ofsty;
-        float score = palm->score;
+    float x1 = palm->rect.topleft.x  * texw + ofstx;
+    float y1 = palm->rect.topleft.y  * texh + ofsty;
+    float x2 = palm->rect.btmright.x * texw + ofstx;
+    float y2 = palm->rect.btmright.y * texh + ofsty;
+    float score = palm->score;
 
-        /* rectangle region */
-        draw_2d_rect (x1, y1, x2-x1, y2-y1, col_blue, 2.0f);
+    /* detect rectangle */
+    draw_2d_rect (x1, y1, x2-x1, y2-y1, col_blue, 2.0f);
 
-        /* class name */
-        char buf[512];
-        sprintf (buf, "%d", (int)(score * 100));
-        draw_dbgstr_ex (buf, x1, y1, 1.0f, col_white, col_blue);
-
-        /* key points */
-        for (int j = 0; j < 7; j ++)
-        {
-            float x = palm->keys[j].x * texw + ofstx;
-            float y = palm->keys[j].y * texh + ofsty;
-
-            int r = 4;
-            draw_2d_fillrect (x - (r/2), y - (r/2), r, r, col_blue);
-        }
-
-        for (int j0 = 0; j0 < 4; j0 ++)
-        {
-            int j1 = (j0 + 1) % 4;
-            float x1 = palm->hand_pos[j0].x * texw + ofstx;
-            float y1 = palm->hand_pos[j0].y * texh + ofsty;
-            float x2 = palm->hand_pos[j1].x * texw + ofstx;
-            float y2 = palm->hand_pos[j1].y * texh + ofsty;
-
-            draw_2d_line (x1, y1, x2, y2, col_red, 2.0f);
-        }
-    }
-}
-
-static void
-render_hand_landmark2d (int ofstx, int ofsty, int texw, int texh, hand_landmark_result_t *hand_landmark)
-{
-    float col_red[]   = {1.0f, 0.0f, 0.0f, 1.0f};
-    float col_white[] = {1.0f, 1.0f, 1.0f, 1.0f};
-
-    float score = hand_landmark->score;
+    /* detect score */
     char buf[512];
-    sprintf (buf, "score:%4.1f", score * 100);
-    draw_dbgstr_ex (buf, texw - 120, 0, 1.0f, col_white, col_red);
+    sprintf (buf, "%d", (int)(score * 100));
+    draw_dbgstr_ex (buf, x1, y1, 1.0f, col_white, col_blue);
 
-    for (int i = 0; i < HAND_JOINT_NUM; i ++)
+    /* key points */
+    for (int j = 0; j < 7; j ++)
     {
-        float x = hand_landmark->joint[i].x  * texw + ofstx;
-        float y = hand_landmark->joint[i].y  * texh + ofsty;
+        float x = palm->keys[j].x * texw + ofstx;
+        float y = palm->keys[j].y * texh + ofsty;
 
         int r = 4;
-        draw_2d_fillrect (x - (r/2), y - (r/2), r, r, col_red);
+        draw_2d_fillrect (x - (r/2), y - (r/2), r, r, col_blue);
+    }
+
+    /* ROI rectangle */
+    for (int j0 = 0; j0 < 4; j0 ++)
+    {
+        int j1 = (j0 + 1) % 4;
+        float x1 = palm->hand_pos[j0].x * texw + ofstx;
+        float y1 = palm->hand_pos[j0].y * texh + ofsty;
+        float x2 = palm->hand_pos[j1].x * texw + ofstx;
+        float y2 = palm->hand_pos[j1].y * texh + ofsty;
+
+        draw_2d_line (x1, y1, x2, y2, col_red, 2.0f);
     }
 }
 
 static void
-compute_3d_hand_pos (hand_landmark_result_t *dst_hand, int texw, int texh, hand_landmark_result_t *src_hand, palm_t *palm)
+render_2d_bone (int ofstx, int ofsty, int texw, int texh, hand_landmark_result_t *hand_landmark,
+                int id0, int id1)
 {
-    float xoffset   = palm->hand_cx - 0.5f;
-    float yoffset   = palm->hand_cy - 0.5f;
-    float zoffset   = 1000 * (1.0f / palm->hand_w);
+    float col_white[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    float x0 = hand_landmark->joint[id0].x * texw + ofstx;
+    float y0 = hand_landmark->joint[id0].y * texh + ofsty;
+    float x1 = hand_landmark->joint[id1].x * texw + ofstx;
+    float y1 = hand_landmark->joint[id1].y * texh + ofsty;
 
-    xoffset *= (1.0f / palm->hand_w);
+    draw_2d_line (x0, y0, x1, y1, col_white, 1.0f);
+}
 
-    //fprintf (stderr, "------------------------------\n");
+static void
+compute_2d_skelton_pos (hand_landmark_result_t *dst_hand, hand_landmark_result_t *src_hand, palm_t *palm)
+{
+    float rotation = RAD_TO_DEG (palm->rotation);  /* z rotation (from detection result) */
+    float ofset_x = palm->hand_cx;
+    float ofset_y = palm->hand_cy;
+    float scale_w = palm->hand_w;
+    float scale_h = palm->hand_h;
+
+    float mtx[16];
+    matrix_identity (mtx);
+    matrix_translate (mtx, ofset_x, ofset_y, 0.0f);
+    matrix_rotate (mtx, rotation, 0.0f, 0.0f, 1.0f);
+    matrix_scale (mtx, scale_w, scale_h, 1.0f);
+    matrix_translate (mtx, -0.5f, -0.5f, 0.0f);
+
+    /* multiply rotate matrix */
+    for (int i = 0; i < HAND_JOINT_NUM; i ++)
+    {
+        float x = src_hand->joint[i].x;
+        float y = src_hand->joint[i].y;
+
+        float vec[2] = {x, y};
+        matrix_multvec2 (mtx, vec, vec);
+
+        dst_hand->joint[i].x = vec[0];
+        dst_hand->joint[i].y = vec[1];
+    }
+}
+
+static void
+render_skelton_2d (int ofstx, int ofsty, int texw, int texh, palm_t *palm,
+                   hand_landmark_result_t *hand_landmark)
+{
+    float col_red[]   = {1.0f, 0.0f, 0.0f, 1.0f};
+    float col_cyan[]  = {0.0f, 1.0f, 1.0f, 1.0f};
+    float col_white[] = {1.0f, 1.0f, 1.0f, 1.0f};
+
+    /* transform to global coordinate */
+    hand_landmark_result_t hand_draw;
+    compute_2d_skelton_pos (&hand_draw, hand_landmark, palm);
+
+    /* score of keypoint */
+    {
+        float x = hand_draw.joint[0].x * texw + ofstx;
+        float y = hand_draw.joint[0].y * texh + ofsty;
+        float score = hand_landmark->score;
+        char buf[512];
+        sprintf (buf, "key:%d", (int)(score * 100));
+        draw_dbgstr_ex (buf, x, y, 1.0f, col_white, col_red);
+    }
+
+    /* keypoints */
+    for (int i = 0; i < HAND_JOINT_NUM; i ++)
+    {
+        float x = hand_draw.joint[i].x  * texw + ofstx;
+        float y = hand_draw.joint[i].y  * texh + ofsty;
+
+        int r = 4;
+        draw_2d_fillrect (x - (r/2), y - (r/2), r, r, col_cyan);
+    }
+
+    /* skeltons */
+    render_2d_bone (ofstx, ofsty, texw, texh, &hand_draw,  0,  1);
+    render_2d_bone (ofstx, ofsty, texw, texh, &hand_draw,  0, 17);
+
+    render_2d_bone (ofstx, ofsty, texw, texh, &hand_draw,  1,  5);
+    render_2d_bone (ofstx, ofsty, texw, texh, &hand_draw,  5,  9);
+    render_2d_bone (ofstx, ofsty, texw, texh, &hand_draw,  9, 13);
+    render_2d_bone (ofstx, ofsty, texw, texh, &hand_draw, 13, 17);
+
+    for (int i = 0; i < 5; i ++)
+    {
+        int idx0 = 4 * i + 1;
+        int idx1 = idx0 + 1;
+        render_2d_bone (ofstx, ofsty, texw, texh, &hand_draw, idx0,   idx1);
+        render_2d_bone (ofstx, ofsty, texw, texh, &hand_draw, idx0+1, idx1+1);
+        render_2d_bone (ofstx, ofsty, texw, texh, &hand_draw, idx0+2, idx1+2);
+    }
+}
+
+
+static void
+compute_3d_skelton_pos (hand_landmark_result_t *dst_hand, hand_landmark_result_t *src_hand, palm_t *palm)
+{
+    float xoffset = palm->hand_cx - 0.5f;
+    float yoffset = palm->hand_cy - 0.5f;
+    float zoffset = (1.0f - palm->hand_w) / (palm->hand_w) * 0.1f; /* (1/w - 1) = (1-w)/w */
+
+    xoffset *= (1.0f + zoffset);
+    yoffset *= (1.0f + zoffset);
+
+    float rotation = -RAD_TO_DEG (palm->rotation);  /* z rotation (from detection result) */
+
+    float mtx[16];
+    matrix_identity (mtx);
+    matrix_rotate (mtx, rotation, 0.0f, 0.0f, 1.0f);
+
+    //fprintf (stderr, "hand_w = %f, zoffset = %f\n", palm->hand_w, zoffset);
     for (int i = 0; i < HAND_JOINT_NUM; i ++)
     {
         float x = src_hand->joint[i].x;
@@ -255,24 +337,34 @@ compute_3d_hand_pos (hand_landmark_result_t *dst_hand, int texw, int texh, hand_
         x = (x + xoffset) - 0.5f;
         y = (y + yoffset) - 0.5f;
         z = (z + zoffset);
+        x = x * s_gui_prop.pose_scale_x * 2;
+        y = y * s_gui_prop.pose_scale_y * 2;
+        z = z * s_gui_prop.pose_scale_z * 5;
         y = -y;
         z = -z;
-        x = x * texw;
-        y = y * texh;
+
+        /* multiply rotate matrix */
+        {
+            float vec[2] = {x, y};
+            matrix_multvec2 (mtx, vec, vec);
+            x = vec[0];
+            y = vec[1];
+        }
 
         dst_hand->joint[i].x = x;
         dst_hand->joint[i].y = y;
         dst_hand->joint[i].z = z;
-        //fprintf (stderr, "(%8.1f, %8.1f, %8.1f)\n", x, y, z);
     }
 }
 
 static void
-render_node (float *mtxGlobal, hand_landmark_result_t *hand_landmark, int idx0, int idx1, float *color)
+render_3d_bone (float *mtxGlobal, hand_landmark_result_t *pose, int idx0, int idx1, 
+                float *color, float rad, int is_shadow)
 {
-    float *pos0 = (float *)&hand_landmark->joint[idx0];
-    float *pos1 = (float *)&hand_landmark->joint[idx1];
-    draw_bone (mtxGlobal, pos0, pos1, 5.0f, color);
+    float *pos0 = (float *)&(pose->joint[idx0]);
+    float *pos1 = (float *)&(pose->joint[idx1]);
+
+    draw_bone (mtxGlobal, pos0, pos1, rad, color, is_shadow);
 }
 
 static void
@@ -321,11 +413,9 @@ shadow_matrix (float *m, float *light_dir, float *ground_pos, float *ground_nrm)
 }
 
 static void
-render_hand_landmark3d (int ofstx, int ofsty, int texw, int texh, 
-                        hand_landmark_result_t *hand_landmark, palm_t *palm)
+render_skelton_3d (int ofstx, int ofsty, hand_landmark_result_t *hand_landmark, palm_t *palm)
 {
-    float mtxGlobal[16];
-    float rotation = -RAD_TO_DEG (palm->rotation);  /* z rotation (from detection result) */
+    float mtxGlobal[16], mtxTouch[16];
     float col_red []   = {1.0f, 0.0f, 0.0f, 1.0f};
     float col_yellow[] = {1.0f, 1.0f, 0.0f, 1.0f};
     float col_green [] = {0.0f, 1.0f, 0.0f, 1.0f};
@@ -335,19 +425,22 @@ render_hand_landmark3d (int ofstx, int ofsty, int texw, int texh,
     float col_gray[]   = {0.0f, 0.0f, 0.0f, 0.5f};
     float col_node[]   = {1.0f, 1.0f, 1.0f, 1.0f};
 
+    get_touch_event_matrix (mtxTouch);
+
     /* transform to 3D coordinate */
     hand_landmark_result_t hand_draw;
-    compute_3d_hand_pos (&hand_draw, texw, texh, hand_landmark, palm);
+    compute_3d_skelton_pos (&hand_draw, hand_landmark, palm);
 
 
-    for (int is_shadow = 0; is_shadow < 2; is_shadow ++)
+    for (int is_shadow = 1; is_shadow >= 0; is_shadow --)
     {
         float *colj;
         float *coln = col_node;
         float *colp = col_palm;
 
         matrix_identity (mtxGlobal);
-        matrix_rotate   (mtxGlobal, rotation, 0.0f, 0.0f, 1.0f);
+        matrix_translate (mtxGlobal, 0.0, 0.0, -s_gui_prop.camera_pos_z);
+        matrix_mult (mtxGlobal, mtxGlobal, mtxTouch);
 
         if (is_shadow)
         {
@@ -356,14 +449,11 @@ render_hand_landmark3d (int ofstx, int ofsty, int texw, int texh,
             float ground_pos[3] = {0.0f, 0.0f, 0.0f};
             float ground_nrm[3] = {0.0f, 1.0f, 0.0f};
 
-            matrix_translate (mtxGlobal, 0.0f, -100.0f, 0.0f);
-
             shadow_matrix (mtxShadow, light_dir, ground_pos, ground_nrm);
-            matrix_translate (mtxShadow, -hand_draw.joint[0].x, -hand_draw.joint[0].y, -hand_draw.joint[0].z);
-            mtxShadow[12] += hand_draw.joint[0].x;
-            mtxShadow[13] += hand_draw.joint[0].y;
-            mtxShadow[14] += hand_draw.joint[0].z;
 
+            float shadow_y = - s_gui_prop.pose_scale_y;
+            //shadow_y += pose->key3d[kNeck].y * 0.5f;
+            matrix_translate (mtxGlobal, 0.0, shadow_y, 0);
             matrix_mult (mtxGlobal, mtxGlobal, mtxShadow);
 
             colj = col_gray;
@@ -385,25 +475,27 @@ render_hand_landmark3d (int ofstx, int ofsty, int texw, int texh,
                 else              colj = col_red;
             }
 
-            draw_sphere (mtxGlobal, vec, 15.0f, colj);
+            float rad = s_gui_prop.joint_radius;
+            draw_sphere (mtxGlobal, vec, rad, colj, is_shadow);
         }
 
         /* joint node */
-        render_node (mtxGlobal, &hand_draw, 0,  1, coln);
-        render_node (mtxGlobal, &hand_draw, 0, 17, coln);
+        float rad = s_gui_prop.bone_radius;
+        render_3d_bone (mtxGlobal, &hand_draw, 0,  1, coln, rad, is_shadow);
+        render_3d_bone (mtxGlobal, &hand_draw, 0, 17, coln, rad, is_shadow);
 
-        render_node (mtxGlobal, &hand_draw,  1,  5, coln);
-        render_node (mtxGlobal, &hand_draw,  5,  9, coln);
-        render_node (mtxGlobal, &hand_draw,  9, 13, coln);
-        render_node (mtxGlobal, &hand_draw, 13, 17, coln);
+        render_3d_bone (mtxGlobal, &hand_draw,  1,  5, coln, rad, is_shadow);
+        render_3d_bone (mtxGlobal, &hand_draw,  5,  9, coln, rad, is_shadow);
+        render_3d_bone (mtxGlobal, &hand_draw,  9, 13, coln, rad, is_shadow);
+        render_3d_bone (mtxGlobal, &hand_draw, 13, 17, coln, rad, is_shadow);
 
         for (int i = 0; i < 5; i ++)
         {
             int idx0 = 4 * i + 1;
             int idx1 = idx0 + 1;
-            render_node (mtxGlobal, &hand_draw, idx0,  idx1  , coln);
-            render_node (mtxGlobal, &hand_draw, idx0+1,idx1+1, coln);
-            render_node (mtxGlobal, &hand_draw, idx0+2,idx1+2, coln);
+            render_3d_bone (mtxGlobal, &hand_draw, idx0,  idx1  , coln, rad, is_shadow);
+            render_3d_bone (mtxGlobal, &hand_draw, idx0+1,idx1+1, coln, rad, is_shadow);
+            render_3d_bone (mtxGlobal, &hand_draw, idx0+2,idx1+2, coln, rad, is_shadow);
         }
 
         /* palm region */
@@ -418,25 +510,74 @@ render_hand_landmark3d (int ofstx, int ofsty, int texw, int texh,
 }
 
 static void
-render_3d_scene (int ofstx, int ofsty, int texw, int texh, 
+render_3d_scene (int ofstx, int ofsty,
                  hand_landmark_result_t  *landmark,
                  palm_detection_result_t *detection)
 {
-    float mtxGlobal[16];
-    float floor_size_x = texw/2; //100.0f;
-    float floor_size_y = texw/2; //100.0f;
-    float floor_size_z = texw/2; //100.0f;
+    float mtxGlobal[16], mtxTouch[16];
+    float floor_size_x = 300.0f;
+    float floor_size_y = 300.0f;
+    float floor_size_z = 300.0f;
+
+    get_touch_event_matrix (mtxTouch);
 
     /* background */
     matrix_identity (mtxGlobal);
-    matrix_translate (mtxGlobal, 0, floor_size_y * 0.9f, 0);
+    matrix_translate (mtxGlobal, 0, 0, -s_gui_prop.camera_pos_z);
+    matrix_mult (mtxGlobal, mtxGlobal, mtxTouch);
+    matrix_translate (mtxGlobal, 0, -s_gui_prop.pose_scale_y, 0);
     matrix_scale  (mtxGlobal, floor_size_x, floor_size_y, floor_size_z);
-    draw_floor (mtxGlobal);
+    matrix_translate (mtxGlobal, 0, 1.0, 0);
+    draw_floor (mtxGlobal, floor_size_x/10, floor_size_y/10);
 
     for (int hand_id = 0; hand_id < detection->num; hand_id ++)
     {
         hand_landmark_result_t *hand_landmark = &landmark[hand_id];
-        render_hand_landmark3d (ofstx, ofsty, texw, texh, hand_landmark, &detection->palms[hand_id]);
+        render_skelton_3d (ofstx, ofsty, hand_landmark, &detection->palms[hand_id]);
+    }
+
+    if (s_gui_prop.draw_axis)
+    {
+        /* (xyz)-AXIS */
+        matrix_identity (mtxGlobal);
+        matrix_translate (mtxGlobal, 0, 0, -s_gui_prop.camera_pos_z);
+        matrix_mult (mtxGlobal, mtxGlobal, mtxTouch);
+        for (int i = -1; i <= 1; i ++)
+        {
+            for (int j = -1; j <= 1; j ++)
+            {
+                float col_base[] = {0.1, 0.5, 0.5, 0.5};
+                float dx = s_gui_prop.pose_scale_x;
+                float dy = s_gui_prop.pose_scale_y;
+                float dz = s_gui_prop.pose_scale_z;
+                float rad = 1;
+
+                {
+                    float v0[3] = {-dx, i * dy, j * dz};
+                    float v1[3] = { dx, i * dy, j * dz};
+                    float col_red[] = {1.0, 0.0, 0.0, 1.0};
+                    float *col = (i == 0 && j == 0) ? col_red : col_base;
+                    draw_line (mtxGlobal, v0, v1, col);
+                    draw_sphere (mtxGlobal, v1, rad, col, 0);
+                }
+                {
+                    float v0[3] = {i * dx, -dy, j * dz};
+                    float v1[3] = {i * dx,  dy, j * dz};
+                    float col_green[] = {0.0, 1.0, 0.0, 1.0};
+                    float *col = (i == 0 && j == 0) ? col_green : col_base;
+                    draw_line (mtxGlobal, v0, v1, col);
+                    draw_sphere (mtxGlobal, v1, rad, col, 0);
+                }
+                {
+                    float v0[3] = {i * dx, j * dy, -dz};
+                    float v1[3] = {i * dx, j * dy,  dz};
+                    float col_blue[] = {0.0, 0.0, 1.0, 1.0};
+                    float *col = (i == 0 && j == 0) ? col_blue : col_base;
+                    draw_line (mtxGlobal, v0, v1, col);
+                    draw_sphere (mtxGlobal, v1, rad, col, 0);
+                }
+            }
+        }
     }
 }
 
@@ -510,6 +651,63 @@ adjust_texture (int win_w, int win_h, int texw, int texh,
     *dh = (int)scaled_h;
 }
 
+void
+mousemove_cb (int x, int y)
+{
+#if defined (USE_IMGUI)
+    imgui_mousemove (x, y);
+    if (imgui_is_anywindow_hovered ())
+        return;
+#endif
+
+    touch_event_move (0, x, y);
+}
+
+void
+button_cb (int button, int state, int x, int y)
+{
+#if defined (USE_IMGUI)
+    imgui_mousebutton (button, state, x, y);
+#endif
+
+    if (state)
+        touch_event_start (0, x, y);
+    else
+        touch_event_end (0);
+}
+
+void
+keyboard_cb (int key, int state, int x, int y)
+{
+}
+
+void
+setup_imgui (int win_w, int win_h)
+{
+    egl_set_motion_func (mousemove_cb);
+    egl_set_button_func (button_cb);
+    egl_set_key_func    (keyboard_cb);
+
+    init_touch_event (win_w, win_h);
+
+#if defined (USE_IMGUI)
+    init_imgui (win_w, win_h);
+#endif
+
+    s_gui_prop.frame_color[0] = 0.0f;
+    s_gui_prop.frame_color[1] = 0.5f;
+    s_gui_prop.frame_color[2] = 1.0f;
+    s_gui_prop.frame_color[3] = 1.0f;
+    s_gui_prop.pose_scale_x = 100.0f;
+    s_gui_prop.pose_scale_y = 100.0f;
+    s_gui_prop.pose_scale_z = 100.0f;
+    s_gui_prop.camera_pos_z = 200.0f;
+    s_gui_prop.joint_radius = 6.0f;
+    s_gui_prop.bone_radius  = 2.0f;
+    s_gui_prop.draw_axis    = 0;
+    s_gui_prop.draw_pmeter  = 1;
+}
+
 
 /*--------------------------------------------------------------------------- *
  *      M A I N    F U N C T I O N
@@ -520,8 +718,8 @@ main(int argc, char *argv[])
     char input_name_default[] = "pakutaso_vsign.jpg";
     char *input_name = input_name_default;
     int count;
-    int win_w = 800;
-    int win_h = 600;
+    int win_w = 900;
+    int win_h = 900;
     int texw, texh, draw_x, draw_y, draw_w, draw_h;
     texture_2d_t captex = {0};
     double ttime[10] = {0}, interval, invoke_ms0 = 0, invoke_ms1 = 0;
@@ -535,7 +733,7 @@ main(int argc, char *argv[])
         int c;
         const char *optstring = "mqx";
 
-        while ((c = getopt (argc, argv, optstring)) != -1) 
+        while ((c = getopt (argc, argv, optstring)) != -1)
         {
             switch (c)
             {
@@ -551,7 +749,7 @@ main(int argc, char *argv[])
             }
         }
 
-        while (optind < argc) 
+        while (optind < argc)
         {
             input_name = argv[optind];
             optind++;
@@ -566,6 +764,7 @@ main(int argc, char *argv[])
     init_cube ((float)win_w / (float)win_h);
 
     init_tflite_hand_landmark (use_quantized_tflite);
+    setup_imgui (win_w * 2, win_h);
 
 #if defined (USE_GL_DELEGATE) || defined (USE_GPU_DELEGATEV2)
     /* we need to recover framebuffer because GPU Delegate changes the FBO binding */
@@ -661,8 +860,13 @@ main(int argc, char *argv[])
 
         /* visualize the hand pose estimation results. */
         draw_2d_texture_ex (&captex, draw_x, draw_y, draw_w, draw_h, 0);
-        render_palm_region (draw_x, draw_y, draw_w, draw_h, &palm_ret);
-        //render_hand_landmark2d (draw_x, draw_y, draw_w, draw_h, &hand_ret[0]);
+
+        for (int hand_id = 0; hand_id < palm_ret.num; hand_id ++)
+        {
+            palm_t *palm = &(palm_ret.palms[hand_id]);
+            render_palm_region (draw_x, draw_y, draw_w, draw_h, palm);
+            render_skelton_2d (draw_x, draw_y, draw_w, draw_h, palm, &hand_ret[hand_id]);
+        }
 
         /* draw cropped image of the hand area */
         for (int hand_id = 0; hand_id < palm_ret.num; hand_id ++)
@@ -681,19 +885,26 @@ main(int argc, char *argv[])
          *  render scene  (right half)
          * --------------------------------------- */
         glViewport (win_w, 0, win_w, win_h);
-        render_3d_scene (draw_x, draw_y, draw_w, draw_h, hand_ret, &palm_ret);
+        render_3d_scene (draw_x, draw_y, hand_ret, &palm_ret);
 
 
         /* --------------------------------------- *
          *  post process
          * --------------------------------------- */
         glViewport (0, 0, win_w, win_h);
-        draw_pmeter (0, 40);
+
+        if (s_gui_prop.draw_pmeter)
+        {
+            draw_pmeter (0, 40);
+        }
 
         sprintf (strbuf, "Interval:%5.1f [ms]\nTFLite0 :%5.1f [ms]\nTFLite1 :%5.1f [ms]",
             interval, invoke_ms0, invoke_ms1);
         draw_dbgstr (strbuf, 10, 10);
 
+#if defined (USE_IMGUI)
+        invoke_imgui (&s_gui_prop);
+#endif
         egl_swap();
     }
 
