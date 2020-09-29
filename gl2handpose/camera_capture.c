@@ -184,7 +184,7 @@ init_capture ()
     return 0;
 }
 
-int 
+int
 get_capture_dimension (int *width, int *height)
 {
     *width  = s_capcrop_w;
@@ -193,7 +193,7 @@ get_capture_dimension (int *width, int *height)
     return 0;
 }
 
-int 
+int
 get_capture_pixformat (int *pixformat)
 {
 #if defined(USE_YUYV_TO_RGB_CONVERSION)

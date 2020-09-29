@@ -145,7 +145,7 @@ feed_hand_landmark_image(texture_2d_t *srctex, int win_w, int win_h, palm_detect
         texcoord[4] = x2;   texcoord[5] = y2;
         texcoord[6] = x1;   texcoord[7] = y1;
     }
-    
+
     draw_2d_texture_ex_texcoord (srctex, 0, win_h - h, w, h, texcoord);
 
     glPixelStorei (GL_PACK_ALIGNMENT, 4);
