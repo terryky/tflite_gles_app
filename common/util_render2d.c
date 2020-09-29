@@ -292,6 +292,9 @@ draw_2d_texture_in (texparam_t *tparam)
     float matrix[16];
     float *uv = tarray;
 
+    glBindBuffer (GL_ARRAY_BUFFER, 0);
+    glBindBuffer (GL_ELEMENT_ARRAY_BUFFER, 0);
+
     glUseProgram (sobj->program);
     glUniform1i(sobj->loc_tex, 0);
 
@@ -599,7 +602,10 @@ draw_2d_rect (int x, int y, int w, int h, float *color, float line_width)
     int ttype = 0;
     shader_obj_t *sobj = &s_sobj[ttype];
     float matrix[16];
-    
+
+    glBindBuffer (GL_ARRAY_BUFFER, 0);
+    glBindBuffer (GL_ELEMENT_ARRAY_BUFFER, 0);
+
     glUseProgram (sobj->program);
     glUniform4fv (s_loc_color[ttype], 1, color);
 
@@ -642,6 +648,9 @@ draw_2d_rect_rot (int x, int y, int w, int h, float *color, float line_width,
     int ttype = 0;
     shader_obj_t *sobj = &s_sobj[ttype];
     float matrix[16];
+
+    glBindBuffer (GL_ARRAY_BUFFER, 0);
+    glBindBuffer (GL_ELEMENT_ARRAY_BUFFER, 0);
 
     glUseProgram (sobj->program);
     glUniform4fv (s_loc_color[ttype], 1, color);
@@ -726,6 +735,9 @@ draw_2d_fillcircle (int x, int y, int radius, float *color)
     float matrix[16];
     float vtx[(CIRCLE_DIVNUM+2) * 2];
 
+    glBindBuffer (GL_ARRAY_BUFFER, 0);
+    glBindBuffer (GL_ELEMENT_ARRAY_BUFFER, 0);
+
     glUseProgram (sobj->program);
     glUniform4fv (s_loc_color[ttype], 1, color);
 
@@ -768,6 +780,9 @@ draw_2d_circle (int x, int y, int radius, float *color, float line_width)
     shader_obj_t *sobj = &s_sobj[ttype];
     float matrix[16];
     float vtx[(CIRCLE_DIVNUM+2) * 2];
+
+    glBindBuffer (GL_ARRAY_BUFFER, 0);
+    glBindBuffer (GL_ELEMENT_ARRAY_BUFFER, 0);
 
     glUseProgram (sobj->program);
     glUniform4fv (s_loc_color[ttype], 1, color);
