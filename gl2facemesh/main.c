@@ -19,8 +19,11 @@
 #include "render_facemesh.h"
 #include "camera_capture.h"
 #include "video_decode.h"
+#include "render_imgui.h"
 
 #define UNUSED(x) (void)(x)
+
+static imgui_data_t s_gui_prop = {0};
 
 typedef struct maskimage_t
 {
@@ -45,9 +48,9 @@ static int s_num_maskimages = sizeof (s_maskimages) / sizeof (maskimage_t);
 static void
 update_capture_texture (texture_2d_t *captex)
 {
-    int   cap_w, cap_h;
+    int      cap_w, cap_h;
     uint32_t cap_fmt;
-    void *cap_buf;
+    void     *cap_buf;
 
     get_capture_dimension (&cap_w, &cap_h);
     get_capture_pixformat (&cap_fmt);
@@ -193,7 +196,7 @@ feed_face_landmark_image(texture_2d_t *srctex, int win_w, int win_h, face_detect
                          0.0f, 0.0f,
                          1.0f, 1.0f,
                          1.0f, 0.0f };
-    
+
     if (detection->num > face_id)
     {
         face_t *face = &(detection->faces[face_id]);
@@ -216,9 +219,9 @@ feed_face_landmark_image(texture_2d_t *srctex, int win_w, int win_h, face_detect
     glPixelStorei (GL_PACK_ALIGNMENT, 4);
     glReadPixels (0, 0, w, h, GL_RGBA, GL_UNSIGNED_BYTE, buf_ui8);
 
-    /* convert UI8 [0, 255] ==> FP32 [0, 1] */
-    float mean = 0.0f;
-    float std  = 255.0f;
+    /* convert UI8 [0, 255] ==> FP32 [-1, 1] */
+    float mean = 128.0f;
+    float std  = 128.0f;
     for (y = 0; y < h; y ++)
     {
         for (x = 0; x < w; x ++)
@@ -316,10 +319,9 @@ render_face_landmark (int ofstx, int ofsty, int texw, int texh,
                       face_landmark_result_t *facemesh, face_t *face,
                       int texid_mask,
                       face_landmark_result_t *facemesh_mask, face_t *face_mask,
-                      int meshline, int eyehole)
+                      int meshline)
 {
-    float col_red[]   = {0.0f, 1.0f, 0.0f, 1.0f};
-    float col_white[] = {1.0f, 1.0f, 1.0f, 1.0f};
+    int eyehole = s_gui_prop.mask_eye_hole;
 
     face_landmark_result_t facemesh_draw;
     compute_3d_face_pos (&facemesh_draw, texw, texh, facemesh, face);
@@ -327,10 +329,14 @@ render_face_landmark (int ofstx, int ofsty, int texw, int texh,
     face_landmark_result_t facemesh_draw_mask;
     compute_3d_face_pos (&facemesh_draw_mask, texw, texh, facemesh_mask, face_mask);
 
+#if 0
+    float col_red[]   = {0.0f, 1.0f, 0.0f, 1.0f};
+    float col_white[] = {1.0f, 1.0f, 1.0f, 1.0f};
     float score = facemesh->score;
     char buf[512];
     sprintf (buf, "score:%4.1f", score * 100);
     draw_dbgstr_ex (buf, texw - 120, 0, 1.0f, col_white, col_red);
+#endif
 
     for (int i = 0; i < FACE_KEY_NUM; i ++)
     {
@@ -343,48 +349,30 @@ render_face_landmark (int ofstx, int ofsty, int texw, int texh,
         //draw_2d_fillrect (x - (r/2), y - (r/2), r, r, col_red);
     }
 
-    int num_idx;
-    int *mesh_tris = get_facemesh_tri_indicies (&num_idx, eyehole);
+    float mask_color[] = {1.0f, 1.0f, 1.0f, s_gui_prop.mask_alpha};
+    draw_facemesh_tri_tex (texid_mask, facemesh_draw.joint, facemesh_draw_mask.joint,
+                           mask_color, eyehole);
 
-    draw_tri_tex_indexed (texid_mask, (float *)facemesh_draw.joint, (float *)facemesh_draw_mask.joint, 
-                            mesh_tris, num_idx);
-
-    for (int i = 0; i < num_idx/3; i ++)
+    if (meshline)
     {
-        int idx0 = mesh_tris[3 * i + 0];
-        int idx1 = mesh_tris[3 * i + 1];
-        int idx2 = mesh_tris[3 * i + 2];
-        float x1 = facemesh_draw.joint[idx0].x;
-        float y1 = facemesh_draw.joint[idx0].y;
-        float x2 = facemesh_draw.joint[idx1].x;
-        float y2 = facemesh_draw.joint[idx1].y;
-        float x3 = facemesh_draw.joint[idx2].x;
-        float y3 = facemesh_draw.joint[idx2].y;
-
-        if (meshline)
-        {
-            float col_white[] = {1.0f, 1.0f, 1.0f, 0.3f};
-            draw_2d_line (x1, y1, x2, y2, col_white, 1.0f);
-            draw_2d_line (x2, y2, x3, y3, col_white, 1.0f);
-            draw_2d_line (x3, y3, x1, y1, col_white, 1.0f);
-        }
+        float col_white[] = {1.0f, 1.0f, 1.0f, 0.3f};
+        draw_facemesh_line (facemesh_draw.joint, col_white, eyehole);
     }
-
 }
 
 static void
 render_3d_scene (int ofstx, int ofsty, int texw, int texh)
 {
     float mtxGlobal[16];
-    float floor_size_x = texw/2; //100.0f;
-    float floor_size_y = texw/2; //100.0f;
-    float floor_size_z = texw/2; //100.0f;
+    float floor_size_x = 300.0f;
+    float floor_size_y = 300.0f;
+    float floor_size_z = 300.0f;
 
     /* background */
     matrix_identity (mtxGlobal);
     matrix_translate (mtxGlobal, 0, floor_size_y * 0.9f, 0);
     matrix_scale  (mtxGlobal, floor_size_x, floor_size_y, floor_size_z);
-    draw_floor (mtxGlobal);
+    draw_floor (mtxGlobal, floor_size_x/10, floor_size_y/10);
 }
 
 static void
@@ -457,6 +445,50 @@ adjust_texture (int win_w, int win_h, int texw, int texh,
     *dh = (int)scaled_h;
 }
 
+void
+mousemove_cb (int x, int y)
+{
+#if defined (USE_IMGUI)
+    imgui_mousemove (x, y);
+    if (imgui_is_anywindow_hovered ())
+        return;
+#endif
+}
+
+void
+button_cb (int button, int state, int x, int y)
+{
+#if defined (USE_IMGUI)
+    imgui_mousebutton (button, state, x, y);
+#endif
+}
+
+void
+keyboard_cb (int key, int state, int x, int y)
+{
+}
+
+void
+setup_imgui (int win_w, int win_h)
+{
+    egl_set_motion_func (mousemove_cb);
+    egl_set_button_func (button_cb);
+    egl_set_key_func    (keyboard_cb);
+
+#if defined (USE_IMGUI)
+    init_imgui (win_w, win_h);
+#endif
+
+    s_gui_prop.mask_alpha       = 0.7;
+    s_gui_prop.mask_eye_hole    = 0;
+    s_gui_prop.draw_mesh_line   = 0;
+    s_gui_prop.draw_detect_rect = 0;
+    s_gui_prop.draw_pmeter      = 1;
+
+    s_gui_prop.mask_num    = s_num_maskimages;
+    s_gui_prop.cur_mask_id = 0;
+}
+
 
 /*--------------------------------------------------------------------------- *
  *      M A I N    F U N C T I O N
@@ -465,17 +497,17 @@ int
 main(int argc, char *argv[])
 {
     char input_name_default[] = "pakutaso.jpg";
-    char *input_name = NULL;
+    char *input_name = input_name_default;
     int count;
-    int win_w = 800;
-    int win_h = 800;
+    int win_w = 900;
+    int win_h = 900;
     int texw, texh, draw_x, draw_y, draw_w, draw_h;
     texture_2d_t captex = {0};
     double ttime[10] = {0}, interval, invoke_ms0 = 0, invoke_ms1 = 0;
     int use_quantized_tflite = 0;
     int enable_video = 0;
     int enable_camera = 1;
-    int drill_eye_hole = 0;
+    int mask_eye_hole = 0;
     UNUSED (argc);
     UNUSED (*argv);
 
@@ -483,12 +515,12 @@ main(int argc, char *argv[])
         int c;
         const char *optstring = "eqv:x";
 
-        while ((c = getopt (argc, argv, optstring)) != -1) 
+        while ((c = getopt (argc, argv, optstring)) != -1)
         {
             switch (c)
             {
             case 'e':
-                drill_eye_hole = 1;
+                mask_eye_hole = 1;
                 break;
             case 'q':
                 use_quantized_tflite = 1;
@@ -506,25 +538,24 @@ main(int argc, char *argv[])
             }
         }
 
-        while (optind < argc) 
+        while (optind < argc)
         {
             input_name = argv[optind];
             optind++;
         }
     }
 
-    if (input_name == NULL)
-        input_name = input_name_default;
-
     egl_init_with_platform_window_surface (2, 0, 0, 0, win_w * 2, win_h);
 
     init_2d_renderer (win_w, win_h);
-    init_face_2d_renderer (win_w, win_h);
+    init_facemesh_renderer (win_w, win_h);
     init_pmeter (win_w, win_h, 500);
     init_dbgstr (win_w, win_h);
     init_cube ((float)win_w / (float)win_h);
 
     init_tflite_facemesh (use_quantized_tflite);
+    setup_imgui (win_w * 2, win_h);
+    s_gui_prop.mask_eye_hole = mask_eye_hole;
 
 #if defined (USE_GL_DELEGATE) || defined (USE_GPU_DELEGATEV2)
     /* we need to recover framebuffer because GPU Delegate changes the FBO binding */
@@ -621,6 +652,7 @@ main(int argc, char *argv[])
         face_landmark_result_t  face_mesh_ret[MAX_FACE_NUM] = {0};
 
         int mask_id = (count / 100) % s_num_maskimages;
+        mask_id = s_gui_prop.cur_mask_id;
         face_detect_result_t   *cur_face_detect_mask = &face_detect_mask[mask_id];
         face_landmark_result_t *cur_face_mesh_mask = &face_mesh_mask[mask_id];
         int cur_texid_mask = texid_mask[mask_id];
@@ -682,38 +714,44 @@ main(int argc, char *argv[])
 
         /* visualize the face pose estimation results. */
         draw_2d_texture_ex (&captex, draw_x, draw_y, draw_w, draw_h, 0);
-        render_detect_region (draw_x, draw_y, draw_w, draw_h, &face_detect_ret);
 
         for (int face_id = 0; face_id < face_detect_ret.num; face_id ++)
         {
             render_face_landmark (draw_x, draw_y, draw_w, draw_h, &face_mesh_ret[face_id], &face_detect_ret.faces[face_id],
-                                  cur_texid_mask, cur_face_mesh_mask, &cur_face_detect_mask->faces[0], 0, drill_eye_hole);
+                                  cur_texid_mask, cur_face_mesh_mask, &cur_face_detect_mask->faces[0], 0);
         }
 
-        /* draw cropped image of the face area */
-        for (int face_id = 0; face_id < face_detect_ret.num; face_id ++)
+        if (s_gui_prop.draw_detect_rect)
         {
-            float w = 100;
-            float h = 100;
-            float x = win_w - w - 10;
-            float y = h * face_id + 10;
-            float col_white[] = {1.0f, 1.0f, 1.0f, 1.0f};
+            render_detect_region (draw_x, draw_y, draw_w, draw_h, &face_detect_ret);
+            
+            /* draw cropped image of the face area */
+            for (int face_id = 0; face_id < face_detect_ret.num; face_id ++)
+            {
+                float w = 100;
+                float h = 100;
+                float x = win_w - w - 10;
+                float y = h * face_id + 10;
+                float col_white[] = {1.0f, 1.0f, 1.0f, 1.0f};
 
-            render_cropped_face_image (&captex, x, y, w, h, &face_detect_ret, face_id);
-            draw_2d_rect (x, y, w, h, col_white, 2.0f);
+                render_cropped_face_image (&captex, x, y, w, h, &face_detect_ret, face_id);
+                draw_2d_rect (x, y, w, h, col_white, 2.0f);
+            }
         }
 
         /* --------------------------------------- *
          *  render scene  (right half)
          * --------------------------------------- */
         glViewport (win_w, 0, win_w, win_h);
+
         render_3d_scene (draw_x, draw_y, draw_w, draw_h);
 
         for (int face_id = 0; face_id < face_detect_ret.num; face_id ++)
         {
             render_face_landmark (draw_x, draw_y, draw_w, draw_h,
                                   &face_mesh_ret[face_id], &face_detect_ret.faces[face_id],
-                                  cur_texid_mask, cur_face_mesh_mask, &cur_face_detect_mask->faces[0], 1, drill_eye_hole);
+                                  cur_texid_mask, cur_face_mesh_mask, &cur_face_detect_mask->faces[0],
+                                  s_gui_prop.draw_mesh_line);
         }
 
         /* current mask image */
@@ -730,12 +768,19 @@ main(int argc, char *argv[])
          *  post process
          * --------------------------------------- */
         glViewport (0, 0, win_w, win_h);
-        draw_pmeter (0, 40);
+
+        if (s_gui_prop.draw_pmeter)
+        {
+            draw_pmeter (0, 40);
+        }
 
         sprintf (strbuf, "Interval:%5.1f [ms]\nTFLite0 :%5.1f [ms]\nTFLite1 :%5.1f [ms]",
             interval, invoke_ms0, invoke_ms1);
         draw_dbgstr (strbuf, 10, 10);
 
+#if defined (USE_IMGUI)
+        invoke_imgui (&s_gui_prop);
+#endif
         egl_swap();
     }
 

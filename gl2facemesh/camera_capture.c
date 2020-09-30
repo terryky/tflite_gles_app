@@ -180,7 +180,7 @@ init_capture ()
         s_capcrop_w = s_capcrop_h = cap_h;
     else
         s_capcrop_w = s_capcrop_h = cap_w;
-    
+
     return 0;
 }
 
@@ -204,7 +204,7 @@ get_capture_pixformat (int *pixformat)
     return 0;
 }
 
-int 
+int
 get_capture_buffer (void ** buf)
 {
     *buf = s_capture_buf;
