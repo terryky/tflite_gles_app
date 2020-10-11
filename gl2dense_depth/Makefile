@@ -6,6 +6,8 @@ TARGET = gl2dense_depth
 SRCS = 
 SRCS += main.c
 SRCS += tflite_dense_depth.cpp
+SRCS += render_dense_depth.c
+SRCS += touch_event.c
 SRCS += $(MAKETOP)/common/assertgl.c
 SRCS += $(MAKETOP)/common/assertegl.c
 SRCS += $(MAKETOP)/common/util_egl.c
@@ -46,6 +48,24 @@ FFMPEG_LIBS=    libavdevice                        \
 CFLAGS += $(shell pkg-config --cflags $(FFMPEG_LIBS))
 LIBS   += $(shell pkg-config --libs   $(FFMPEG_LIBS)) -lm
 SRCS   += video_decode.c
+endif
+
+# ---------------------
+#  for ImGui
+# ---------------------
+ENABLE_IMGUI = true
+ifeq ($(ENABLE_IMGUI), true)
+CFLAGS   += -DUSE_IMGUI
+CFLAGS   += -DIMGUI_IMPL_OPENGL_ES2
+
+SRCS += render_imgui.cpp
+SRCS += $(MAKETOP)/third_party/imgui/imgui.cpp
+SRCS += $(MAKETOP)/third_party/imgui/imgui_draw.cpp
+SRCS += $(MAKETOP)/third_party/imgui/imgui_widgets.cpp
+SRCS += $(MAKETOP)/third_party/imgui/examples/imgui_impl_opengl3.cpp
+
+INCLUDES += -I$(MAKETOP)/third_party/imgui
+INCLUDES += -I$(MAKETOP)/third_party/imgui/examples
 endif
 
 
