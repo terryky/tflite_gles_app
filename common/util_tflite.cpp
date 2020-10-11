@@ -45,7 +45,9 @@ get_tflite_type_str (TfLiteType type)
     case kTfLiteInt16:      return " i16";
     case kTfLiteComplex64:  return "cp64";
     case kTfLiteInt8:       return " i8 ";
-    case kTfLiteFloat16 :   return "fp16";
+    case kTfLiteFloat16:    return "fp16";
+    case kTfLiteFloat64:    return "fp64";
+    default:                return "????";
     }
 
     return "xxxx";
