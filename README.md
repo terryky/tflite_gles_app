@@ -59,6 +59,10 @@ Target platform: Linux PC / NVIDIA Jetson / RaspberryPi.
 - TensorRT port is [**HERE**](https://github.com/terryky/tflite_gles_app/tree/master/trt_pose_estimation_3d)<br>
 [<img src="gl2pose_estimation_3d/gl2pose_estimation_3d.jpg" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2pose_estimation_3d)
 
+### [Depth Estimation (DenseDepth)](https://github.com/terryky/tflite_gles_app/tree/master/gl2dense_depth)
+- Depth Estimation from single images.<br>
+[<img src="gl2dense_depth/gl2dense_depth.jpg" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2dense_depth)
+
 ### [Semantic Segmentation](https://github.com/terryky/tflite_gles_app/tree/master/gl2segmentation)
 - Assign semantic labels to every pixel in the input image.<br>
 [<img src="gl2segmentation/gl2segmentation.png" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2segmentation)
@@ -495,3 +499,14 @@ You can select the platform by editing [Makefile.env](Makefile.env).
 ## 6. Related Articles
 - [Raspberry Pi4 単体で TensorFlow Lite はどれくらいの速度で動く？(Qiita)](https://qiita.com/terryky/items/243000fcfcb89af11510)
 - [注目AIボードとラズパイ4の実力テスト(CQ出版社 Interface 2020/10月号 pp.48-51)](https://interface.cqpub.co.jp/magazine/202010/)
+
+
+## 7.  Acknowledgements
+- https://github.com/google/mediapipe
+- https://github.com/TachibanaYoshino/AnimeGANv2
+- https://github.com/openvinotoolkit/open_model_zoo/tree/master/demos/python_demos/human_pose_estimation_3d_demo
+- https://github.com/ialhashim/DenseDepth
+- https://github.com/MaybeShewill-CV/bisenetv2-tensorflow
+- https://github.com/margaretmz/Selfie2Anime-with-TFLite
+- https://tfhub.dev/sayakpaul/lite-model/east-text-detector/int8/1
+- https://github.com/PINTO0309/PINTO_model_zoo
