@@ -222,7 +222,7 @@ render_detect_region (int ofstx, int ofsty, int texw, int texh,
                       face_detect_result_t *detection, age_gender_result_t *age_genders)
 {
     float col_red[]   = {1.0f, 0.0f, 0.0f, 1.0f};
-    float col_blue[]  = {1.0f, 0.0f, 0.0f, 1.0f};
+    float col_blue[]  = {0.0f, 0.0f, 1.0f, 1.0f};
     float col_white[] = {1.0f, 1.0f, 1.0f, 1.0f};
     float *col_frame;
 
@@ -247,7 +247,8 @@ render_detect_region (int ofstx, int ofsty, int texw, int texh,
             sprintf (buf, "F:%dyrs", age);
             col_frame = col_red;
         }
-        draw_dbgstr_ex (buf, x1, y1-22, 1.0f, col_white, col_frame);
+        float str_scale = 1.0f;
+        draw_dbgstr_ex (buf, x1, y1-22 * str_scale, str_scale, col_white, col_frame);
 
         /* rectangle region */
         draw_2d_rect (x1, y1, x2-x1, y2-y1, col_frame, 2.0f);
