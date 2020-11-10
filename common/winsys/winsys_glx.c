@@ -156,3 +156,33 @@ void egl_set_key_func (void (*func)(int key, int state, int x, int y))
 }
 
 
+#if 1 /* work around for NVIDIA Jetson */
+int
+drmSyncobjTimelineSignal (int fd, const uint32_t *handles, uint64_t *points, uint32_t handle_count)
+{
+    return 0;
+}
+
+int
+drmSyncobjTransfer (int fd, uint32_t dst_handle, uint64_t dst_point, uint32_t src_handle, uint64_t src_point, uint32_t flags)
+{
+    return 0;
+}
+
+int
+drmSyncobjTimelineWait (int fd, uint32_t *handles, uint64_t *points, unsigned num_handles, int64_t timeout_nsec, unsigned flags, uint32_t *first_signaled)
+{
+    return 0;
+}
+int
+drmSyncobjQuery(int fd, uint32_t *handles, uint64_t *points,  uint32_t handle_count)
+{
+    return 0;
+}
+int
+drmSyncobjQuery2(int fd, uint32_t *handles, uint64_t *points, uint32_t handle_count, uint32_t flags)
+{
+    return 0;
+}
+#endif
+
