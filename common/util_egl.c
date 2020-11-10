@@ -282,6 +282,7 @@ int
 egl_init_with_platform_window_surface (int gles_version, int depth_size, int stencil_size, int sample_num, 
                                        int win_w, int win_h)
 {
+#if !defined(USE_GLX)
     void        *native_dpy, *native_win;
     EGLint      major, minor;
     EGLConfig   config;
@@ -371,6 +372,10 @@ egl_init_with_platform_window_surface (int gles_version, int depth_size, int ste
 #endif
 
     return 0;
+#else
+    init_ext_functions ();
+    return glx_initialize (gles_version, depth_size, stencil_size, sample_num, win_w, win_h);
+#endif
 }
 
 
@@ -416,6 +421,7 @@ egl_terminate ()
 int
 egl_swap ()
 {
+#if !defined(USE_GLX)
     EGLBoolean ret;
 
     ret = eglSwapBuffers (s_dpy, s_sfc);
@@ -426,7 +432,10 @@ egl_swap ()
     }
 
     winsys_swap ();
-    
+#else
+    glx_swap ();
+#endif
+
     return 0;
 }
 

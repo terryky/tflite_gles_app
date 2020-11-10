@@ -4,6 +4,7 @@
  * ------------------------------------------------ */
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 #if defined (USE_GLES_31)
@@ -17,6 +18,25 @@
 /* ----------------------------------------------------------- *
  *   create & compile shader
  * ----------------------------------------------------------- */
+#if USE_GLX
+static char *
+eliminate_precision_qualifiers (const char *text)
+{
+    int len = strlen (text) + 1;
+    char *text2 = (char *)malloc (len);
+    strncpy (text2, text, len);
+
+    for (char *p = strstr (text2, "precision"); p; p ++)
+    {
+        int c = *p;
+        *p = ' ';
+        if (c == ';')
+            break;
+    }
+    return text2;
+}
+#endif
+
 GLuint
 compile_shader_text (GLenum shaderType, const char *text)
 {
@@ -24,8 +44,15 @@ compile_shader_text (GLenum shaderType, const char *text)
   GLint	 stat;
 
   shader = glCreateShader (shaderType);
+#if USE_GLX
+  char *text2 = eliminate_precision_qualifiers (text);
+  glShaderSource  (shader, 1, (const char **)&text2, NULL);
+  glCompileShader (shader);
+  free (text2);
+#else
   glShaderSource  (shader, 1, (const char **)&text, NULL);
   glCompileShader (shader);
+#endif
 
   glGetShaderiv	(shader, GL_COMPILE_STATUS, &stat);
   if (!stat) 

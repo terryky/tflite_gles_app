@@ -65,6 +65,19 @@ void main (void)                                      \n\
 /* ------------------------------------------------------ *
  *  shader for External Texture
  * ------------------------------------------------------ */
+#if USE_GLX
+static char fs_extex[] = "                            \n\
+precision mediump float;                              \n\
+varying     vec2      v_TexCoord;                     \n\
+uniform     sampler2D u_sampler;                      \n\
+uniform     vec4      u_Color;                        \n\
+                                                      \n\
+void main (void)                                      \n\
+{                                                     \n\
+    gl_FragColor = texture2D (u_sampler, v_TexCoord); \n\
+    gl_FragColor *= u_Color;                          \n\
+}                                                     \n";
+#else
 static char fs_extex[] = "                            \n\
 #extension GL_NV_EGL_stream_consumer_external: enable \n\
 #extension GL_OES_EGL_image_external : enable         \n\
@@ -78,6 +91,7 @@ void main (void)                                      \n\
     gl_FragColor = texture2D (u_sampler, v_TexCoord); \n\
     gl_FragColor *= u_Color;                          \n\
 }                                                     \n";
+#endif
 
 /* ------------------------------------------------------ *
  *  shader for MATLAB Jet colormap

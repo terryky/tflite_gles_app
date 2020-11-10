@@ -5,6 +5,10 @@
 #ifndef _WINSYS_H_
 #define _WINSYS_H_
 
+#if defined(USE_GLX)
+#include "winsys_glx.h"
+#endif
+
 void *winsys_init_native_display (void);
 void *winsys_init_native_window (void *dpy, int win_w, int win_h);
 int   winsys_swap();
