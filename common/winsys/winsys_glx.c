@@ -4,21 +4,92 @@
  * ------------------------------------------------ */
 
 /*
-    ## Prepare Host PC (Windows)
+    ## If you use Windows Host PC, prepare X Server on Windows.
     - Install VcXsrv
     - Launch VcXsrv with parameters below:
-    -- disable "Native opengl"
-    -- enable  "Disable access control"
+        * disable "Native opengl"
+        * enable  "Disable access control"
 
-    ## On Headless Target device
+    ## Connect to a target device via ssh with X Forwading.
+    ```
+        $ ssh -X username@192.168.1.1
+    ```
+
+    ## On ssh console of target device,
+    ```
+        $ export DISPLAY=:10.0
+        $ make clean; make TARGET_ENV=headless
+        $ ./gl2tri
+    ```
+
+    ## If it doesn't work well, try below.
     ```
         $ sudo apt install mesa-utils
         $ sudo apt install libgles2-mesa-dev libegl1-mesa-dev xorg-dev
+        $ export LIBGL_DEBUG=verbose
         $ export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/mesa/libGL.so.1.2.0
-        $ export DISPLAY=192.168.1.100:0.0   # specify the IP of your HostPC 
-        $ make
-        $ ./glxtri
     ```
+
+    ## [Reference] Another environment variables
+    ```
+        $ export LIBGL_ALWAYS_SOFTWARE=true
+        $ export LIBGL_ALWAYS_INDIRECT=true;
+    ```
+*/
+
+/* =================================================
+    Experimental Log of [Ubuntu PC] as a target.
+   =================================================
+
+    <<<<< Using Local Dispay (DISPLAY=:0.0) >>>>>
+
+      [TARGET_ENV=x11]      @@ SUCCESS @@
+          ---------------------------------------
+          GL_RENDERER     : GeForce GTX 970/PCIe/SSE2
+          GL_VERSION      : OpenGL ES 3.2 NVIDIA 418.67
+          GL_VENDOR       : NVIDIA Corporation
+          ---------------------------------------
+
+      [TARGET_ENV=headless] ## ERROR ##
+      (libGL.so.1 => /usr/lib/nvidia-418/libGL.so.1)
+          Failed to initialize GLX.
+
+      [TARGET_ENV=headless] ## ERROR ##
+      (export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/mesa/libGL.so.1.2.0)
+          libGL error: No matching fbConfigs or visuals found
+          libGL error: failed to load driver: swrast
+          X server has no RGB visual
+
+    <<<<< Using Remote Dispay (DISPLAY=:10.0) >>>>>
+
+      [TARGET_ENV=headless] @@ SUCCESS @@
+      (export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/mesa/libGL.so.1.2.0)
+      [VcXsrv=Software OpenGL]
+          ---------------------------------------
+          GL_RENDERER   = llvmpipe (LLVM 6.0, 256 bits)
+          GL_VERSION    = 3.0 Mesa 18.0.5
+          GL_VENDOR     = VMware, Inc.
+          ---------------------------------------
+
+      [TARGET_ENV=headless] ## ERROR ##
+      (export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/mesa/libGL.so.1.2.0)
+      [VcXsrv=Native OpenGL]
+          libGL error: No matching fbConfigs or visuals found
+          libGL error: failed to load driver: swrast
+          ---------------------------------------
+          GL_RENDERER   = GeForce GTX TITAN X/PCIe/SSE2
+          GL_VERSION    = 1.4 (4.6.0 NVIDIA 391.24)
+          GL_VENDOR     = NVIDIA Corporation
+          ---------------------------------------
+
+      [TARGET_ENV=headless] ## ERROR ##
+      (libGL.so.1 => /usr/lib/nvidia-418/libGL.so.1)
+      [VcXsrv=Native OpenGL/Software OpenGL]
+          Failed to initialize GLX.
+
+      [TARGET_ENV=x11]      ## ERROR ##
+      [VcXsrv=Native OpenGL/Software OpenGL]
+          ERR at eglGetDisplay()
 */
 
 #include <stdio.h>
@@ -37,6 +108,10 @@
 
 static Display *s_xdpy;
 static Window  s_xwin;
+
+static void (*s_motion_func)(int x, int y) = NULL;
+static void (*s_button_func)(int button, int state, int x, int y) = NULL;
+static void (*s_key_func)(int key, int state, int x, int y) = NULL;
 
 int
 glx_initialize (int glx_version, int depth_size, int stencil_size, int sample_num,
@@ -104,6 +179,8 @@ glx_initialize (int glx_version, int depth_size, int stencil_size, int sample_nu
 
     glXMakeCurrent (xdpy, xwin, ctx);
     XMapWindow (xdpy, xwin);
+    XSelectInput (xdpy, xwin, ButtonPressMask | ButtonReleaseMask | Button1MotionMask);
+    XFlush (xdpy);
 
     s_xdpy = xdpy;
     s_xwin = xwin;
@@ -139,20 +216,53 @@ int
 glx_swap ()
 {
     glXSwapBuffers (s_xdpy, s_xwin);
+
+    XEvent event;
+    while (XPending (s_xdpy))
+    {
+        XNextEvent (s_xdpy, &event);
+        switch (event.type)
+        {
+        case ButtonPress:
+            if (s_button_func)
+            {
+                s_button_func (0/*event.xbutton.button*/, 1, event.xbutton.x, event.xbutton.y);
+            }
+            break;
+        case ButtonRelease:
+            if (s_button_func)
+            {
+                s_button_func (0/*event.xbutton.button*/, 0, event.xbutton.x, event.xbutton.y);
+            }
+            break;
+        case MotionNotify:
+            if (s_motion_func)
+            {
+                s_motion_func (event.xmotion.x, event.xmotion.y);
+            }
+            break;
+        default:
+            /* Unknown event type, ignore it */
+            break;
+        }
+    }
     return 0;
 }
 
 
 void egl_set_motion_func (void (*func)(int x, int y))
 {
+    s_motion_func = func;
 }
 
 void egl_set_button_func (void (*func)(int button, int state, int x, int y))
 {
+    s_button_func = func;
 }
 
 void egl_set_key_func (void (*func)(int key, int state, int x, int y))
 {
+    s_key_func = func;
 }
 
 
