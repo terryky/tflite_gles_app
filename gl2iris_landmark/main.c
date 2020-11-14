@@ -269,10 +269,20 @@ feed_iris_landmark_image(texture_2d_t *srctex, int win_w, int win_h,
     x3 = vec[3][0];  y3 = vec[3][1];
 
     /* Upside down */
-    texcoord[0] = x3;   texcoord[1] = y3;
-    texcoord[2] = x0;   texcoord[3] = y0;
-    texcoord[4] = x2;   texcoord[5] = y2;
-    texcoord[6] = x1;   texcoord[7] = y0;
+    if (eye_id == 0)
+    {
+        texcoord[0] = x3;   texcoord[1] = y3;
+        texcoord[2] = x0;   texcoord[3] = y0;
+        texcoord[4] = x2;   texcoord[5] = y2;
+        texcoord[6] = x1;   texcoord[7] = y1;
+    }
+    else /* need to horizontal flip for right eye */
+    {
+        texcoord[0] = x2;   texcoord[1] = y2;
+        texcoord[2] = x1;   texcoord[3] = y1;
+        texcoord[4] = x3;   texcoord[5] = y3;
+        texcoord[6] = x0;   texcoord[7] = y0;
+    }
 
     draw_2d_texture_ex_texcoord (srctex, 0, win_h - h, w, h, texcoord);
 
@@ -503,6 +513,7 @@ render_iris_landmark_on_face (int ofstx, int ofsty, int texw, int texh,
         matrix_scale (mat, scale_x, scale_y, 1.0f);
         matrix_translate (mat, -0.5f, -0.5f, 0);
 
+        /* iris circle */
         for (int i = 0; i < 5; i ++)
         {
             float vec[2] = {iris[i].x, iris[i].y};
@@ -515,7 +526,7 @@ render_iris_landmark_on_face (int ofstx, int ofsty, int texw, int texh,
             draw_2d_fillrect (x - (r/2), y - (r/2), r, r, col_green);
         }
 
-        for (int eye_id = 0; eye_id < 2; eye_id ++)
+        /* eye region boundary box */
         {
             float x0 = facemesh->eye_pos[eye_id][0].x * texw + ofstx;
             float y0 = facemesh->eye_pos[eye_id][0].y * texh + ofsty;
@@ -634,6 +645,24 @@ render_iris_landmark_on_main (int ofstx, int ofsty, int texw, int texh,
             draw_2d_circle (x0, y0, len, col_green, 4);
         }
     }
+}
+
+static void
+flip_horizontal_iris_landmark (irismesh_result_t *irismesh)
+{
+    fvec3 *eye  = irismesh->eye_landmark;
+    fvec3 *iris = irismesh->iris_landmark;
+
+    for (int i = 0; i < 71; i ++)
+    {
+        eye[i].x = 1.0f - eye[i].x;
+    }
+
+    for (int i = 0; i < 5; i ++)
+    {
+        iris[i].x = 1.0f - iris[i].x;
+    }
+
 }
 
 
@@ -860,6 +889,8 @@ main(int argc, char *argv[])
                 ttime[7] = pmeter_get_time_ms ();
                 invoke_ms2 += ttime[7] - ttime[6];
             }
+            /* need to horizontal flip for right eye */
+            flip_horizontal_iris_landmark (&iris_mesh_ret[face_id][1]);
         }
 
 
