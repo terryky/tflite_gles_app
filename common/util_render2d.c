@@ -197,7 +197,73 @@ void main (void)                                      \n\
 }                                                     \n";
 
 
-#define SHADER_NUM 5
+/* ------------------------------------------------------ *
+ *  shader for YUYV Texture
+ *      +--+--+--+--+
+ *      | R| G| B| A|
+ *      +--+--+--+--+
+ *      | U|Y0| V|Y1|
+ *      +--+--+--+--+
+ * ------------------------------------------------------ */
+static char vs_tex_uyvy[] = "                         \n\
+attribute    vec4    a_Vertex;                        \n\
+attribute    vec2    a_TexCoord;                      \n\
+varying      vec2    v_TexCoord;                      \n\
+varying      vec2    v_TexCoordPix;                   \n\
+uniform      mat4    u_PMVMatrix;                     \n\
+uniform      vec2    u_TexDim;                        \n\
+                                                      \n\
+void main (void)                                      \n\
+{                                                     \n\
+    gl_Position   = u_PMVMatrix * a_Vertex;           \n\
+    v_TexCoord    = a_TexCoord;                       \n\
+    v_TexCoordPix = a_TexCoord * u_TexDim;            \n\
+}                                                     \n";
+
+static char fs_tex_uyvy[] = "                         \n\
+precision mediump float;                              \n\
+varying     vec2      v_TexCoord;                     \n\
+varying     vec2      v_TexCoordPix;                  \n\
+uniform     sampler2D u_sampler;                      \n\
+uniform     vec4      u_Color;                        \n\
+                                                      \n\
+void main (void)                                      \n\
+{                                                     \n\
+    vec2 evenodd = mod(v_TexCoordPix, 2.0);           \n\
+    vec3 yuv, rgb;                                    \n\
+    vec4 texcol = texture2D (u_sampler, v_TexCoord);  \n\
+    if (evenodd.x < 1.0)                              \n\
+    {                                                 \n\
+        yuv.r = texcol.g;       /* Y */               \n\
+        yuv.g = texcol.r - 0.5; /* U */               \n\
+        yuv.b = texcol.b - 0.5; /* V */               \n\
+    }                                                 \n\
+    else                                              \n\
+    {                                                 \n\
+        yuv.r = texcol.a;       /* Y */               \n\
+        yuv.g = texcol.r - 0.5; /* U */               \n\
+        yuv.b = texcol.b - 0.5; /* V */               \n\
+    }                                                 \n\
+                                                      \n\
+    rgb = mat3 (    1,        1,     1,               \n\
+                    0, -0.34413, 1.772,               \n\
+                1.402, -0.71414,     0) * yuv;        \n\
+    gl_FragColor = vec4(rgb, 1.0);                    \n\
+    gl_FragColor *= u_Color;                          \n\
+}                                                     \n";
+
+enum shader_type {
+    SHADER_TYPE_FILL    = 0,    // 0
+    SHADER_TYPE_TEX,            // 1
+    SHADER_TYPE_EXTEX,          // 2
+    SHADER_TYPE_CMAP_JET,       // 3
+    SHADER_TYPE_TEX_YUYV,       // 4
+    SHADER_TYPE_TEX_UYVY,       // 5
+
+    SHADER_TYPE_MAX
+};
+
+#define SHADER_NUM SHADER_TYPE_MAX
 static char *s_shader[SHADER_NUM * 2] = 
 {
     vs_fill,   fs_fill,
@@ -205,6 +271,7 @@ static char *s_shader[SHADER_NUM * 2] =
     vs_tex,    fs_extex,
     vs_tex,    fs_cmap_jet,
     vs_tex_yuyv, fs_tex_yuyv,
+    vs_tex_uyvy, fs_tex_uyvy,
 };
 
 static shader_obj_t s_sobj[SHADER_NUM];
@@ -314,14 +381,15 @@ draw_2d_texture_in (texparam_t *tparam)
 
     switch (ttype)
     {
-    case 0:     /* fill     */
+    case SHADER_TYPE_FILL:
         break;
-    case 1:     /* tex      */
-    case 4:     /* tex_yuyv */
+    case SHADER_TYPE_TEX:
+    case SHADER_TYPE_TEX_YUYV:
+    case SHADER_TYPE_TEX_UYVY:
         glBindTexture (GL_TEXTURE_2D, texid);
         uv = tparam->upsidedown ? tarray2 : tarray;
         break;
-    case 2:     /* tex_extex */
+    case SHADER_TYPE_EXTEX:
         glBindTexture (GL_TEXTURE_EXTERNAL_OES, texid);
         uv = tparam->upsidedown ? tarray : tarray2;
         break;
@@ -402,7 +470,7 @@ draw_2d_texture (int texid, int x, int y, int w, int h, int upsidedown)
     tparam.w       = w;
     tparam.h       = h;
     tparam.texid   = texid;
-    tparam.textype = 1;
+    tparam.textype = SHADER_TYPE_TEX;
     tparam.color[0]= 1.0f;
     tparam.color[1]= 1.0f;
     tparam.color[2]= 1.0f;
@@ -422,7 +490,7 @@ draw_2d_texture_ex (texture_2d_t *tex, int x, int y, int w, int h, int upsidedow
     tparam.w       = w;
     tparam.h       = h;
     tparam.texid   = tex->texid;
-    tparam.textype = 1;
+    tparam.textype = SHADER_TYPE_TEX;
     tparam.texw    = tex->width;
     tparam.texh    = tex->height;
     tparam.color[0]= 1.0f;
@@ -432,7 +500,9 @@ draw_2d_texture_ex (texture_2d_t *tex, int x, int y, int w, int h, int upsidedow
     tparam.upsidedown = upsidedown;
 
     if (tex->format == pixfmt_fourcc('Y', 'U', 'Y', 'V'))
-        tparam.textype = 4;
+        tparam.textype = SHADER_TYPE_TEX_YUYV;
+    else if (tex->format == pixfmt_fourcc('U', 'Y', 'V', 'Y'))
+        tparam.textype = SHADER_TYPE_TEX_UYVY;
 
     draw_2d_texture_in (&tparam);
 
@@ -448,7 +518,7 @@ draw_2d_texture_texcoord (int texid, int x, int y, int w, int h, float *user_tex
     tparam.w       = w;
     tparam.h       = h;
     tparam.texid   = texid;
-    tparam.textype = 1;
+    tparam.textype = SHADER_TYPE_TEX;
     tparam.color[0]= 1.0f;
     tparam.color[1]= 1.0f;
     tparam.color[2]= 1.0f;
@@ -469,7 +539,7 @@ draw_2d_texture_ex_texcoord (texture_2d_t *tex, int x, int y, int w, int h, floa
     tparam.w       = w;
     tparam.h       = h;
     tparam.texid   = tex->texid;
-    tparam.textype = 1;
+    tparam.textype = SHADER_TYPE_TEX;
     tparam.texw    = tex->width;
     tparam.texh    = tex->height;
     tparam.color[0]= 1.0f;
@@ -480,7 +550,9 @@ draw_2d_texture_ex_texcoord (texture_2d_t *tex, int x, int y, int w, int h, floa
     tparam.user_texcoord = user_texcoord;
 
     if (tex->format == pixfmt_fourcc('Y', 'U', 'Y', 'V'))
-        tparam.textype = 4;
+        tparam.textype = SHADER_TYPE_TEX_YUYV;
+    else if (tex->format == pixfmt_fourcc('U', 'Y', 'V', 'Y'))
+        tparam.textype = SHADER_TYPE_TEX_UYVY;
 
     draw_2d_texture_in (&tparam);
 
@@ -497,7 +569,7 @@ draw_2d_texture_ex_texcoord_rot (texture_2d_t *tex, int x, int y, int w, int h, 
     tparam.w       = w;
     tparam.h       = h;
     tparam.texid   = tex->texid;
-    tparam.textype = 1;
+    tparam.textype = SHADER_TYPE_TEX;
     tparam.texw    = tex->width;
     tparam.texh    = tex->height;
     tparam.rot     = deg;
@@ -511,7 +583,9 @@ draw_2d_texture_ex_texcoord_rot (texture_2d_t *tex, int x, int y, int w, int h, 
     tparam.user_texcoord = user_texcoord;
 
     if (tex->format == pixfmt_fourcc('Y', 'U', 'Y', 'V'))
-        tparam.textype = 4;
+        tparam.textype = SHADER_TYPE_TEX_YUYV;
+    else if (tex->format == pixfmt_fourcc('U', 'Y', 'V', 'Y'))
+        tparam.textype = SHADER_TYPE_TEX_UYVY;
 
     draw_2d_texture_in (&tparam);
 
@@ -528,7 +602,7 @@ draw_2d_texture_blendfunc (int texid, int x, int y, int w, int h,
     tparam.w       = w;
     tparam.h       = h;
     tparam.texid   = texid;
-    tparam.textype = 1;
+    tparam.textype = SHADER_TYPE_TEX;
     tparam.color[0]= 1.0f;
     tparam.color[1]= 1.0f;
     tparam.color[2]= 1.0f;
@@ -554,7 +628,7 @@ draw_2d_texture_modulate (int texid, int x, int y, int w, int h,
     tparam.w       = w;
     tparam.h       = h;
     tparam.texid   = texid;
-    tparam.textype = 1;
+    tparam.textype = SHADER_TYPE_TEX;
     tparam.color[0]= color[0];
     tparam.color[1]= color[1];
     tparam.color[2]= color[2];
@@ -579,7 +653,7 @@ draw_2d_colormap (int texid, int x, int y, int w, int h, float alpha, int upside
     tparam.w       = w;
     tparam.h       = h;
     tparam.texid   = texid;
-    tparam.textype = 3;
+    tparam.textype = SHADER_TYPE_CMAP_JET;
     tparam.color[0]= 1.0f;
     tparam.color[1]= 1.0f;
     tparam.color[2]= 1.0f;
@@ -599,7 +673,7 @@ draw_2d_fillrect (int x, int y, int w, int h, float *color)
     tparam.y       = y;
     tparam.w       = w;
     tparam.h       = h;
-    tparam.textype = 0;
+    tparam.textype = SHADER_TYPE_FILL;
     tparam.color[0]= color[0];
     tparam.color[1]= color[1];
     tparam.color[2]= color[2];
@@ -613,7 +687,7 @@ draw_2d_fillrect (int x, int y, int w, int h, float *color)
 int
 draw_2d_rect (int x, int y, int w, int h, float *color, float line_width)
 {
-    int ttype = 0;
+    int ttype = SHADER_TYPE_FILL;
     shader_obj_t *sobj = &s_sobj[ttype];
     float matrix[16];
 
@@ -659,7 +733,7 @@ int
 draw_2d_rect_rot (int x, int y, int w, int h, float *color, float line_width,
                   int px, int py, float rot_degree)
 {
-    int ttype = 0;
+    int ttype = SHADER_TYPE_FILL;
     shader_obj_t *sobj = &s_sobj[ttype];
     float matrix[16];
 
@@ -728,7 +802,7 @@ draw_2d_line (int x0, int y0, int x1, int y1, float *color, float line_width)
     tparam.rot     = RAD_TO_DEG (theta);
     tparam.px      = 0;
     tparam.py      = 0.5f * line_width;
-    tparam.textype = 0;
+    tparam.textype = SHADER_TYPE_FILL;
     tparam.color[0]= color[0];
     tparam.color[1]= color[1];
     tparam.color[2]= color[2];
@@ -744,7 +818,7 @@ draw_2d_line (int x0, int y0, int x1, int y1, float *color, float line_width)
 int
 draw_2d_fillcircle (int x, int y, int radius, float *color)
 {
-    int ttype = 0;
+    int ttype = SHADER_TYPE_FILL;
     shader_obj_t *sobj = &s_sobj[ttype];
     float matrix[16];
     float vtx[(CIRCLE_DIVNUM+2) * 2];
@@ -790,7 +864,7 @@ draw_2d_fillcircle (int x, int y, int radius, float *color)
 int
 draw_2d_circle (int x, int y, int radius, float *color, float line_width)
 {
-    int ttype = 0;
+    int ttype = SHADER_TYPE_FILL;
     shader_obj_t *sobj = &s_sobj[ttype];
     float matrix[16];
     float vtx[(CIRCLE_DIVNUM+2) * 2];

@@ -61,7 +61,8 @@ create_2d_texture_ex (texture_2d_t *tex2d, void *imgbuf, int width, int height, 
     int glh   = height;
     int glfmt = GL_RGBA;
 
-    if (fmt == pixfmt_fourcc('Y', 'U', 'Y', 'V'))
+    if (fmt == pixfmt_fourcc('Y', 'U', 'Y', 'V') ||
+        fmt == pixfmt_fourcc('U', 'Y', 'V', 'Y'))
     {
         glPixelStorei (GL_UNPACK_ALIGNMENT, 2);
         glw /= 2;
