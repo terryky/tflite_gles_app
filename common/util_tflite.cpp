@@ -89,7 +89,7 @@ tflite_print_tensor_info (std::unique_ptr<Interpreter> &interpreter)
     DBG_LOG ("nodes   size     : %zu\n", interpreter->nodes_size());
     DBG_LOG ("number of inputs : %d\n", in_size);
     DBG_LOG ("number of outputs: %d\n", out_size);
-
+#if 0
     DBG_LOG ("\n");
     DBG_LOG ("-----------------------------------------------------------------------------\n");
     DBG_LOG ("                     name                     bytes  type  scale   zero_point\n");
@@ -100,7 +100,7 @@ tflite_print_tensor_info (std::unique_ptr<Interpreter> &interpreter)
         TfLiteTensor *tensor = interpreter->tensor(i);
         print_tensor (tensor, i);
     }
-
+#endif
     DBG_LOG ("\n");
     DBG_LOG ("-----------------------------------------------------------------------------\n");
     DBG_LOG (" Input Tensor Dimension\n");
