@@ -34,18 +34,29 @@ convert_to_rgba8888 (void *buf, int cap_w, int cap_h, unsigned int fmt)
         s_capture_buf = (unsigned char *)malloc (cap_w * cap_h * 4);
     }
 
-    if (fmt == v4l2_fourcc ('Y', 'U', 'Y', 'V'))
+    if (fmt == v4l2_fourcc ('Y', 'U', 'Y', 'V') ||
+        fmt == v4l2_fourcc ('U', 'Y', 'V', 'Y'))
     {
         unsigned char *src8 = buf;
         unsigned char *dst8 = s_capture_buf;
+        int y0_idx = 0, cb_idx = 1, y1_idx = 2, cr_idx = 3;
+
+        if (fmt == v4l2_fourcc ('U', 'Y', 'V', 'Y'))
+        {
+            y0_idx = 1;
+            cb_idx = 0;
+            y1_idx = 3;
+            cr_idx = 2;
+        }
         for (y = 0; y < cap_h; y ++)
         {
             for (x = 0; x < cap_w; x += 2)
             {
-                int y0 = *src8 ++;
-                int cb = *src8 ++;
-                int y1 = *src8 ++;
-                int cr = *src8 ++;
+                int y0 = src8[y0_idx];
+                int cb = src8[cb_idx];
+                int y1 = src8[y1_idx];
+                int cr = src8[cr_idx];
+                src8 += 4;
 
                 y0 -= 16;
                 y1 -= 16;
@@ -99,7 +110,8 @@ copy_yuyv_image (void *buf, int cap_w, int cap_h, unsigned int fmt)
         s_capture_buf = (unsigned char *)malloc (cap_w * cap_h * 2);
     }
 
-    if (fmt == v4l2_fourcc ('Y', 'U', 'Y', 'V'))
+    if (fmt == v4l2_fourcc ('Y', 'U', 'Y', 'V') ||
+        fmt == v4l2_fourcc ('U', 'Y', 'V', 'Y'))
     {
         memcpy (s_capture_buf, buf, cap_w * cap_h * 2);
     }
@@ -176,7 +188,16 @@ get_capture_pixformat (int *pixformat)
 #if defined(USE_YUYV_TO_RGB_CONVERSION)
     *pixformat = pixfmt_fourcc('R', 'G', 'B', 'A');
 #else
-    *pixformat = pixfmt_fourcc('Y', 'U', 'Y', 'V');
+    if (s_capture_fmt == v4l2_fourcc ('Y', 'U', 'Y', 'V'))
+        *pixformat = pixfmt_fourcc('Y', 'U', 'Y', 'V');
+    else if (s_capture_fmt == v4l2_fourcc ('U', 'Y', 'V', 'Y'))
+        *pixformat = pixfmt_fourcc('U', 'Y', 'V', 'Y');
+    else
+    {
+        fprintf (stderr, "ERR: %s(%d): pixformat(%.4s) is not supported.\n",
+            __FILE__, __LINE__, (char *)&s_capture_fmt);
+        return -1;
+    }
 #endif
     return 0;
 }

@@ -40,6 +40,7 @@ update_capture_texture (texture_2d_t *captex)
         switch (cap_fmt)
         {
         case pixfmt_fourcc('Y', 'U', 'Y', 'V'):
+        case pixfmt_fourcc('U', 'Y', 'V', 'Y'):
             texw = cap_w / 2;
             break;
         default:
@@ -88,6 +89,7 @@ update_video_texture (texture_2d_t *captex)
         switch (video_fmt)
         {
         case pixfmt_fourcc('Y', 'U', 'Y', 'V'):
+        case pixfmt_fourcc('U', 'Y', 'V', 'Y'):
             texw = video_w / 2;
             break;
         default:
