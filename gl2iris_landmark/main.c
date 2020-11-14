@@ -314,7 +314,6 @@ static void
 render_detect_region (int ofstx, int ofsty, int texw, int texh, face_detect_result_t *detection)
 {
     float col_red[]   = {1.0f, 0.0f, 0.0f, 1.0f};
-//  float col_white[] = {1.0f, 1.0f, 1.0f, 1.0f};
 
     for (int i = 0; i < detection->num; i ++)
     {
@@ -328,6 +327,7 @@ render_detect_region (int ofstx, int ofsty, int texw, int texh, face_detect_resu
         draw_2d_rect (x1, y1, x2-x1, y2-y1, col_red, 2.0f);
 
 #if 0
+        float col_white[] = {1.0f, 1.0f, 1.0f, 1.0f};
         float score = face->score;
 
         /* class name */
@@ -513,6 +513,23 @@ render_iris_landmark_on_face (int ofstx, int ofsty, int texw, int texh,
         matrix_scale (mat, scale_x, scale_y, 1.0f);
         matrix_translate (mat, -0.5f, -0.5f, 0);
 
+        if (0)
+        {
+            float col_red  [] = {1.0f, 0.0f, 0.0f, 1.0f};
+            fvec3 *eye  = irismesh[eye_id].eye_landmark;
+            for (int i = 0; i < 71; i ++)
+            {
+                float vec[2] = {eye[i].x, eye[i].y};
+                matrix_multvec2 (mat, vec, vec);
+
+                float x = vec[0] * texw + ofstx;;
+                float y = vec[1] * texh + ofsty;;
+
+                int r = 2;
+                draw_2d_fillrect (x - (r/2), y - (r/2), r, r, col_red);
+            }
+        }
+
         /* iris circle */
         for (int i = 0; i < 5; i ++)
         {
@@ -612,12 +629,30 @@ render_iris_landmark_on_main (int ofstx, int ofsty, int texw, int texh,
 
         int eye_idx0[] = {0, 1, 2, 3, 4, 5, 6, 7, 8};
         int idx_num0 = sizeof(eye_idx0) / sizeof(int);
-        render_lines (ofstx, ofsty, texw, texh, mat, irismesh, eye_idx0, idx_num0);
+        render_lines (ofstx, ofsty, texw, texh, mat, &irismesh[eye_id], eye_idx0, idx_num0);
 
         int eye_idx1[] = {0, 9, 10, 11, 12, 13, 14, 15, 8};
         int idx_num1 = sizeof(eye_idx1) / sizeof(int);
-        render_lines (ofstx, ofsty, texw, texh, mat, irismesh, eye_idx1, idx_num1);
+        render_lines (ofstx, ofsty, texw, texh, mat, &irismesh[eye_id], eye_idx1, idx_num1);
 
+        if (0)
+        {
+            float col_red  [] = {1.0f, 0.0f, 0.0f, 1.0f};
+            fvec3 *eye  = irismesh[eye_id].eye_landmark;
+            for (int i = 0; i < 71; i ++)
+            {
+                float vec[2] = {eye[i].x, eye[i].y};
+                matrix_multvec2 (mat, vec, vec);
+
+                float x = vec[0] * texw + ofstx;;
+                float y = vec[1] * texh + ofsty;;
+
+                int r = 4;
+                draw_2d_fillrect (x - (r/2), y - (r/2), r, r, col_red);
+            }
+        }
+
+        /* iris circle */
         for (int i = 0; i < 5; i ++)
         {
             float vec[2] = {iris[i].x, iris[i].y};
