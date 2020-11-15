@@ -14,60 +14,12 @@
 #include "util_texture.h"
 #include "util_render2d.h"
 #include "tflite_blazeface.h"
-#include "camera_capture.h"
+#include "util_camera_capture.h"
 #include "video_decode.h"
 #include "render_imgui.h"
 
 #define UNUSED(x) (void)(x)
 
-
-#if defined (USE_INPUT_CAMERA_CAPTURE)
-static void
-update_capture_texture (texture_2d_t *captex)
-{
-    int      cap_w, cap_h;
-    uint32_t cap_fmt;
-    void     *cap_buf;
-
-    get_capture_dimension (&cap_w, &cap_h);
-    get_capture_pixformat (&cap_fmt);
-    get_capture_buffer (&cap_buf);
-    if (cap_buf)
-    {
-        int texw = cap_w;
-        int texh = cap_h;
-        int texfmt = GL_RGBA;
-        switch (cap_fmt)
-        {
-        case pixfmt_fourcc('Y', 'U', 'Y', 'V'):
-        case pixfmt_fourcc('U', 'Y', 'V', 'Y'):
-            texw = cap_w / 2;
-            break;
-        default:
-            break;
-        }
-
-        glBindTexture (GL_TEXTURE_2D, captex->texid);
-        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, texw, texh, texfmt, GL_UNSIGNED_BYTE, cap_buf);
-    }
-}
-
-static int
-init_capture_texture (texture_2d_t *captex)
-{
-    int      cap_w, cap_h;
-    uint32_t cap_fmt;
-
-    get_capture_dimension (&cap_w, &cap_h);
-    get_capture_pixformat (&cap_fmt);
-
-    create_2d_texture_ex (captex, NULL, cap_w, cap_h, cap_fmt);
-    start_capture ();
-
-    return 0;
-}
-
-#endif
 
 #if defined (USE_INPUT_VIDEO_DECODE)
 static void
@@ -364,7 +316,7 @@ main(int argc, char *argv[])
     /* initialize V4L2 capture function */
     if (enable_camera && init_capture () == 0)
     {
-        init_capture_texture (&captex);
+        create_capture_texture (&captex);
         texw = captex.width;
         texh = captex.height;
     }

@@ -25,4 +25,9 @@ uint32_t create_2d_texture (void *imgbuf, int width, int height);
 
 int create_2d_texture_ex (texture_2d_t *tex2d, void *imgbuf, int w, int h, uint32_t fmt);
 
+#if defined (USE_INPUT_CAMERA_CAPTURE2)
+int  create_capture_texture (texture_2d_t *captex);
+void update_capture_texture (texture_2d_t *captex);
+#endif
+
 #endif /* TEXTURE_UTIL_H */

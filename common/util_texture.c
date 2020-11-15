@@ -11,6 +11,9 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 
+#if defined (USE_INPUT_CAMERA_CAPTURE)
+#include "util_camera_capture.h"
+#endif
 
 GLuint
 create_2d_texture (void *imgbuf, int width, int height)
@@ -188,3 +191,55 @@ load_png_cube_texture (char *name[], int *lpTexID)
     GLASSERT();
     return 0;
 }
+
+
+
+
+
+#if defined (USE_INPUT_CAMERA_CAPTURE)
+int
+create_capture_texture (texture_2d_t *captex)
+{
+    int      cap_w, cap_h;
+    uint32_t cap_fmt;
+
+    get_capture_dimension (&cap_w, &cap_h);
+    get_capture_pixformat (&cap_fmt);
+
+    create_2d_texture_ex (captex, NULL, cap_w, cap_h, cap_fmt);
+    start_capture ();
+
+    return 0;
+}
+
+void
+update_capture_texture (texture_2d_t *captex)
+{
+    int      cap_w, cap_h;
+    uint32_t cap_fmt;
+    void     *cap_buf;
+
+    get_capture_dimension (&cap_w, &cap_h);
+    get_capture_pixformat (&cap_fmt);
+    get_capture_buffer (&cap_buf);
+    if (cap_buf)
+    {
+        int texw = cap_w;
+        int texh = cap_h;
+        int texfmt = GL_RGBA;
+        switch (cap_fmt)
+        {
+        case pixfmt_fourcc('Y', 'U', 'Y', 'V'):
+        case pixfmt_fourcc('U', 'Y', 'V', 'Y'):
+            texw = cap_w / 2;
+            break;
+        default:
+            break;
+        }
+
+        glBindTexture (GL_TEXTURE_2D, captex->texid);
+        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, texw, texh, texfmt, GL_UNSIGNED_BYTE, cap_buf);
+    }
+}
+#endif
+

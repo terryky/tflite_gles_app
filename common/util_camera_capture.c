@@ -156,7 +156,7 @@ init_capture ()
     cap_dev = v4l2_open_capture_device (cap_devid);
     if (cap_dev == NULL)
     {
-        fprintf (stderr, "can't open capture device.\n");
+        fprintf (stderr, "capture device not found.\n");
         return -1;
     }
 
