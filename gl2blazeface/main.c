@@ -113,7 +113,8 @@ feed_blazeface_image(texture_2d_t *srctex, int win_w, int win_h)
 
 
 static void
-render_detect_region (int ofstx, int ofsty, int texw, int texh, blazeface_result_t *detection, imgui_data_t *imgui_data)
+render_detect_region (int ofstx, int ofsty, int texw, int texh,
+                      blazeface_result_t *detection, imgui_data_t *imgui_data)
 {
     float col_white[] = {1.0f, 1.0f, 1.0f, 1.0f};
     float *col_frame = imgui_data->frame_color;
@@ -130,7 +131,7 @@ render_detect_region (int ofstx, int ofsty, int texw, int texh, blazeface_result
         /* rectangle region */
         draw_2d_rect (x1, y1, x2-x1, y2-y1, col_frame, 2.0f);
 
-        /* class name */
+        /* detect score */
         char buf[512];
         sprintf (buf, "%d", (int)(score * 100));
         draw_dbgstr_ex (buf, x1, y1, 1.0f, col_white, col_frame);
@@ -296,7 +297,7 @@ main(int argc, char *argv[])
     setup_imgui (win_w, win_h, &imgui_data);
 
 #if defined (USE_GL_DELEGATE) || defined (USE_GPU_DELEGATEV2)
-    /* we need to recover framebuffer because GPU Delegate changes the context */
+    /* we need to recover framebuffer because GPU Delegate changes the FBO binding */
     glBindFramebuffer (GL_FRAMEBUFFER, 0);
     glViewport (0, 0, win_w, win_h);
 #endif
@@ -334,6 +335,9 @@ main(int argc, char *argv[])
 
     glClearColor (0.f, 0.f, 0.f, 1.0f);
 
+    /* --------------------------------------- *
+     *  Render Loop
+     * --------------------------------------- */
     for (count = 0; ; count ++)
     {
         blazeface_result_t face_ret = {0};
@@ -362,7 +366,9 @@ main(int argc, char *argv[])
         }
 #endif
 
-        /* invoke pose estimation using TensorflowLite */
+        /* --------------------------------------- *
+         *  face detection
+         * --------------------------------------- */
         feed_blazeface_image (&captex, win_w, win_h);
 
         ttime[2] = pmeter_get_time_ms ();
@@ -370,12 +376,18 @@ main(int argc, char *argv[])
         ttime[3] = pmeter_get_time_ms ();
         invoke_ms = ttime[3] - ttime[2];
 
+        /* --------------------------------------- *
+         *  render scene
+         * --------------------------------------- */
         glClear (GL_COLOR_BUFFER_BIT);
 
-        /* visualize the object detection results. */
+        /* visualize the face detection results. */
         draw_2d_texture_ex (&captex, draw_x, draw_y, draw_w, draw_h, 0);
         render_detect_region (draw_x, draw_y, draw_w, draw_h, &face_ret, &imgui_data);
 
+        /* --------------------------------------- *
+         *  post process
+         * --------------------------------------- */
         draw_pmeter (0, 40);
 
         sprintf (strbuf, "Interval:%5.1f [ms]\nTFLite  :%5.1f [ms]", interval, invoke_ms);
