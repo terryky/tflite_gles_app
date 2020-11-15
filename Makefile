@@ -3,12 +3,14 @@
 # > make TARGET_ENV=raspi
 #
 all:
+	$(MAKE) -C gl2age_gender
 	$(MAKE) -C gl2animegan2
 	$(MAKE) -C gl2blazeface
 	$(MAKE) -C gl2blazepose
 	$(MAKE) -C gl2blazepose_fullbody
 	$(MAKE) -C gl2classification
 	$(MAKE) -C gl2dbface
+	$(MAKE) -C gl2dense_depth
 	$(MAKE) -C gl2detection
 	$(MAKE) -C gl2face_segmentation
 	$(MAKE) -C gl2facemesh
@@ -24,12 +26,14 @@ all:
 	$(MAKE) -C gl2text_detection
 
 clean:
+	$(MAKE) -C gl2age_gender clean
 	$(MAKE) -C gl2animegan2 clean
 	$(MAKE) -C gl2blazeface clean
 	$(MAKE) -C gl2blazepose clean
 	$(MAKE) -C gl2blazepose_fullbody clean
 	$(MAKE) -C gl2classification clean
 	$(MAKE) -C gl2dbface clean
+	$(MAKE) -C gl2dense_depth clean
 	$(MAKE) -C gl2detection clean
 	$(MAKE) -C gl2face_segmentation clean
 	$(MAKE) -C gl2facemesh clean
