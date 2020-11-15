@@ -314,7 +314,7 @@ main(int argc, char *argv[])
 #endif
 #if defined (USE_INPUT_CAMERA_CAPTURE)
     /* initialize V4L2 capture function */
-    if (enable_camera && init_capture () == 0)
+    if (enable_camera && init_capture (0) == 0)
     {
         create_capture_texture (&captex);
         texw = captex.width;

@@ -7,7 +7,9 @@
 
 #include <stdint.h>
 
-int init_capture ();
+#define CAPTURE_SQUARED_CROP    1
+
+int init_capture (uint32_t flags);
 int get_capture_dimension (int *width, int *height);
 int get_capture_pixformat (uint32_t *pixformat);
 int get_capture_buffer (void ** buf);
