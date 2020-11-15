@@ -15,6 +15,11 @@
 #include "util_camera_capture.h"
 #endif
 
+#if defined (USE_INPUT_VIDEO_DECODE)
+#include "util_video_decode.h"
+#endif
+
+
 GLuint
 create_2d_texture (void *imgbuf, int width, int height)
 {
@@ -243,3 +248,54 @@ update_capture_texture (texture_2d_t *captex)
 }
 #endif
 
+
+#if defined (USE_INPUT_VIDEO_DECODE)
+int
+create_video_texture (texture_2d_t *vidtex, const char *fname)
+{
+    int      vid_w, vid_h;
+    uint32_t vid_fmt;
+
+    open_video_file (fname);
+
+    get_video_dimension (&vid_w, &vid_h);
+    get_video_pixformat (&vid_fmt);
+
+    create_2d_texture_ex (vidtex, NULL, vid_w, vid_h, vid_fmt);
+    start_video_decode ();
+
+    return 0;
+}
+
+void
+update_video_texture (texture_2d_t *vidtex)
+{
+    int   video_w, video_h;
+    uint32_t video_fmt;
+    void *video_buf;
+
+    get_video_dimension (&video_w, &video_h);
+    get_video_pixformat (&video_fmt);
+    get_video_buffer (&video_buf);
+
+    if (video_buf)
+    {
+        int texw = video_w;
+        int texh = video_h;
+        int texfmt = GL_RGBA;
+        switch (video_fmt)
+        {
+        case pixfmt_fourcc('Y', 'U', 'Y', 'V'):
+        case pixfmt_fourcc('U', 'Y', 'V', 'Y'):
+            texw = video_w / 2;
+            break;
+        default:
+            break;
+        }
+
+        glBindTexture (GL_TEXTURE_2D, vidtex->texid);
+        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, texw, texh, texfmt, GL_UNSIGNED_BYTE, video_buf);
+    }
+}
+
+#endif /* USE_INPUT_VIDEO_DECODE */

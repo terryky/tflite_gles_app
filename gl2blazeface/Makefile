@@ -36,6 +36,7 @@ LIBS     += -ldrm
 #
 ifeq ($(ENABLE_VDEC), true)
 CFLAGS   += -DUSE_INPUT_VIDEO_DECODE
+CFLAGS   += -DUSE_INPUT_VIDEO_DECODE2
 FFMPEG_LIBS=    libavdevice                        \
                 libavformat                        \
                 libavfilter                        \
@@ -46,7 +47,7 @@ FFMPEG_LIBS=    libavdevice                        \
 
 CFLAGS += $(shell pkg-config --cflags $(FFMPEG_LIBS))
 LIBS   += $(shell pkg-config --libs   $(FFMPEG_LIBS)) -lm
-SRCS   += video_decode.c
+SRCS   += $(MAKETOP)/common/util_video_decode.c
 endif
 
 # ---------------------

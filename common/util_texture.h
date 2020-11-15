@@ -30,4 +30,9 @@ int  create_capture_texture (texture_2d_t *captex);
 void update_capture_texture (texture_2d_t *captex);
 #endif
 
+#if defined (USE_INPUT_VIDEO_DECODE2)
+int  create_video_texture (texture_2d_t *vidtex, const char *fname);
+void update_video_texture (texture_2d_t *vidtex);
+#endif
+
 #endif /* TEXTURE_UTIL_H */

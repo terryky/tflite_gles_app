@@ -10,6 +10,14 @@
 #include <libswscale/swscale.h>
 #include "util_texture.h"
 
+/*
+ *	control play speed.
+ *		0.1: 10 times slower
+ *		1.0: play on normal speed.
+ *	    2.0: two times faster
+ */
+#define PLAY_SPEED      (1.0);
+
 static pthread_t        s_decode_thread;
 static AVFormatContext  *s_fmt_ctx;
 static AVCodecContext   *s_dec_ctx;
@@ -92,10 +100,15 @@ open_video_file (const char *fname)
     s_video_h = dec_ctx->height;
     s_video_fmt = s_dec_ctx->pix_fmt;
 
+#if 1
     if (s_video_w > s_video_h)
         s_crop_w = s_crop_h = s_video_h;
     else
         s_crop_w = s_crop_h = s_video_w;
+#else
+    s_crop_w = s_video_w;
+    s_crop_h = s_video_h;
+#endif
 
     fprintf (stderr, "-------------------------------------------\n");
     fprintf (stderr, " file  : %s\n", fname);
@@ -222,6 +235,7 @@ sleep_to_pts (AVPacket *packet)
         pts_us = packet->dts;
 
     pts_us *= (av_q2d (s_video_st->time_base) * 1000 * 1000);
+    pts_us /= PLAY_SPEED;
 
     int64_t delay_us = pts_us - get_duration_us ();
     if (delay_us > 0)
