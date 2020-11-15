@@ -328,6 +328,7 @@ main(int argc, char *argv[])
         captex.width  = texw;
         captex.height = texh;
         captex.format = pixfmt_fourcc ('R', 'G', 'B', 'A');
+        enable_camera = 0;
     }
     adjust_texture (win_w, win_h, texw, texh, &draw_x, &draw_y, &draw_w, &draw_h);
 
