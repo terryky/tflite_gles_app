@@ -26,7 +26,8 @@ LIBS     += -pthread
 
 # for V4L2 camera capture
 CFLAGS   += -DUSE_INPUT_CAMERA_CAPTURE
-SRCS     += camera_capture.c
+CFLAGS   += -DUSE_INPUT_CAMERA_CAPTURE2
+SRCS     += $(MAKETOP)/common/util_camera_capture.c
 SRCS     += $(MAKETOP)/common/util_v4l2.c
 SRCS     += $(MAKETOP)/common/util_drm.c
 LIBS     += -ldrm
@@ -36,6 +37,7 @@ LIBS     += -ldrm
 #
 ifeq ($(ENABLE_VDEC), true)
 CFLAGS   += -DUSE_INPUT_VIDEO_DECODE
+CFLAGS   += -DUSE_INPUT_VIDEO_DECODE2
 FFMPEG_LIBS=    libavdevice                        \
                 libavformat                        \
                 libavfilter                        \
@@ -46,7 +48,7 @@ FFMPEG_LIBS=    libavdevice                        \
 
 CFLAGS += $(shell pkg-config --cflags $(FFMPEG_LIBS))
 LIBS   += $(shell pkg-config --libs   $(FFMPEG_LIBS)) -lm
-SRCS   += video_decode.c
+SRCS   += $(MAKETOP)/common/util_video_decode.c
 endif
 
 
