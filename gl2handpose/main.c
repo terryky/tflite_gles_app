@@ -15,7 +15,8 @@
 #include "util_render2d.h"
 #include "util_matrix.h"
 #include "tflite_handpose.h"
-#include "camera_capture.h"
+#include "util_camera_capture.h"
+#include "util_video_decode.h"
 #include "render_handpose.h"
 #include "touch_event.h"
 #include "render_imgui.h"
@@ -25,52 +26,7 @@
 static imgui_data_t s_gui_prop = {0};
 
 
-#if defined (USE_INPUT_CAMERA_CAPTURE)
-static void
-update_capture_texture (texture_2d_t *captex)
-{
-    int      cap_w, cap_h;
-    uint32_t cap_fmt;
-    void     *cap_buf;
 
-    get_capture_dimension (&cap_w, &cap_h);
-    get_capture_pixformat (&cap_fmt);
-    get_capture_buffer (&cap_buf);
-    if (cap_buf)
-    {
-        int texw = cap_w;
-        int texh = cap_h;
-        int texfmt = GL_RGBA;
-        switch (cap_fmt)
-        {
-        case pixfmt_fourcc('Y', 'U', 'Y', 'V'):
-            texw = cap_w / 2;
-            break;
-        default:
-            break;
-        }
-
-        glBindTexture (GL_TEXTURE_2D, captex->texid);
-        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, texw, texh, texfmt, GL_UNSIGNED_BYTE, cap_buf);
-    }
-}
-
-static int
-init_capture_texture (texture_2d_t *captex)
-{
-    int      cap_w, cap_h;
-    uint32_t cap_fmt;
-
-    get_capture_dimension (&cap_w, &cap_h);
-    get_capture_pixformat (&cap_fmt);
-
-    create_2d_texture_ex (captex, NULL, cap_w, cap_h, cap_fmt);
-    start_capture ();
-
-    return 0;
-}
-
-#endif
 
 /* resize image to DNN network input size and convert to fp32. */
 void
@@ -728,10 +684,13 @@ main(int argc, char *argv[])
     int enable_camera = 1;
     UNUSED (argc);
     UNUSED (*argv);
+#if defined (USE_INPUT_VIDEO_DECODE)
+    int enable_video = 0;
+#endif
 
     {
         int c;
-        const char *optstring = "mqx";
+        const char *optstring = "mqv:x";
 
         while ((c = getopt (argc, argv, optstring)) != -1)
         {
@@ -743,6 +702,12 @@ main(int argc, char *argv[])
             case 'q':
                 use_quantized_tflite = 1;
                 break;
+#if defined (USE_INPUT_VIDEO_DECODE)
+            case 'v':
+                enable_video = 1;
+                input_name = optarg;
+                break;
+#endif
             case 'x':
                 enable_camera = 0;
                 break;
@@ -772,11 +737,22 @@ main(int argc, char *argv[])
     glViewport (0, 0, win_w, win_h);
 #endif
 
+#if defined (USE_INPUT_VIDEO_DECODE)
+    /* initialize FFmpeg video decode */
+    if (enable_video && init_video_decode () == 0)
+    {
+        create_video_texture (&captex, input_name);
+        texw = captex.width;
+        texh = captex.height;
+        enable_camera = 0;
+    }
+    else
+#endif
 #if defined (USE_INPUT_CAMERA_CAPTURE)
     /* initialize V4L2 capture function */
-    if (enable_camera && init_capture () == 0)
+    if (enable_camera && init_capture (CAPTURE_SQUARED_CROP) == 0)
     {
-        init_capture_texture (&captex);
+        create_capture_texture (&captex);
         texw = captex.width;
         texh = captex.height;
     }
@@ -789,12 +765,11 @@ main(int argc, char *argv[])
         captex.width  = texw;
         captex.height = texh;
         captex.format = pixfmt_fourcc ('R', 'G', 'B', 'A');
+        enable_camera = 0;
     }
     adjust_texture (win_w, win_h, texw, texh, &draw_x, &draw_y, &draw_w, &draw_h);
 
-
     glClearColor (0.f, 0.f, 0.f, 1.0f);
-
 
     /* --------------------------------------- *
      *  Render Loop
@@ -815,6 +790,13 @@ main(int argc, char *argv[])
         glClear (GL_COLOR_BUFFER_BIT);
         glViewport (0, 0, win_w, win_h);
 
+#if defined (USE_INPUT_VIDEO_DECODE)
+        /* initialize FFmpeg video decode */
+        if (enable_video)
+        {
+            update_video_texture (&captex);
+        }
+#endif
 #if defined (USE_INPUT_CAMERA_CAPTURE)
         if (enable_camera)
         {
