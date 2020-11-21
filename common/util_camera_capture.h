@@ -7,7 +7,8 @@
 
 #include <stdint.h>
 
-#define CAPTURE_SQUARED_CROP    1
+#define CAPTURE_SQUARED_CROP        (1 << 0)
+#define CAPTURE_PIXFORMAT_RGBA      (1 << 1)
 
 int init_capture (uint32_t flags);
 int get_capture_dimension (int *width, int *height);

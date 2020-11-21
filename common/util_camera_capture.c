@@ -11,9 +11,6 @@
 #include "util_texture.h"
 #include "util_camera_capture.h"
 
-//#define USE_YUYV_TO_RGB_CONVERSION
-
-
 static pthread_t    s_capture_thread;
 static void         *s_capture_buf = NULL;
 static capture_dev_t *s_cap_dev;
@@ -21,12 +18,12 @@ static int          s_capture_w, s_capture_h;
 static int          s_capcrop_w, s_capcrop_h;
 static int          s_capcropped = 0;
 static unsigned int s_capture_fmt;
+static int          s_force_convert_to_rgba = 0;
 
 #define _max(A, B)    ((A) > (B) ? (A) : (B))
 #define _min(A, B)    ((A) < (B) ? (A) : (B))
 
 
-#if defined(USE_YUYV_TO_RGB_CONVERSION)
 static int
 convert_to_rgba8888 (void *buf, int ofstx, int ofsty, int cap_w, int cap_h, unsigned int fmt)
 {
@@ -106,7 +103,6 @@ convert_to_rgba8888 (void *buf, int ofstx, int ofsty, int cap_w, int cap_h, unsi
     }
     return 0;
 }
-#else
 
 static int
 copy_yuyv_image_cropped (void *buf, int ofstx, int ofsty, int cap_w, int cap_h, unsigned int fmt)
@@ -162,7 +158,6 @@ copy_yuyv_image (void *buf, int cap_w, int cap_h, unsigned int fmt)
     }
     return 0;
 }
-#endif
 
 static void *
 capture_thread_main ()
@@ -176,14 +171,17 @@ capture_thread_main ()
 
         capture_frame_t *frame = v4l2_acquire_capture_frame (s_cap_dev);
 
-#if defined(USE_YUYV_TO_RGB_CONVERSION)
-        convert_to_rgba8888 (frame->vaddr, ofstx, ofsty, s_capcrop_w, s_capcrop_h, s_capture_fmt);
-#else
-        if (s_capcropped)
-            copy_yuyv_image_cropped (frame->vaddr, ofstx, ofsty, s_capcrop_w, s_capcrop_h, s_capture_fmt);
+        if (s_force_convert_to_rgba)
+        {
+            convert_to_rgba8888 (frame->vaddr, ofstx, ofsty, s_capcrop_w, s_capcrop_h, s_capture_fmt);
+        }
         else
-            copy_yuyv_image (frame->vaddr, s_capcrop_w, s_capcrop_h, s_capture_fmt);
-#endif
+        {
+            if (s_capcropped)
+                copy_yuyv_image_cropped (frame->vaddr, ofstx, ofsty, s_capcrop_w, s_capcrop_h, s_capture_fmt);
+            else
+                copy_yuyv_image (frame->vaddr, s_capcrop_w, s_capcrop_h, s_capture_fmt);
+        }
         v4l2_release_capture_frame (s_cap_dev, frame);
     }
     return 0;
@@ -229,6 +227,11 @@ init_capture (uint32_t flags)
         s_capcrop_h = cap_h;
     }
 
+    if (flags & CAPTURE_PIXFORMAT_RGBA)
+    {
+        s_force_convert_to_rgba = 1;
+    }
+    
     return 0;
 }
 
@@ -244,20 +247,23 @@ get_capture_dimension (int *width, int *height)
 int 
 get_capture_pixformat (uint32_t *pixformat)
 {
-#if defined(USE_YUYV_TO_RGB_CONVERSION)
-    *pixformat = pixfmt_fourcc('R', 'G', 'B', 'A');
-#else
-    if (s_capture_fmt == v4l2_fourcc ('Y', 'U', 'Y', 'V'))
-        *pixformat = pixfmt_fourcc('Y', 'U', 'Y', 'V');
-    else if (s_capture_fmt == v4l2_fourcc ('U', 'Y', 'V', 'Y'))
-        *pixformat = pixfmt_fourcc('U', 'Y', 'V', 'Y');
+    if (s_force_convert_to_rgba)
+    {
+        *pixformat = pixfmt_fourcc('R', 'G', 'B', 'A');
+    }
     else
     {
-        fprintf (stderr, "ERR: %s(%d): pixformat(%.4s) is not supported.\n",
-            __FILE__, __LINE__, (char *)&s_capture_fmt);
-        return -1;
+        if (s_capture_fmt == v4l2_fourcc ('Y', 'U', 'Y', 'V'))
+            *pixformat = pixfmt_fourcc('Y', 'U', 'Y', 'V');
+        else if (s_capture_fmt == v4l2_fourcc ('U', 'Y', 'V', 'Y'))
+            *pixformat = pixfmt_fourcc('U', 'Y', 'V', 'Y');
+        else
+        {
+            fprintf (stderr, "ERR: %s(%d): pixformat(%.4s) is not supported.\n",
+                __FILE__, __LINE__, (char *)&s_capture_fmt);
+            return -1;
+        }
     }
-#endif
     return 0;
 }
 
