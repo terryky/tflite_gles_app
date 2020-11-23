@@ -84,6 +84,10 @@ Target platform: Linux PC / NVIDIA Jetson / RaspberryPi.
 - Transform photos into anime style images.<br>
 [<img src="gl2animegan2/gl2animegan2.png" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2animegan2)
 
+### [U^2-Net portrait drawing](https://github.com/terryky/tflite_gles_app/tree/master/gl2face_portrait)
+- Human portrait drawing by [U^2-Net](https://github.com/NathanUA/U-2-Net).<br>
+[<img src="gl2face_portrait/gl2face_portrait.jpg" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2face_portrait)
+
 ### [Artistic Style Transfer](https://github.com/terryky/tflite_gles_app/tree/master/gl2style_transfer)
 - Create new artworks in artistic style.<br>
 [<img src="gl2style_transfer/gl2style_transfer.png" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2style_transfer)
@@ -513,5 +517,6 @@ You can select the platform by editing [Makefile.env](Makefile.env).
 - https://github.com/ialhashim/DenseDepth
 - https://github.com/MaybeShewill-CV/bisenetv2-tensorflow
 - https://github.com/margaretmz/Selfie2Anime-with-TFLite
+- https://github.com/NathanUA/U-2-Net
 - https://tfhub.dev/sayakpaul/lite-model/east-text-detector/int8/1
 - https://github.com/PINTO0309/PINTO_model_zoo
