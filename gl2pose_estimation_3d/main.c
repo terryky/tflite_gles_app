@@ -15,9 +15,9 @@
 #include "util_render2d.h"
 #include "util_matrix.h"
 #include "tflite_pose3d.h"
-#include "camera_capture.h"
+#include "util_camera_capture.h"
+#include "util_video_decode.h"
 #include "render_pose3d.h"
-#include "video_decode.h"
 #include "touch_event.h"
 #include "render_imgui.h"
 
@@ -37,101 +37,6 @@ static letterbox_tex_region_t s_srctex_region;
 static imgui_data_t s_gui_prop = {0};
 
 
-#if defined (USE_INPUT_CAMERA_CAPTURE)
-static void
-update_capture_texture (texture_2d_t *captex)
-{
-    int      cap_w, cap_h;
-    uint32_t cap_fmt;
-    void     *cap_buf;
-
-    get_capture_dimension (&cap_w, &cap_h);
-    get_capture_pixformat (&cap_fmt);
-    get_capture_buffer (&cap_buf);
-    if (cap_buf)
-    {
-        int texw = cap_w;
-        int texh = cap_h;
-        int texfmt = GL_RGBA;
-        switch (cap_fmt)
-        {
-        case pixfmt_fourcc('Y', 'U', 'Y', 'V'):
-            texw = cap_w / 2;
-            break;
-        default:
-            break;
-        }
-
-        glBindTexture (GL_TEXTURE_2D, captex->texid);
-        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, texw, texh, texfmt, GL_UNSIGNED_BYTE, cap_buf);
-    }
-}
-
-static int
-init_capture_texture (texture_2d_t *captex)
-{
-    int      cap_w, cap_h;
-    uint32_t cap_fmt;
-
-    get_capture_dimension (&cap_w, &cap_h);
-    get_capture_pixformat (&cap_fmt);
-
-    create_2d_texture_ex (captex, NULL, cap_w, cap_h, cap_fmt);
-    start_capture ();
-
-    return 0;
-}
-
-#endif
-
-#if defined (USE_INPUT_VIDEO_DECODE)
-static void
-update_video_texture (texture_2d_t *captex)
-{
-    int   video_w, video_h;
-    uint32_t video_fmt;
-    void *video_buf;
-
-    get_video_dimension (&video_w, &video_h);
-    get_video_pixformat (&video_fmt);
-    get_video_buffer (&video_buf);
-
-    if (video_buf)
-    {
-        int texw = video_w;
-        int texh = video_h;
-        int texfmt = GL_RGBA;
-        switch (video_fmt)
-        {
-        case pixfmt_fourcc('Y', 'U', 'Y', 'V'):
-            texw = video_w / 2;
-            break;
-        default:
-            break;
-        }
-
-        glBindTexture (GL_TEXTURE_2D, captex->texid);
-        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, texw, texh, texfmt, GL_UNSIGNED_BYTE, video_buf);
-    }
-}
-
-static int
-init_video_texture (texture_2d_t *captex, const char *fname)
-{
-    int      vid_w, vid_h;
-    uint32_t vid_fmt;
-
-    open_video_file (fname);
-
-    get_video_dimension (&vid_w, &vid_h);
-    get_video_pixformat (&vid_fmt);
-
-    create_2d_texture_ex (captex, NULL, vid_w, vid_h, vid_fmt);
-    start_video_decode ();
-
-    return 0;
-}
-#endif /* USE_INPUT_VIDEO_DECODE */
 
 
 /* resize image to DNN network input size and convert to fp32. */
@@ -370,6 +275,7 @@ render_posenet_heatmap (int ofstx, int ofsty, int draw_w, int draw_h, posenet_re
     }
 }
 
+
 static void
 compute_3d_skelton_pos (posenet_result_t *dst_pose, posenet_result_t *src_pose)
 {
@@ -401,7 +307,6 @@ compute_3d_skelton_pos (posenet_result_t *dst_pose, posenet_result_t *src_pose)
         dst_pose->pose[0].key3d[i].score = s;
     }
 }
-
 
 static void
 render_3d_bone (float *mtxGlobal, pose_t *pose, int idx0, int idx1,
@@ -736,7 +641,7 @@ int
 main(int argc, char *argv[])
 {
     char input_name_default[] = "pakutaso_person.jpg";
-    char *input_name = NULL;
+    char *input_name = input_name_default;
     int count;
     int win_w = 900;
     int win_h = 900;
@@ -781,9 +686,6 @@ main(int argc, char *argv[])
         }
     }
 
-    if (input_name == NULL)
-        input_name = input_name_default;
-
     egl_init_with_platform_window_surface (2, 8, 0, 0, win_w * 2, win_h);
 
     init_2d_renderer (win_w, win_h);
@@ -805,7 +707,7 @@ main(int argc, char *argv[])
     /* initialize FFmpeg video decode */
     if (enable_video && init_video_decode () == 0)
     {
-        init_video_texture (&captex, input_name);
+        create_video_texture (&captex, input_name);
         texw = captex.width;
         texh = captex.height;
         enable_camera = 0;
@@ -814,9 +716,9 @@ main(int argc, char *argv[])
 #endif
 #if defined (USE_INPUT_CAMERA_CAPTURE)
     /* initialize V4L2 capture function */
-    if (enable_camera && init_capture () == 0)
+    if (enable_camera && init_capture (CAPTURE_SQUARED_CROP) == 0)
     {
-        init_capture_texture (&captex);
+        create_capture_texture (&captex);
         texw = captex.width;
         texh = captex.height;
     }
@@ -829,12 +731,11 @@ main(int argc, char *argv[])
         captex.width  = texw;
         captex.height = texh;
         captex.format = pixfmt_fourcc ('R', 'G', 'B', 'A');
+        enable_camera = 0;
     }
     adjust_texture (win_w, win_h, texw, texh, &draw_x, &draw_y, &draw_w, &draw_h);
 
-
     glClearColor (0.f, 0.f, 0.f, 1.0f);
-
 
     /* --------------------------------------- *
      *  Render Loop
