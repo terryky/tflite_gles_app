@@ -14,107 +14,13 @@
 #include "util_texture.h"
 #include "util_render2d.h"
 #include "tflite_style_transfer.h"
-#include "camera_capture.h"
-#include "video_decode.h"
+#include "util_camera_capture.h"
+#include "util_video_decode.h"
 
 #define UNUSED(x) (void)(x)
 
 
-#if defined (USE_INPUT_CAMERA_CAPTURE)
-static void
-update_capture_texture (texture_2d_t *captex)
-{
-    int      cap_w, cap_h;
-    uint32_t cap_fmt;
-    void     *cap_buf;
 
-    get_capture_dimension (&cap_w, &cap_h);
-    get_capture_pixformat (&cap_fmt);
-    get_capture_buffer (&cap_buf);
-    if (cap_buf)
-    {
-        int texw = cap_w;
-        int texh = cap_h;
-        int texfmt = GL_RGBA;
-        switch (cap_fmt)
-        {
-        case pixfmt_fourcc('Y', 'U', 'Y', 'V'):
-            texw = cap_w / 2;
-            break;
-        default:
-            break;
-        }
-
-        glBindTexture (GL_TEXTURE_2D, captex->texid);
-        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, texw, texh, texfmt, GL_UNSIGNED_BYTE, cap_buf);
-    }
-}
-
-static int
-init_capture_texture (texture_2d_t *captex)
-{
-    int      cap_w, cap_h;
-    uint32_t cap_fmt;
-
-    get_capture_dimension (&cap_w, &cap_h);
-    get_capture_pixformat (&cap_fmt);
-
-    create_2d_texture_ex (captex, NULL, cap_w, cap_h, cap_fmt);
-    start_capture ();
-
-    return 0;
-}
-
-#endif
-
-#if defined (USE_INPUT_VIDEO_DECODE)
-static void
-update_video_texture (texture_2d_t *captex)
-{
-    int   video_w, video_h;
-    uint32_t video_fmt;
-    void *video_buf;
-
-    get_video_dimension (&video_w, &video_h);
-    get_video_pixformat (&video_fmt);
-    get_video_buffer (&video_buf);
-
-    if (video_buf)
-    {
-        int texw = video_w;
-        int texh = video_h;
-        int texfmt = GL_RGBA;
-        switch (video_fmt)
-        {
-        case pixfmt_fourcc('Y', 'U', 'Y', 'V'):
-            texw = video_w / 2;
-            break;
-        default:
-            break;
-        }
-
-        glBindTexture (GL_TEXTURE_2D, captex->texid);
-        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, texw, texh, texfmt, GL_UNSIGNED_BYTE, video_buf);
-    }
-}
-
-static int
-init_video_texture (texture_2d_t *captex, const char *fname)
-{
-    int      vid_w, vid_h;
-    uint32_t vid_fmt;
-
-    open_video_file (fname);
-
-    get_video_dimension (&vid_w, &vid_h);
-    get_video_pixformat (&vid_fmt);
-
-    create_2d_texture_ex (captex, NULL, vid_w, vid_h, vid_fmt);
-    start_video_decode ();
-
-    return 0;
-}
-#endif /* USE_INPUT_VIDEO_DECODE */
 
 
 /* resize image to DNN network input size and convert to fp32. */
@@ -364,7 +270,7 @@ main(int argc, char *argv[])
     init_tflite_style_transfer ();
 
 #if defined (USE_GL_DELEGATE) || defined (USE_GPU_DELEGATEV2)
-    /* we need to recover framebuffer because GPU Delegate changes the context */
+    /* we need to recover framebuffer because GPU Delegate changes the FBO binding */
     glBindFramebuffer (GL_FRAMEBUFFER, 0);
     glViewport (0, 0, win_w, win_h);
 #endif
@@ -373,7 +279,7 @@ main(int argc, char *argv[])
     /* initialize FFmpeg video decode */
     if (enable_video && init_video_decode () == 0)
     {
-        init_video_texture (&captex, input_name);
+        create_video_texture (&captex, input_name);
         texw = captex.width;
         texh = captex.height;
         enable_camera = 0;
@@ -382,9 +288,9 @@ main(int argc, char *argv[])
 #endif
 #if defined (USE_INPUT_CAMERA_CAPTURE)
     /* initialize V4L2 capture function */
-    if (enable_camera && init_capture () == 0)
+    if (enable_camera && init_capture (0) == 0)
     {
-        init_capture_texture (&captex);
+        create_capture_texture (&captex);
         texw = captex.width;
         texh = captex.height;
     }
@@ -396,6 +302,7 @@ main(int argc, char *argv[])
         captex.width  = texw;
         captex.height = texh;
         captex.format = pixfmt_fourcc ('R', 'G', 'B', 'A');
+        enable_camera = 0;
     }
     adjust_texture (win_w, win_h, texw, texh, &draw_x, &draw_y, &draw_w, &draw_h);
 
@@ -427,7 +334,7 @@ main(int argc, char *argv[])
     }
 
     /* --------------------------------------- *
-     *  Style transfer
+     *  Render Loop
      * --------------------------------------- */
     for (count = 0; ; count ++)
     {
@@ -457,6 +364,9 @@ main(int argc, char *argv[])
         }
 #endif
 
+        /* --------------------------------------- *
+         *  Style transfer
+         * --------------------------------------- */
 #if 0
         /* 
          *  update style parameter blend ratio.
@@ -470,17 +380,19 @@ main(int argc, char *argv[])
         style_ratio = 1.0f;
 #endif
 
+
         /* feed style parameter and original image */
         feed_blend_style (&style_predict[0], &style_predict[1], style_ratio);
         feed_style_transfer_image (0, &captex, win_w, win_h);
 
-        /* invoke pose estimation using TensorflowLite */
         ttime[2] = pmeter_get_time_ms ();
         invoke_style_transfer (&style_transfered);
         ttime[3] = pmeter_get_time_ms ();
         invoke_ms = ttime[3] - ttime[2];
 
-        /* visualize the style transform results. */
+        /* --------------------------------------- *
+         *  render scene
+         * --------------------------------------- */
         glClear (GL_COLOR_BUFFER_BIT);
         int transfered_texid = update_style_transfered_texture (&style_transfered);
 #if 0
@@ -499,6 +411,9 @@ main(int argc, char *argv[])
             draw_2d_rect (win_w - 200, 0, 200, 200, col_black, 2.0f);
         }
 
+        /* --------------------------------------- *
+         *  post process
+         * --------------------------------------- */
         draw_pmeter (0, 40);
 
         sprintf (strbuf, "Interval:%5.1f [ms]\nTFLite  :%5.1f [ms]\nstyle_ratio=%.1f", 
