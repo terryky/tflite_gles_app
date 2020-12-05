@@ -13,7 +13,6 @@
 #include "util_pmeter.h"
 #include "util_texture.h"
 #include "util_render2d.h"
-#include "util_matrix.h"
 #include "tflite_age_gender.h"
 #include "util_camera_capture.h"
 #include "util_video_decode.h"
@@ -208,14 +207,6 @@ render_cropped_face_image (texture_2d_t *srctex, int ofstx, int ofsty, int texw,
     draw_2d_texture_ex_texcoord (srctex, ofstx, ofsty, texw, texh, texcoord);
 }
 
-float
-fclampf (float val)
-{
-    val = fmaxf (0.0f, val);
-    val = fminf (1.0f, val);
-    return val;
-}
-
 
 
 /* Adjust the texture size to fit the window size
@@ -273,7 +264,6 @@ main(int argc, char *argv[])
     int count;
     int win_w = 900;
     int win_h = 900;
-    int texid;
     int texw, texh, draw_x, draw_y, draw_w, draw_h;
     texture_2d_t captex = {0};
     double ttime[10] = {0}, interval, invoke_ms0 = 0, invoke_ms1 = 0;
@@ -354,6 +344,7 @@ main(int argc, char *argv[])
     else
 #endif
     {
+        int texid;
         load_jpg_texture (input_name, &texid, &texw, &texh);
         captex.texid  = texid;
         captex.width  = texw;
@@ -382,7 +373,6 @@ main(int argc, char *argv[])
         ttime[0] = ttime[1];
 
         glClear (GL_COLOR_BUFFER_BIT);
-        glViewport (0, 0, win_w, win_h);
 
 #if defined (USE_INPUT_VIDEO_DECODE)
         /* initialize FFmpeg video decode */
@@ -423,7 +413,7 @@ main(int argc, char *argv[])
         }
 
         /* --------------------------------------- *
-         *  render scene (left half)
+         *  render scene
          * --------------------------------------- */
         glClear (GL_COLOR_BUFFER_BIT);
         draw_2d_texture_ex (&captex, draw_x, draw_y, draw_w, draw_h, 0);
@@ -446,7 +436,6 @@ main(int argc, char *argv[])
         /* --------------------------------------- *
          *  post process
          * --------------------------------------- */
-        glViewport (0, 0, win_w, win_h);
         draw_pmeter (0, 40);
 
         sprintf (strbuf, "Interval:%5.1f [ms]\nTFLite0 :%5.1f [ms]\nTFLite1 :%5.1f [ms]",
