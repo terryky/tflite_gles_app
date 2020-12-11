@@ -4,6 +4,7 @@
  * ------------------------------------------------ */
 #include "util_tflite.h"
 #include "util_debug.h"
+#include <thread>
 
 using namespace tflite;
 
@@ -206,7 +207,13 @@ modify_graph_with_delegate (tflite_interpreter_t *p, tflite_createopt_t *opt)
 #endif
 
 #if defined (USE_XNNPACK_DELEGATE)
-    int num_threads = 4;
+    int num_threads = std::thread::hardware_concurrency();
+    char *env_tflite_num_threads = getenv ("FORCE_TFLITE_NUM_THREADS");
+    if (env_tflite_num_threads)
+    {
+        num_threads = atoi (env_tflite_num_threads);
+        fprintf (stderr, "@@@@@@ FORCE_TFLITE_NUM_THREADS(XNNPACK)=%d\n", num_threads);
+    }
 
     // IMPORTANT: initialize options with TfLiteXNNPackDelegateOptionsDefault() for
     // API-compatibility with future extensions of the TfLiteXNNPackDelegateOptions
@@ -251,13 +258,21 @@ tflite_create_interpreter_from_file (tflite_interpreter_t *p, const char *model_
         return -1;
     }
 
+    int num_threads = std::thread::hardware_concurrency();
+    char *env_tflite_num_threads = getenv ("FORCE_TFLITE_NUM_THREADS");
+    if (env_tflite_num_threads)
+    {
+        num_threads = atoi (env_tflite_num_threads);
+        fprintf (stderr, "@@@@@@ FORCE_TFLITE_NUM_THREADS=%d\n", num_threads);
+    }
+    p->interpreter->SetNumThreads(num_threads);
+
     if (modify_graph_with_delegate (p, NULL) < 0)
     {
         DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
         //return -1;
     }
 
-    p->interpreter->SetNumThreads(4);
     if (p->interpreter->AllocateTensors() != kTfLiteOk)
     {
         DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
@@ -288,6 +303,15 @@ tflite_create_interpreter_ex_from_file (tflite_interpreter_t *p, const char *mod
         return -1;
     }
 
+    int num_threads = std::thread::hardware_concurrency();
+    char *env_tflite_num_threads = getenv ("FORCE_TFLITE_NUM_THREADS");
+    if (env_tflite_num_threads)
+    {
+        num_threads = atoi (env_tflite_num_threads);
+        fprintf (stderr, "@@@@@@ FORCE_TFLITE_NUM_THREADS=%d\n", num_threads);
+    }
+    p->interpreter->SetNumThreads(num_threads);
+
 #if 0
     std::vector<int> sizes = {1, 1280, 1280, 3};
     int input_id = p->interpreter->inputs()[0];
@@ -300,7 +324,6 @@ tflite_create_interpreter_ex_from_file (tflite_interpreter_t *p, const char *mod
         return -1;
     }
 
-    p->interpreter->SetNumThreads(4);
     if (p->interpreter->AllocateTensors() != kTfLiteOk)
     {
         DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
