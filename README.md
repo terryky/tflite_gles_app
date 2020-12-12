@@ -123,12 +123,12 @@ $ sudo ./bazel-3.1.0-installer-linux-x86_64.sh
 ```
 $ cd ~/work 
 $ git clone https://github.com/terryky/tflite_gles_app.git
-$ ./tflite_gles_app/tools/scripts/tf2.3/build_libtflite_r2.3.sh
+$ ./tflite_gles_app/tools/scripts/tf2.4/build_libtflite_r2.4.sh
 
 (Tensorflow configure will start after a while. Please enter according to your environment)
 
 $
-$ ln -s tensorflow_r2.3 ./tensorflow
+$ ln -s tensorflow_r2.4 ./tensorflow
 $
 $ cp ./tensorflow/bazel-bin/tensorflow/lite/libtensorflowlite.so ~/lib
 $ cp ./tensorflow/bazel-bin/tensorflow/lite/delegates/gpu/libtensorflowlite_gpu_delegate.so ~/lib
@@ -163,7 +163,10 @@ $ ./gl2handpose
 (HostPC)$ mkdir ~/work
 (HostPC)$ cd ~/work 
 (HostPC)$ git clone https://github.com/terryky/tflite_gles_app.git
-(HostPC)$ ./tflite_gles_app/tools/scripts/tf2.3/build_libtflite_r2.3_aarch64.sh
+(HostPC)$ ./tflite_gles_app/tools/scripts/tf2.4/build_libtflite_r2.4_aarch64.sh
+
+# If you want to build XNNPACK-enabled TensorFlow Lite, use the following script.
+(HostPC)$ ./tflite_gles_app/tools/scripts/tf2.4/build_libtflite_r2.4_with_xnnpack_aarch64.sh
 
 (Tensorflow configure will start after a while. Please enter according to your environment)
 ```
@@ -171,17 +174,16 @@ $ ./gl2handpose
 ##### 2.2.2. copy Tensorflow Lite libraries to target Jetson / Raspi.
 
 ```
-(HostPC)scp ~/work/tensorflow_r2.3/bazel-bin/tensorflow/lite/libtensorflowlite.so jetson@192.168.11.11:/home/jetson/lib
-(HostPC)scp ~/work/tensorflow_r2.3/bazel-bin/tensorflow/lite/delegates/gpu/libtensorflowlite_gpu_delegate.so jetson@192.168.11.11:/home/jetson/lib
+(HostPC)scp ~/work/tensorflow_r2.4/bazel-bin/tensorflow/lite/libtensorflowlite.so jetson@192.168.11.11:/home/jetson/lib
+(HostPC)scp ~/work/tensorflow_r2.4/bazel-bin/tensorflow/lite/delegates/gpu/libtensorflowlite_gpu_delegate.so jetson@192.168.11.11:/home/jetson/lib
 ```
 
 ##### 2.2.3. clone Tensorflow repository on **target Jetson / Raspi**.
 
 ```
 (Jetson/Raspi)$ cd ~/work
-(Jetson/Raspi)$ git clone https://github.com/tensorflow/tensorflow.git
+(Jetson/Raspi)$ git clone -b r2.4 https://github.com/tensorflow/tensorflow.git
 (Jetson/Raspi)$ cd tensorflow
-(Jetson/Raspi)$ git checkout r2.3
 (Jetson/Raspi)$ ./tensorflow/lite/tools/make/download_dependencies.sh
 ```
 
@@ -201,6 +203,9 @@ $ ./gl2handpose
 
 # on Raspberry pi with GPUDelegate (low performance)
 (Raspi )$ make -j4 TARGET_ENV=raspi4 TFLITE_DELEGATE=GPU_DELEGATEV2
+
+# on Raspberry pi with XNNPACK
+(Raspi )$ make -j4 TARGET_ENV=raspi4 TFLITE_DELEGATE=XNNPACK
 ```
 
 ##### 2.2.5. run an application.
@@ -260,9 +265,8 @@ To enable/disable VSYNC, run app with the following command.
 
 ```
 (Raspi)$ cd ~/work
-(Raspi)$ git clone https://github.com/tensorflow/tensorflow.git
+(Raspi)$ git clone -b r2.3 https://github.com/tensorflow/tensorflow.git
 (Raspi)$ cd tensorflow
-(Raspi)$ git checkout r2.3
 (Raspi)$ ./tensorflow/lite/tools/make/download_dependencies.sh
 ```
 
