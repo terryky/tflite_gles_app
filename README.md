@@ -191,6 +191,7 @@ $ ./gl2handpose
 ##### 2.2.4. build an application.
 
 ```
+(Jetson/Raspi)$ sudo apt install libgles2-mesa-dev libdrm-dev
 (Jetson/Raspi)$ cd ~/work 
 (Jetson/Raspi)$ git clone https://github.com/terryky/tflite_gles_app.git
 (Jetson/Raspi)$ cd ~/work/tflite_gles_app/gl2handpose
