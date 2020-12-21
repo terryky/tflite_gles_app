@@ -14,107 +14,12 @@
 #include "util_texture.h"
 #include "util_render2d.h"
 #include "trt_posenet.h"
-#include "camera_capture.h"
-#include "video_decode.h"
+#include "util_camera_capture.h"
+#include "util_video_decode.h"
 
 #define UNUSED(x) (void)(x)
 
 
-#if defined (USE_INPUT_CAMERA_CAPTURE)
-static void
-update_capture_texture (texture_2d_t *captex)
-{
-    int      cap_w, cap_h;
-    uint32_t cap_fmt;
-    void     *cap_buf;
-
-    get_capture_dimension (&cap_w, &cap_h);
-    get_capture_pixformat (&cap_fmt);
-    get_capture_buffer (&cap_buf);
-    if (cap_buf)
-    {
-        int texw = cap_w;
-        int texh = cap_h;
-        int texfmt = GL_RGBA;
-        switch (cap_fmt)
-        {
-        case pixfmt_fourcc('Y', 'U', 'Y', 'V'):
-            texw = cap_w / 2;
-            break;
-        default:
-            break;
-        }
-
-        glBindTexture (GL_TEXTURE_2D, captex->texid);
-        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, texw, texh, texfmt, GL_UNSIGNED_BYTE, cap_buf);
-    }
-}
-
-static int
-init_capture_texture (texture_2d_t *captex)
-{
-    int      cap_w, cap_h;
-    uint32_t cap_fmt;
-
-    get_capture_dimension (&cap_w, &cap_h);
-    get_capture_pixformat (&cap_fmt);
-
-    create_2d_texture_ex (captex, NULL, cap_w, cap_h, cap_fmt);
-    start_capture ();
-
-    return 0;
-}
-
-#endif
-
-#if defined (USE_INPUT_VIDEO_DECODE)
-static void
-update_video_texture (texture_2d_t *captex)
-{
-    int   video_w, video_h;
-    uint32_t video_fmt;
-    void *video_buf;
-
-    get_video_dimension (&video_w, &video_h);
-    get_video_pixformat (&video_fmt);
-    get_video_buffer (&video_buf);
-
-    if (video_buf)
-    {
-        int texw = video_w;
-        int texh = video_h;
-        int texfmt = GL_RGBA;
-        switch (video_fmt)
-        {
-        case pixfmt_fourcc('Y', 'U', 'Y', 'V'):
-            texw = video_w / 2;
-            break;
-        default:
-            break;
-        }
-
-        glBindTexture (GL_TEXTURE_2D, captex->texid);
-        glTexSubImage2D (GL_TEXTURE_2D, 0, 0, 0, texw, texh, texfmt, GL_UNSIGNED_BYTE, video_buf);
-    }
-}
-
-static int
-init_video_texture (texture_2d_t *captex, const char *fname)
-{
-    int      vid_w, vid_h;
-    uint32_t vid_fmt;
-
-    open_video_file (fname);
-
-    get_video_dimension (&vid_w, &vid_h);
-    get_video_pixformat (&vid_fmt);
-
-    create_2d_texture_ex (captex, NULL, vid_w, vid_h, vid_fmt);
-    start_video_decode ();
-
-    return 0;
-}
-#endif /* USE_INPUT_VIDEO_DECODE */
 
 
 /* resize image to DNN network input size and convert to fp32. */
@@ -358,11 +263,10 @@ int
 main(int argc, char *argv[])
 {
     char input_name_default[] = "pakutaso_person.jpg";
-    char *input_name = NULL;
+    char *input_name = input_name_default;
     int count;
     int win_w = 600;
     int win_h = 600;
-    int texid;
     int texw, texh, draw_x, draw_y, draw_w, draw_h;
     texture_2d_t captex = {0};
     double ttime[10] = {0}, interval, invoke_ms;
@@ -400,9 +304,6 @@ main(int argc, char *argv[])
         }
     }
 
-    if (input_name == NULL)
-        input_name = input_name_default;
-
     egl_init_with_platform_window_surface (2, 0, 0, 0, win_w, win_h);
 
     init_2d_renderer (win_w, win_h);
@@ -412,7 +313,7 @@ main(int argc, char *argv[])
     init_trt_posenet ();
 
 #if defined (USE_GL_DELEGATE) || defined (USE_GPU_DELEGATEV2)
-    /* we need to recover framebuffer because GPU Delegate changes the context */
+    /* we need to recover framebuffer because GPU Delegate changes the FBO binding */
     glBindFramebuffer (GL_FRAMEBUFFER, 0);
     glViewport (0, 0, win_w, win_h);
 #endif
@@ -421,7 +322,7 @@ main(int argc, char *argv[])
     /* initialize FFmpeg video decode */
     if (enable_video && init_video_decode () == 0)
     {
-        init_video_texture (&captex, input_name);
+        create_video_texture (&captex, input_name);
         texw = captex.width;
         texh = captex.height;
         enable_camera = 0;
@@ -430,25 +331,30 @@ main(int argc, char *argv[])
 #endif
 #if defined (USE_INPUT_CAMERA_CAPTURE)
     /* initialize V4L2 capture function */
-    if (enable_camera && init_capture () == 0)
+    if (enable_camera && init_capture (0) == 0)
     {
-        init_capture_texture (&captex);
+        create_capture_texture (&captex);
         texw = captex.width;
         texh = captex.height;
     }
     else
 #endif
     {
+        int texid;
         load_jpg_texture (input_name, &texid, &texw, &texh);
         captex.texid  = texid;
         captex.width  = texw;
         captex.height = texh;
         captex.format = pixfmt_fourcc ('R', 'G', 'B', 'A');
+        enable_camera = 0;
     }
     adjust_texture (win_w, win_h, texw, texh, &draw_x, &draw_y, &draw_w, &draw_h);
 
     glClearColor (0.f, 0.f, 0.f, 1.0f);
 
+    /* --------------------------------------- *
+     *  Render Loop
+     * --------------------------------------- */
     for (count = 0; ; count ++)
     {
         posenet_result_t pose_ret = {0};
@@ -477,7 +383,9 @@ main(int argc, char *argv[])
         }
 #endif
 
-        /* invoke pose estimation using TensorflowLite */
+        /* --------------------------------------- *
+         *  pose estimation
+         * --------------------------------------- */
         feed_posenet_image (&captex, win_w, win_h);
 
         ttime[2] = pmeter_get_time_ms ();
@@ -485,6 +393,9 @@ main(int argc, char *argv[])
         ttime[3] = pmeter_get_time_ms ();
         invoke_ms = ttime[3] - ttime[2];
 
+        /* --------------------------------------- *
+         *  render scene
+         * --------------------------------------- */
         glClear (GL_COLOR_BUFFER_BIT);
 
         /* visualize the object detection results. */
@@ -495,6 +406,9 @@ main(int argc, char *argv[])
         render_posenet_heatmap (draw_x, draw_y, draw_w, draw_h, &pose_ret);
 #endif
 
+        /* --------------------------------------- *
+         *  post process
+         * --------------------------------------- */
         draw_pmeter (0, 40);
 
         sprintf (strbuf, "Interval:%5.1f [ms]\nTFLite  :%5.1f [ms]", interval, invoke_ms);
