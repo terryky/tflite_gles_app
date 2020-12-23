@@ -377,6 +377,7 @@ draw_2d_texture_in (texparam_t *tparam)
     glBindBuffer (GL_ELEMENT_ARRAY_BUFFER, 0);
 
     glUseProgram (sobj->program);
+    glActiveTexture (GL_TEXTURE0);
     glUniform1i(sobj->loc_tex, 0);
 
     switch (ttype)
