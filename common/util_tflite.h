@@ -8,6 +8,7 @@
 #include "tensorflow/lite/kernels/register.h"
 #include "tensorflow/lite/model.h"
 #include "tensorflow/lite/optional_debug_tools.h"
+
 #if defined (USE_GL_DELEGATE)
 #include "tensorflow/lite/delegates/gpu/gl_delegate.h"
 #endif
@@ -27,9 +28,6 @@
 #include "tensorflow/lite/delegates/xnnpack/xnnpack_delegate.h"
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 typedef struct tflite_interpreter_t
 {
@@ -56,6 +54,9 @@ typedef struct tflite_tensor_t
 } tflite_tensor_t;
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 int tflite_create_interpreter (tflite_interpreter_t *p, const char *model_buf, size_t model_size);
 int tflite_get_tensor_by_name (tflite_interpreter_t *p, int io, const char *name, tflite_tensor_t *ptensor);

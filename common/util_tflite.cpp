@@ -10,25 +10,28 @@ using namespace tflite;
 
 
 
-static void
-tflite_print_tensor_dim (TfLiteTensor *tensor)
+static std::string
+tflite_get_tensor_dim_str (TfLiteTensor *tensor)
 {
     TfLiteIntArray *dim = tensor->dims;
+    std::string str_dim;
 
     if (dim == NULL)
     {
-        DBG_LOG ("[]");
-        return;
+        str_dim = "[]";
+        return str_dim;
     }
 
-    DBG_LOG ("[");
+    str_dim = "[";
     for (int i = 0; i < dim->size; i ++)
     {
         if (i > 0)
-            DBG_LOG ("x");
-        DBG_LOG ("%d", dim->data[i]);
+            str_dim += "x";
+        str_dim += std::to_string (dim->data[i]);
     }
-    DBG_LOG ("]");
+    str_dim += "]";
+
+    return str_dim;
 }
 
 static const char *
@@ -63,15 +66,16 @@ tflite_print_tensor (TfLiteTensor *tensor, int idx)
         return;
     }
 
-    DBG_LOG ("Tensor[%3d] %8zu, %2d(%s), (%3d, %8.6f) %-32s ", idx,
+    std::string str_dim = tflite_get_tensor_dim_str (tensor);
+    DBG_LOG ("Tensor[%3d] %8zu, %2d(%s), (%3d, %8.6f) %-32s %s", idx,
         tensor->bytes,
         tensor->type,
         tflite_get_type_str (tensor->type),
         tensor->params.zero_point,
         tensor->params.scale,
-        tensor->name);
-    
-    tflite_print_tensor_dim (tensor);
+        tensor->name,
+        str_dim.c_str());
+
     DBG_LOG ("\n");
 }
 
@@ -264,6 +268,7 @@ tflite_create_interpreter_from_file (tflite_interpreter_t *p, const char *model_
         num_threads = atoi (env_tflite_num_threads);
         DBG_LOGI ("@@@@@@ FORCE_TFLITE_NUM_THREADS=%d\n", num_threads);
     }
+    DBG_LOG ("@@@@@@ TFLITE_NUM_THREADS=%d\n", num_threads);
     p->interpreter->SetNumThreads(num_threads);
 
     if (modify_graph_with_delegate (p, NULL) < 0)
@@ -311,6 +316,7 @@ tflite_create_interpreter_ex_from_file (tflite_interpreter_t *p, const char *mod
         num_threads = atoi (env_tflite_num_threads);
         DBG_LOGI ("@@@@@@ FORCE_TFLITE_NUM_THREADS=%d\n", num_threads);
     }
+    DBG_LOG ("@@@@@@ TFLITE_NUM_THREADS=%d\n", num_threads);
     p->interpreter->SetNumThreads(num_threads);
 
 #if 0
@@ -322,7 +328,7 @@ tflite_create_interpreter_ex_from_file (tflite_interpreter_t *p, const char *mod
     if (modify_graph_with_delegate (p, opt) < 0)
     {
         DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
-        return -1;
+        //return -1;
     }
 
     if (p->interpreter->AllocateTensors() != kTfLiteOk)
@@ -334,6 +340,109 @@ tflite_create_interpreter_ex_from_file (tflite_interpreter_t *p, const char *mod
 #if 1 /* for debug */
     DBG_LOG ("\n");
     DBG_LOG ("##### LOAD TFLITE FILE: \"%s\"\n", model_path);
+    tflite_print_tensor_info (p->interpreter);
+#endif
+
+    return 0;
+}
+
+
+int
+tflite_create_interpreter (tflite_interpreter_t *p, const char *model_buf, size_t model_size)
+{
+    p->model = FlatBufferModel::BuildFromBuffer(model_buf, model_size);
+    if (!p->model)
+    {
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+
+    InterpreterBuilder(*(p->model), p->resolver)(&(p->interpreter));
+    if (!p->interpreter)
+    {
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+
+    int num_threads = std::thread::hardware_concurrency();
+    char *env_tflite_num_threads = getenv ("FORCE_TFLITE_NUM_THREADS");
+    if (env_tflite_num_threads)
+    {
+        num_threads = atoi (env_tflite_num_threads);
+        DBG_LOGI ("@@@@@@ FORCE_TFLITE_NUM_THREADS=%d\n", num_threads);
+    }
+    DBG_LOG ("@@@@@@ TFLITE_NUM_THREADS=%d\n", num_threads);
+    p->interpreter->SetNumThreads(num_threads);
+
+    if (modify_graph_with_delegate (p, NULL) < 0)
+    {
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+        //return -1;
+    }
+
+    if (p->interpreter->AllocateTensors() != kTfLiteOk)
+    {
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+
+#if 1 /* for debug */
+    DBG_LOG ("\n");
+    DBG_LOG ("##### LOAD TFLITE: %p: %zu[byte]\n", model_buf, model_size);
+    tflite_print_tensor_info (p->interpreter);
+#endif
+
+    return 0;
+}
+
+int
+tflite_create_interpreter_ex (tflite_interpreter_t *p, const char *model_buf, size_t model_size, tflite_createopt_t *opt)
+{
+    p->model = FlatBufferModel::BuildFromBuffer(model_buf, model_size);
+    if (!p->model)
+    {
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+
+    InterpreterBuilder(*(p->model), p->resolver)(&(p->interpreter));
+    if (!p->interpreter)
+    {
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+
+    int num_threads = std::thread::hardware_concurrency();
+    char *env_tflite_num_threads = getenv ("FORCE_TFLITE_NUM_THREADS");
+    if (env_tflite_num_threads)
+    {
+        num_threads = atoi (env_tflite_num_threads);
+        DBG_LOGI ("@@@@@@ FORCE_TFLITE_NUM_THREADS=%d\n", num_threads);
+    }
+    DBG_LOG ("@@@@@@ TFLITE_NUM_THREADS=%d\n", num_threads);
+    p->interpreter->SetNumThreads(num_threads);
+
+#if 0
+    std::vector<int> sizes = {1, 1280, 1280, 3};
+    int input_id = p->interpreter->inputs()[0];
+    p->interpreter->ResizeInputTensor(input_id, sizes);
+#endif
+
+    if (modify_graph_with_delegate (p, opt) < 0)
+    {
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+        //return -1;
+    }
+
+    if (p->interpreter->AllocateTensors() != kTfLiteOk)
+    {
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
+        return -1;
+    }
+
+#if 1 /* for debug */
+    DBG_LOG ("\n");
+    DBG_LOG ("##### LOAD TFLITE: %p: %zu[byte]\n", model_buf, model_size);
     tflite_print_tensor_info (p->interpreter);
 #endif
 
