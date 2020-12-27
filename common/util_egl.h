@@ -5,6 +5,10 @@
 #ifndef _UTIL_EGL_H_
 #define _UTIL_EGL_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 
@@ -48,4 +52,8 @@ do {                                                            \
     }                                                           \
 } while (0)
 
+
+#ifdef __cplusplus
+}
+#endif
 #endif

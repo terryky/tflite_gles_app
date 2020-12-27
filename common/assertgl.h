@@ -5,8 +5,13 @@
 #ifndef __ASSERTGL_H__
 #define __ASSERTGL_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 void 
-AssertGLError( char *lpFile, int nLine );
+AssertGLError( const char *lpFile, int nLine );
 
 #if 1
     #define GLASSERT()      AssertGLError( __FILE__, __LINE__ )
@@ -14,5 +19,8 @@ AssertGLError( char *lpFile, int nLine );
     #define GLASSERT()      ((void)0)
 #endif
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* __ASSERTGL_H__ */
 

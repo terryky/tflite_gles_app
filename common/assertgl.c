@@ -7,7 +7,7 @@
 #include <math.h>
 #include <GLES2/gl2.h>
 #include "assertgl.h"
-
+#include "util_debug.h"
 
 static char *
 GetGLErrMsg( int nCode )
@@ -27,13 +27,13 @@ GetGLErrMsg( int nCode )
 
 
 void
-AssertGLError( char *lpFile, int nLine )
+AssertGLError( const char *lpFile, int nLine )
 {
     int error;
 
     while (( error = glGetError()) != GL_NO_ERROR )
     {
-        printf( "[GL ASSERT ERR] \"%s\"(%d):0x%04x(%s)\n",
+        DBG_LOGE( "[GL ASSERT ERR] \"%s\"(%d):0x%04x(%s)\n",
                     lpFile, nLine, error, GetGLErrMsg( error ) );
     }
 }

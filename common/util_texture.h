@@ -18,6 +18,11 @@ typedef struct _texture_2d_t
     uint32_t    format;
 } texture_2d_t;
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int load_png_texture (char *name, int *lpTexID, int *width, int *height);
 int load_jpg_texture (char *name, int *lpTexID, int *width, int *height);
 
@@ -35,4 +40,7 @@ int  create_video_texture (texture_2d_t *vidtex, const char *fname);
 void update_video_texture (texture_2d_t *vidtex);
 #endif
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* TEXTURE_UTIL_H */

@@ -5,6 +5,10 @@
 #ifndef __ASSERTEGL_H__
 #define __ASSERTEGL_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void 
 AssertEGLError( char *lpFile, int nLine );
 
@@ -14,5 +18,9 @@ AssertEGLError( char *lpFile, int nLine );
     #define EGLASSERT()     ((void)0)
 #endif
 
+
+#ifdef __cplusplus
+}
+#endif
 #endif /* __ASSERTEGL_H__ */
 

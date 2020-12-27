@@ -5,8 +5,11 @@
 #ifndef _PMETER_H_
 #define _PMETER_H_
 
-#define PMETER_MAX_LAP_NUM 128
+#ifdef __cplusplus
+extern "C" {
+#endif
 
+#define PMETER_MAX_LAP_NUM 128
 
 #if 1
 
@@ -32,5 +35,7 @@ void   init_pmeter (int win_w, int win_h, int data_num);
 int    draw_pmeter_ex (int id, int x, int y, float scale);
 int    draw_pmeter (int x, int y);
 
-
+#ifdef __cplusplus
+}
+#endif
 #endif

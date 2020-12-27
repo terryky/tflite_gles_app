@@ -5,6 +5,11 @@
 #ifndef _MATRIX_UTIL_H_
 #define _MATRIX_UTIL_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 #ifndef M_PI
 #define M_PI (3.141592654f)
 #endif
@@ -52,5 +57,7 @@ void quaternion_copy (float *lpTo, float *lpFrom);
 
 float vector_normalize(float *lpV);
 
-
+#ifdef __cplusplus
+}
+#endif
 #endif /* _MATRIX_UTIL_H_ */
