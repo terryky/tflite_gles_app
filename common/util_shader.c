@@ -12,6 +12,8 @@
 #include <GLES3/gl3ext.h>
 #endif
 #include "util_shader.h"
+#include "util_debug.h"
+#include "assertgl.h"
 #include "util_egl.h"
 
 
@@ -64,16 +66,17 @@ compile_shader_text (GLenum shaderType, const char *text)
       lpBuf = (char *)malloc (len);
 
       glGetShaderInfoLog (shader, len, &len, lpBuf);
-      fprintf (stderr, "Error: problem compiling shader.\n");
-      fprintf (stderr, "-----------------------------------\n");
-      fprintf (stderr, "%s\n", lpBuf);
-      fprintf (stderr, "-----------------------------------\n");
+      DBG_LOGE ("Error: problem compiling shader.\n");
+      DBG_LOGE ("-----------------------------------\n");
+      DBG_LOGE ("%s\n", lpBuf);
+      DBG_LOGE ("-----------------------------------\n");
 
       free (lpBuf);
 
       return 0;
     }
-	
+
+  GLASSERT();
   return shader;
 }
 
@@ -91,8 +94,8 @@ compile_shader_file (GLenum shaderType, const char *lpFName)
   fp = fopen (lpFName, "r");
   if (fp == NULL) 
     {
-      fprintf (stderr, "can't open %s\n", lpFName);
-      fprintf (stderr, "FATAL ERROR at %s(%d)\n", __FILE__, __LINE__);
+      DBG_LOGE ("can't open %s\n", lpFName);
+      DBG_LOGE ("FATAL ERROR at %s(%d)\n", __FILE__, __LINE__);
       return 0;
     }
 	
@@ -103,7 +106,7 @@ compile_shader_file (GLenum shaderType, const char *lpFName)
   lpbuf = (char *)malloc (nFileSize + 1); 
   if (lpbuf == NULL) 
     {
-      fprintf (stderr, "FATAL ERROR at %s(%d)\n", __FILE__, __LINE__);
+      DBG_LOGE ("FATAL ERROR at %s(%d)\n", __FILE__, __LINE__);
       fclose (fp);
       return 0;
     }
@@ -145,10 +148,10 @@ link_shaders (GLuint vertShader, GLuint fragShader)
 	lpBuf = (char *)malloc (len);
 
 	glGetProgramInfoLog (program, len, &len, lpBuf);
-	fprintf (stderr, "Error: problem linking shader.\n");
-	fprintf (stderr, "-----------------------------------\n");
-	fprintf (stderr, "%s\n", lpBuf);
-	fprintf (stderr, "-----------------------------------\n");
+	DBG_LOGE ("Error: problem linking shader.\n");
+	DBG_LOGE ("-----------------------------------\n");
+	DBG_LOGE ("%s\n", lpBuf);
+	DBG_LOGE ("-----------------------------------\n");
 
 	free (lpBuf);
 
@@ -180,14 +183,14 @@ generate_shader (shader_obj_t *sobj, char *str_vs, char *str_fs)
   fs = compile_shader_text (GL_FRAGMENT_SHADER, str_fs);
   if (vs == 0 || fs == 0)
     {
-      fprintf (stderr, "Failed to compile shader.\n");
+      DBG_LOGE ("Failed to compile shader.\n");
       return -1;
     }
 
   program = link_shaders (vs, fs);
   if (program == 0)
     {
-      fprintf (stderr, "Failed to link shaders.\n");
+      DBG_LOGE ("Failed to link shaders.\n");
       return -1;
     }
 
@@ -219,14 +222,14 @@ generate_shader_from_file (shader_obj_t *sobj, char *dir_name, char *vs_fname, c
   fs = compile_shader_file (GL_FRAGMENT_SHADER, fs_path);
   if (vs == 0 || fs == 0)
     {
-      fprintf (stderr, "Failed to compile shader.\n");
+      DBG_LOGE ( "Failed to compile shader.\n");
       return -1;
     }
 
   program = link_shaders (vs, fs);
   if (program == 0)
     {
-      fprintf (stderr, "Failed to link shaders.\n");
+      DBG_LOGE ("Failed to link shaders.\n");
       return -1;
     }
 
@@ -251,6 +254,11 @@ build_compute_shader (const char *strCS)
     GLuint cs, prog;
 
     cs = compile_shader_text (GL_COMPUTE_SHADER, strCS);
+    if (cs == 0)
+    {
+        DBG_LOGE ("Failed to compile shader.\n");
+        return -1;
+    }
     prog = link_shaders (cs, 0);
 
     return prog;
@@ -267,7 +275,7 @@ build_compute_shader_from_file (char *dir_name, char *cs_fname)
     cs = compile_shader_file (GL_COMPUTE_SHADER, cs_path);
     if (cs == 0)
     {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
         return -1;
     }
 
@@ -311,7 +319,7 @@ generate_separate_shader (separate_shader_obj_t *sobj, char *str_vs, char *str_f
         vs = glCreateShaderProgramvEXT (GL_VERTEX_SHADER, 1, (const GLchar **)&str_vs);
         if (vs == 0)
         {
-          fprintf (stderr, "Failed to compile shader.\n");
+          DBG_LOGE ("Failed to compile shader.\n");
           return -1;
         }
 
@@ -323,7 +331,7 @@ generate_separate_shader (separate_shader_obj_t *sobj, char *str_vs, char *str_f
         fs = glCreateShaderProgramvEXT (GL_FRAGMENT_SHADER, 1, (const GLchar **)&str_fs);
         if (fs == 0)
         {
-          fprintf (stderr, "Failed to compile shader.\n");
+          DBG_LOGE ("Failed to compile shader.\n");
           return -1;
         }
 
