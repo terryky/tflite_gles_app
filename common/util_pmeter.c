@@ -27,6 +27,7 @@ void
 pmeter_reset_lap (int id)
 {
     s_laptime_idx[id] = 0;
+    s_laptime_num[id] = 0;
 }
 
 void
@@ -97,6 +98,9 @@ void init_pmeter (int win_w, int win_h, int data_num)
     s_locPrjMulPM = glGetUniformLocation (s_pm_prg, "u_PrjMul" );
     s_locPrjAddPM = glGetUniformLocation (s_pm_prg, "u_PrjAdd" );
     s_locColPM    = glGetUniformLocation (s_pm_prg, "u_Color"  );
+
+    if (data_num > PMETER_DATA_NUM)
+        data_num = PMETER_DATA_NUM;
 
     for ( k = 0; k < PMETER_DPY_NUM; k ++)
     {
