@@ -4,6 +4,7 @@
  * ------------------------------------------------ */
 #include "util_tflite.h"
 #include "tflite_posenet.h"
+#include "util_debug.h"
 #include "ssbo_tensor.h"
 #include <list>
 #include <float.h>
@@ -100,12 +101,12 @@ init_tflite_posenet(int use_quantized_tflite, ssbo_t *ssbo)
     /* input image dimention */
     s_img_w = s_tensor_input.dims[2];
     s_img_h = s_tensor_input.dims[1];
-    fprintf (stderr, "input image size: (%d, %d)\n", s_img_w, s_img_h);
+    DBG_LOG ("input image size: (%d, %d)\n", s_img_w, s_img_h);
 
     /* heatmap dimention */
     s_hmp_w = s_tensor_heatmap.dims[2];
     s_hmp_h = s_tensor_heatmap.dims[1];
-    fprintf (stderr, "heatmap size: (%d, %d)\n", s_hmp_w, s_hmp_h);
+    DBG_LOG ("heatmap size: (%d, %d)\n", s_hmp_w, s_hmp_h);
 
     /* displacement forward vector dimention */
     s_edge_num = s_tensor_fw_disp.dims[3] / 2;
@@ -389,7 +390,7 @@ regist_detected_pose (posenet_result_t *pose_result, keypoint_t *keys, float sco
     int pose_id = pose_result->num;
     if (pose_id >= MAX_POSE_NUM)
     {
-        fprintf (stderr, "ERR: %s(%d): pose_num overflow.\n", __FILE__, __LINE__);
+        DBG_LOGE ("ERR: %s(%d): pose_num overflow.\n", __FILE__, __LINE__);
         return -1;
     }
 
@@ -510,7 +511,7 @@ invoke_posenet (posenet_result_t *pose_result)
 {
     if (s_interpreter.interpreter->Invoke() != kTfLiteOk)
     {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
         return -1;
     }
 

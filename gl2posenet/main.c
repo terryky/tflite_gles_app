@@ -114,10 +114,9 @@ render_facemask (int x, int y, int w, int h, posenet_result_t *pose_ret)
 
 /* render a bone of skelton. */
 void
-render_bone (int ofstx, int ofsty, int drw_w, int drw_h, 
-             posenet_result_t *pose_ret, int pid, 
-             enum pose_key_id id0, enum pose_key_id id1,
-             float *col)
+render_bone (int ofstx, int ofsty, int drw_w, int drw_h,
+             posenet_result_t *pose_ret, int pid,
+             enum pose_key_id id0, enum pose_key_id id1, float *col)
 {
     float x0 = pose_ret->pose[pid].key[id0].x * drw_w + ofstx;
     float y0 = pose_ret->pose[pid].key[id0].y * drw_h + ofsty;
@@ -313,11 +312,10 @@ int
 main(int argc, char *argv[])
 {
     char input_name_default[] = "pakutaso_person.jpg";
-    char *input_name = NULL;
+    char *input_name = input_name_default;
     int count;
     int win_w = 600;
     int win_h = 600;
-    int texid;
     int texw, texh, draw_x, draw_y, draw_w, draw_h;
     texture_2d_t captex = {0};
     ssbo_t *ssbo = NULL;
@@ -360,9 +358,6 @@ main(int argc, char *argv[])
         }
     }
 
-    if (input_name == NULL)
-        input_name = input_name_default;
-
     egl_init_with_platform_window_surface (2, 0, 0, 0, win_w, win_h);
 
     init_2d_renderer (win_w, win_h);
@@ -403,6 +398,7 @@ main(int argc, char *argv[])
     else
 #endif
     {
+        int texid;
         load_jpg_texture (input_name, &texid, &texw, &texh);
         captex.texid  = texid;
         captex.width  = texw;

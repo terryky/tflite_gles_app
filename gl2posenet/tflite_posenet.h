@@ -59,11 +59,11 @@ typedef struct _posenet_result_t
 
 
 
-extern int init_tflite_posenet (int use_quantized_tflite, ssbo_t *ssbo);
-extern void  *get_posenet_input_buf (int *w, int *h);
+int   init_tflite_posenet (int use_quantized_tflite, ssbo_t *ssbo);
+void  *get_posenet_input_buf (int *w, int *h);
 
-extern int invoke_posenet (posenet_result_t *pose_result);
-    
+int invoke_posenet (posenet_result_t *pose_result);
+
 #ifdef __cplusplus
 }
 #endif
