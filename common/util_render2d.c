@@ -787,29 +787,58 @@ draw_2d_rect_rot (int x, int y, int w, int h, float *color, float line_width,
 int
 draw_2d_line (int x0, int y0, int x1, int y1, float *color, float line_width)
 {
-    float dx = x1 - x0;
-    float dy = y1 - y0;
-    float len = sqrtf (dx * dx + dy * dy);
-    float theta = acosf (dx / len);
+    if (line_width == 1.0f)
+    {
+        int ttype = 0;
+        shader_obj_t *sobj = &s_sobj[ttype];
+        float matrix[16];
 
-    if (dy < 0)
-        theta = -theta;
+        glUseProgram (sobj->program);
+        glUniform4fv (s_loc_color[ttype], 1, color);
 
-    texparam_t tparam = {0};
-    tparam.x       = x0;
-    tparam.y       = y0 - 0.5f * line_width;
-    tparam.w       = len;
-    tparam.h       = line_width;
-    tparam.rot     = RAD_TO_DEG (theta);
-    tparam.px      = 0;
-    tparam.py      = 0.5f * line_width;
-    tparam.textype = SHADER_TYPE_FILL;
-    tparam.color[0]= color[0];
-    tparam.color[1]= color[1];
-    tparam.color[2]= color[2];
-    tparam.color[3]= color[3];
-    draw_2d_texture_in (&tparam);
+        glEnable (GL_BLEND);
+        glBlendFuncSeparate (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA,
+                   GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
 
+        matrix_identity (matrix);
+        matrix_mult (matrix, s_matprj, matrix);
+        glUniformMatrix4fv (s_loc_mtx[ttype], 1, GL_FALSE, matrix);
+
+        glLineWidth (line_width);
+        if (sobj->loc_vtx >= 0)
+        {
+            float vtx[] = {x0, y0, x1, y1};
+            glEnableVertexAttribArray (sobj->loc_vtx);
+            glVertexAttribPointer (sobj->loc_vtx, 2, GL_FLOAT, GL_FALSE, 0, vtx);
+            glDrawArrays (GL_LINE_STRIP, 0, 2);
+        }
+        glDisable (GL_BLEND);
+    }
+    else
+    {
+        float dx = x1 - x0;
+        float dy = y1 - y0;
+        float len = sqrtf (dx * dx + dy * dy);
+        float theta = acosf (dx / len);
+
+        if (dy < 0)
+            theta = -theta;
+
+        texparam_t tparam = {0};
+        tparam.x       = x0;
+        tparam.y       = y0 - 0.5f * line_width;
+        tparam.w       = len;
+        tparam.h       = line_width;
+        tparam.rot     = RAD_TO_DEG (theta);
+        tparam.px      = 0;
+        tparam.py      = 0.5f * line_width;
+        tparam.textype = SHADER_TYPE_FILL;
+        tparam.color[0]= color[0];
+        tparam.color[1]= color[1];
+        tparam.color[2]= color[2];
+        tparam.color[3]= color[3];
+        draw_2d_texture_in (&tparam);
+    }
     GLASSERT ();
     return 0;
 }
