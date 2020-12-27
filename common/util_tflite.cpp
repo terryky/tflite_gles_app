@@ -11,7 +11,7 @@ using namespace tflite;
 
 
 static void
-print_tensor_dim (TfLiteTensor *tensor)
+tflite_print_tensor_dim (TfLiteTensor *tensor)
 {
     TfLiteIntArray *dim = tensor->dims;
 
@@ -32,7 +32,7 @@ print_tensor_dim (TfLiteTensor *tensor)
 }
 
 static const char *
-get_tflite_type_str (TfLiteType type)
+tflite_get_type_str (TfLiteType type)
 {
     switch (type)
     {
@@ -55,7 +55,7 @@ get_tflite_type_str (TfLiteType type)
 }
 
 static void
-print_tensor (TfLiteTensor *tensor, int idx)
+tflite_print_tensor (TfLiteTensor *tensor, int idx)
 {
     if (tensor == NULL)
     {
@@ -66,12 +66,12 @@ print_tensor (TfLiteTensor *tensor, int idx)
     DBG_LOG ("Tensor[%3d] %8zu, %2d(%s), (%3d, %8.6f) %-32s ", idx,
         tensor->bytes,
         tensor->type,
-        get_tflite_type_str (tensor->type),
+        tflite_get_type_str (tensor->type),
         tensor->params.zero_point,
         tensor->params.scale,
         tensor->name);
     
-    print_tensor_dim (tensor);
+    tflite_print_tensor_dim (tensor);
     DBG_LOG ("\n");
 }
 
@@ -82,7 +82,6 @@ tflite_print_tensor_info (std::unique_ptr<Interpreter> &interpreter)
     int in_size  = interpreter->inputs().size();
     int out_size = interpreter->outputs().size();
 
-    DBG_LOG ("\n");
     DBG_LOG ("-----------------------------------------------------------------------------\n");
     DBG_LOG ("       T E N S O R S\n");
     DBG_LOG ("-----------------------------------------------------------------------------\n");
@@ -99,7 +98,7 @@ tflite_print_tensor_info (std::unique_ptr<Interpreter> &interpreter)
     for (i = 0; i < t_size; i++) 
     {
         TfLiteTensor *tensor = interpreter->tensor(i);
-        print_tensor (tensor, i);
+        tflite_print_tensor (tensor, i);
     }
 #endif
     DBG_LOG ("\n");
@@ -110,7 +109,7 @@ tflite_print_tensor_info (std::unique_ptr<Interpreter> &interpreter)
     {
         idx = interpreter->inputs()[i];
         TfLiteTensor *tensor = interpreter->tensor(idx);
-        print_tensor (tensor, idx);
+        tflite_print_tensor (tensor, idx);
     }
 
     DBG_LOG ("\n");
@@ -121,7 +120,7 @@ tflite_print_tensor_info (std::unique_ptr<Interpreter> &interpreter)
     {
         idx = interpreter->outputs()[i];
         TfLiteTensor *tensor = interpreter->tensor(idx);
-        print_tensor (tensor, idx);
+        tflite_print_tensor (tensor, idx);
     }
     DBG_LOG ("\n");
 
@@ -212,7 +211,7 @@ modify_graph_with_delegate (tflite_interpreter_t *p, tflite_createopt_t *opt)
     if (env_tflite_num_threads)
     {
         num_threads = atoi (env_tflite_num_threads);
-        fprintf (stderr, "@@@@@@ FORCE_TFLITE_NUM_THREADS(XNNPACK)=%d\n", num_threads);
+        DBG_LOGI ("@@@@@@ FORCE_TFLITE_NUM_THREADS(XNNPACK)=%d\n", num_threads);
     }
 
     // IMPORTANT: initialize options with TfLiteXNNPackDelegateOptionsDefault() for
@@ -263,7 +262,7 @@ tflite_create_interpreter_from_file (tflite_interpreter_t *p, const char *model_
     if (env_tflite_num_threads)
     {
         num_threads = atoi (env_tflite_num_threads);
-        fprintf (stderr, "@@@@@@ FORCE_TFLITE_NUM_THREADS=%d\n", num_threads);
+        DBG_LOGI ("@@@@@@ FORCE_TFLITE_NUM_THREADS=%d\n", num_threads);
     }
     p->interpreter->SetNumThreads(num_threads);
 
@@ -280,6 +279,8 @@ tflite_create_interpreter_from_file (tflite_interpreter_t *p, const char *model_
     }
 
 #if 1 /* for debug */
+    DBG_LOG ("\n");
+    DBG_LOG ("##### LOAD TFLITE FILE: \"%s\"\n", model_path);
     tflite_print_tensor_info (p->interpreter);
 #endif
 
@@ -308,7 +309,7 @@ tflite_create_interpreter_ex_from_file (tflite_interpreter_t *p, const char *mod
     if (env_tflite_num_threads)
     {
         num_threads = atoi (env_tflite_num_threads);
-        fprintf (stderr, "@@@@@@ FORCE_TFLITE_NUM_THREADS=%d\n", num_threads);
+        DBG_LOGI ("@@@@@@ FORCE_TFLITE_NUM_THREADS=%d\n", num_threads);
     }
     p->interpreter->SetNumThreads(num_threads);
 
@@ -331,6 +332,8 @@ tflite_create_interpreter_ex_from_file (tflite_interpreter_t *p, const char *mod
     }
 
 #if 1 /* for debug */
+    DBG_LOG ("\n");
+    DBG_LOG ("##### LOAD TFLITE FILE: \"%s\"\n", model_path);
     tflite_print_tensor_info (p->interpreter);
 #endif
 
