@@ -47,10 +47,10 @@ typedef struct _blazeface_config_t
     float iou_thresh;
 } blazeface_config_t;
 
-extern int init_tflite_blazeface (int use_quantized_tflite, blazeface_config_t *config);
-extern void  *get_blazeface_input_buf (int *w, int *h);
+int init_tflite_blazeface (int use_quantized_tflite, blazeface_config_t *config);
+void  *get_blazeface_input_buf (int *w, int *h);
 
-extern int invoke_blazeface (blazeface_result_t *blazeface_result, blazeface_config_t *config);
+int invoke_blazeface (blazeface_result_t *blazeface_result, blazeface_config_t *config);
     
 #ifdef __cplusplus
 }

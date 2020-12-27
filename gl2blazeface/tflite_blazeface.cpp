@@ -4,6 +4,7 @@
  * ------------------------------------------------ */
 #include "util_tflite.h"
 #include "tflite_blazeface.h"
+#include "util_debug.h"
 #include <list>
 
 /* 
@@ -283,7 +284,7 @@ invoke_blazeface (blazeface_result_t *face_result, blazeface_config_t *config)
 {
     if (s_detect_interpreter.interpreter->Invoke() != kTfLiteOk)
     {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
         return -1;
     }
 
