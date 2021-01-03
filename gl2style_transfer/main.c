@@ -78,7 +78,7 @@ void
 store_style_predict (style_predict_t *style)
 {
     int size = style->size;
-    float *param = style->param;
+    float *param = (float *)style->param;
     float *store_param = (float *)calloc (1, size * sizeof(float));
 
     style->param = store_param;
@@ -93,9 +93,9 @@ void
 feed_blend_style (style_predict_t *style0, style_predict_t *style1, float ratio)
 {
     int size;
-    float *s0 = style0->param;
-    float *s1 = style1->param;
-    float *d = get_style_transfer_style_input_buf (&size);
+    float *s0 = (float *)style0->param;
+    float *s1 = (float *)style1->param;
+    float *d  = (float *)get_style_transfer_style_input_buf (&size);
 
     if (style0->size != size || style1->size != size)
     {
@@ -132,7 +132,7 @@ update_style_transfered_texture (style_transfer_t *transfer)
     }
 
     uint8_t *d = s_texbuf;
-    float   *s = transfer->img;
+    float   *s = (float *)transfer->img;
 
     for (int y = 0; y < img_h; y ++)
     {
