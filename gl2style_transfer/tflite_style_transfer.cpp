@@ -4,7 +4,7 @@
  * ------------------------------------------------ */
 #include "util_tflite.h"
 #include "tflite_style_transfer.h"
-#include <list>
+#include "util_debug.h"
 
 
 #if 0
