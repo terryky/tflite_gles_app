@@ -4,6 +4,7 @@
  * ------------------------------------------------ */
 #include "util_tflite.h"
 #include "tflite_deeplab.h"
+#include "util_debug.h"
 
 /* 
  * https://storage.googleapis.com/download.tensorflow.org/models/tflite/gpu/deeplabv3_257_mv_gpu.tflite
@@ -16,7 +17,7 @@ static tflite_tensor_t      s_tensor_input;
 static tflite_tensor_t      s_tensor_segment;
 
 static float s_class_color[MAX_DETECT_CLASS + 1][4];
-static char  s_class_name [MAX_DETECT_CLASS + 1][64] = 
+static char  s_class_name [MAX_DETECT_CLASS + 1][64] =
 {
     "background",   // 0
     "aeroplane",    // 1
@@ -75,7 +76,7 @@ init_tflite_deeplab()
     tflite_get_tensor_by_name (&s_interpreter, 1, "ResizeBilinear_3",  &s_tensor_segment);
 
     init_class_color ();
-    
+
     return 0;
 }
 
@@ -114,7 +115,7 @@ invoke_deeplab (deeplab_result_t *deeplab_result)
 {
     if (s_interpreter.interpreter->Invoke() != kTfLiteOk)
     {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
         return -1;
     }
 
