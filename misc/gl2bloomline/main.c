@@ -37,13 +37,13 @@ init_app (int win_w, int win_h)
     ret = create_render_target (&s_fb, win_w, win_h, 0);
     DBG_ASSERT (ret == 0, "failed to create fbo");
 
-    ret = create_render_target (&s_fbo, win_w, win_h, RENDER_TARGET_COLOR);
+    ret = create_render_target (&s_fbo, win_w, win_h, RTARGET_COLOR);
     DBG_ASSERT (ret == 0, "failed to create fbo");
 
-    ret = create_render_target (&s_fbo_scale, win_w/4, win_h/4, RENDER_TARGET_COLOR);
+    ret = create_render_target (&s_fbo_scale, win_w/4, win_h/4, RTARGET_COLOR);
     DBG_ASSERT (ret == 0, "failed to create fbo");
 
-    ret = create_render_target (&s_fbo_blur, win_w/4, win_h/4, RENDER_TARGET_COLOR);
+    ret = create_render_target (&s_fbo_blur, win_w/4, win_h/4, RTARGET_COLOR);
     DBG_ASSERT (ret == 0, "failed to create fbo");
 
     /* non effect filter (just scale)*/
@@ -155,8 +155,8 @@ int main(int argc, char *argv[])
             //unsigned int blend_blend[] = {GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA};
             unsigned int blend_add  [] = {GL_ONE, GL_ONE, GL_ZERO, GL_ONE};
             glDisable (GL_DEPTH_TEST);
-            draw_2d_texture_blendfunc (s_fbo.texid,      0, 0, win_w, win_h, 0, blend_add);
-            draw_2d_texture_blendfunc (s_fbo_blur.texid, 0, 0, win_w, win_h, 0, blend_add);
+            draw_2d_texture_blendfunc (s_fbo.texc_id,      0, 0, win_w, win_h, 0, blend_add);
+            draw_2d_texture_blendfunc (s_fbo_blur.texc_id, 0, 0, win_w, win_h, 0, blend_add);
         }
 
         draw_pmeter (0, 40);

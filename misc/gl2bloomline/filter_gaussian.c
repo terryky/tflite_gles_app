@@ -246,7 +246,7 @@ apply_gaussian_filter (render_target_t *dst_fbo, render_target_t *src_fbo)
   gauss_shader_obj_t *sobj = &s_sobj;
   render_target_t    fbo;
 
-  create_render_target (&fbo, src_fbo->width, src_fbo->height, RENDER_TARGET_COLOR);
+  create_render_target (&fbo, src_fbo->width, src_fbo->height, RTARGET_COLOR);
 
   glUseProgram (sobj->program);
 
@@ -267,7 +267,7 @@ apply_gaussian_filter (render_target_t *dst_fbo, render_target_t *src_fbo)
   glClearColor (0.1f, 0.5f, 0.9f, 0.6f);
   glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   
-  glBindTexture (GL_TEXTURE_2D, src_fbo->texid);
+  glBindTexture (GL_TEXTURE_2D, src_fbo->texc_id);
 
   glUniform1f (sobj->loc_woffset, 1.0f / src_fbo->width);
   glUniform1f (sobj->loc_hoffset, 0.0f);
@@ -282,7 +282,7 @@ apply_gaussian_filter (render_target_t *dst_fbo, render_target_t *src_fbo)
   glClearColor (0.1f, 0.5f, 0.9f, 0.6f);
   glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   
-  glBindTexture (GL_TEXTURE_2D, fbo.texid);
+  glBindTexture (GL_TEXTURE_2D, fbo.texc_id);
 
   glUniform1f (sobj->loc_woffset, 0.0f);
   glUniform1f (sobj->loc_hoffset, 1.0f / src_fbo->height);

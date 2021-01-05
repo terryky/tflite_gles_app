@@ -78,7 +78,7 @@ apply_normal_filter (render_target_t *dst_fbo, render_target_t *src_fbo)
   glVertexAttribPointer (sobj->loc_vtx, 2, GL_FLOAT, GL_FALSE, 0, s_Vertices);
   glVertexAttribPointer (sobj->loc_uv,  2, GL_FLOAT, GL_FALSE, 0, s_TexCoords);
   
-  glBindTexture (GL_TEXTURE_2D, src_fbo->texid);
+  glBindTexture (GL_TEXTURE_2D, src_fbo->texc_id);
   glUniform1i (sobj->loc_tex, 0);
 
   glDrawArrays (GL_TRIANGLE_STRIP, 0, 4); 
