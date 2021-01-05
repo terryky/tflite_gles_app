@@ -5,12 +5,16 @@
 #ifndef _UTIL_RENDER_2D_H_
 #define _UTIL_RENDER_2D_H_
 
+#define RENDER2D_FLIP_V     (1 << 0)
+#define RENDER2D_FLIP_H     (1 << 1)
+
 #include "util_texture.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 int init_2d_renderer (int w, int h);
+int set_2d_projection_matrix (int w, int h);
 
 int draw_2d_fillrect (int x, int y, int w, int h, float *color);
 int draw_2d_texture (int texid, int x, int y, int w, int h, int upsidedown);

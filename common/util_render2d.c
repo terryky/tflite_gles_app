@@ -285,22 +285,9 @@ static float varray[] =
     1.0, 0.0,
     1.0, 1.0 };
 
-static float tarray[] =
-{   0.0, 0.0,
-    0.0, 1.0,
-    1.0, 0.0,
-    1.0, 1.0 };
-
-static float tarray2[] =
-{   0.0, 1.0,
-    0.0, 0.0,
-    1.0, 1.0,
-    1.0, 0.0 };
-
-
 static float s_matprj[16];
-static int
-set_projection_matrix (int w, int h)
+int
+set_2d_projection_matrix (int w, int h)
 {
     float mat_proj[] =
     {
@@ -338,7 +325,7 @@ init_2d_renderer (int w, int h)
         s_loc_texdim[i] = glGetUniformLocation(s_sobj[i].program, "u_TexDim");
     }
 
-    set_projection_matrix (w, h);
+    set_2d_projection_matrix (w, h);
 
     return 0;
 }
@@ -358,6 +345,25 @@ typedef struct _texparam
     float        *user_texcoord;
 } texparam_t;
 
+static void
+flip_texcoord (float *uv, unsigned int flip_mode)
+{
+    if (flip_mode & RENDER2D_FLIP_V)
+    {
+        uv[1] = 1.0f - uv[1];
+        uv[3] = 1.0f - uv[3];
+        uv[5] = 1.0f - uv[5];
+        uv[7] = 1.0f - uv[7];
+    }
+
+    if (flip_mode & RENDER2D_FLIP_H)
+    {
+        uv[0] = 1.0f - uv[0];
+        uv[2] = 1.0f - uv[2];
+        uv[4] = 1.0f - uv[4];
+        uv[6] = 1.0f - uv[6];
+    }
+}
 
 static int
 draw_2d_texture_in (texparam_t *tparam)
@@ -371,6 +377,11 @@ draw_2d_texture_in (texparam_t *tparam)
     float rot = tparam->rot;
     shader_obj_t *sobj = &s_sobj[ttype];
     float matrix[16];
+    float tarray[] = {
+        0.0, 0.0,
+        0.0, 1.0,
+        1.0, 0.0,
+        1.0, 1.0 };
     float *uv = tarray;
 
     glBindBuffer (GL_ARRAY_BUFFER, 0);
@@ -388,15 +399,15 @@ draw_2d_texture_in (texparam_t *tparam)
     case SHADER_TYPE_TEX_YUYV:
     case SHADER_TYPE_TEX_UYVY:
         glBindTexture (GL_TEXTURE_2D, texid);
-        uv = tparam->upsidedown ? tarray2 : tarray;
         break;
     case SHADER_TYPE_EXTEX:
         glBindTexture (GL_TEXTURE_EXTERNAL_OES, texid);
-        uv = tparam->upsidedown ? tarray : tarray2;
         break;
     default:
         break;
     }
+
+    flip_texcoord (uv, tparam->upsidedown);
 
     if (tparam->user_texcoord)
     {
@@ -504,6 +515,8 @@ draw_2d_texture_ex (texture_2d_t *tex, int x, int y, int w, int h, int upsidedow
         tparam.textype = SHADER_TYPE_TEX_YUYV;
     else if (tex->format == pixfmt_fourcc('U', 'Y', 'V', 'Y'))
         tparam.textype = SHADER_TYPE_TEX_UYVY;
+    else if (tex->format == pixfmt_fourcc('E', 'X', 'T', 'X'))
+        tparam.textype = SHADER_TYPE_EXTEX;
 
     draw_2d_texture_in (&tparam);
 
