@@ -96,6 +96,10 @@ Target platform: Linux PC / NVIDIA Jetson / RaspberryPi.
 - Enhance low-light images upto a great extent.<br>
 [<img src="gl2mirnet/gl2mirnet.jpg" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2mirnet)
 
+### [Boundless](https://github.com/terryky/tflite_gles_app/tree/master/gl2boundless)
+- GAN-model for image extrapolation.<br>
+[<img src="gl2boundless/gl2boundless.jpg" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2boundless)
+
 ### [Text Detection](https://github.com/terryky/tflite_gles_app/tree/master/gl2text_detection)
 - Text detection from natural scenes.<br>
 [<img src="gl2text_detection/gl2text_detection.jpg" width=300>](https://github.com/terryky/tflite_gles_app/tree/master/gl2text_detection)
