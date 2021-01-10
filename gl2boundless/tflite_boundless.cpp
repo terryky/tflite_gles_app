@@ -41,10 +41,12 @@ init_tflite_boundless (int use_quantized_tflite)
 void *
 get_boundless_input_buf (int *w, int *h)
 {
+#if 1
+    /* need to retrieve the input tensor again ? */
     tflite_get_tensor_by_name (&s_interpreter, 0, "Placeholder", &s_tensor_input);
+#endif
     *w = s_tensor_input.dims[2];
     *h = s_tensor_input.dims[1];
-    fprintf (stderr, "(%d, %d): %p\n", *w, *h, s_tensor_input.ptr);
     return (float *)s_tensor_input.ptr;
 }
 
@@ -61,8 +63,11 @@ invoke_boundless (boundless_t *predict_result)
         return -1;
     }
 
+#if 1
+    /* /* need to retrieve the output tensor again ? */
     tflite_get_tensor_by_name (&s_interpreter, 1, "mul_1", &s_tensor_output);
     tflite_get_tensor_by_name (&s_interpreter, 1, "mul_2", &s_tensor_mask);
+#endif
     predict_result->buf_gen  = s_tensor_output.ptr;
     predict_result->buf_mask = s_tensor_mask.ptr;
     predict_result->w        = s_tensor_output.dims[2];
