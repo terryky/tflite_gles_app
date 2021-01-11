@@ -1,7 +1,7 @@
 # gl2boundless
 GAN-model for image extrapolation.
 
- ![capture image](gl2boundless.jpg "capture image")
+ ![capture image](gl2boundless_mov.gif "capture image")
 
 
 # References
