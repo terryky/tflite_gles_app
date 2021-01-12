@@ -4,6 +4,7 @@
  * ------------------------------------------------ */
 #include "util_tflite.h"
 #include "tflite_animegan2.h"
+#include "util_debug.h"
 
 
 #define ANIMEGAN2_MODEL_PATH        "./model/animeganv2_hayao_256x256.tflite"
@@ -15,6 +16,9 @@ static tflite_tensor_t      s_tensor_input;
 static tflite_tensor_t      s_tensor_output;
 
 
+/* -------------------------------------------------- *
+ *  Create TFLite Interpreter
+ * -------------------------------------------------- */
 int
 init_tflite_animegan2 (int use_quantized_tflite)
 {
@@ -53,7 +57,7 @@ invoke_animegan2 (animegan2_t *predict_result)
 {
     if (s_interpreter.interpreter->Invoke() != kTfLiteOk)
     {
-        fprintf (stderr, "ERR: %s(%d)\n", __FILE__, __LINE__);
+        DBG_LOGE ("ERR: %s(%d)\n", __FILE__, __LINE__);
         return -1;
     }
 
