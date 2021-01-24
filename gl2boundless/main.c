@@ -180,11 +180,10 @@ int
 main(int argc, char *argv[])
 {
     char input_name_default[] = "assets/PAK752_miyakomac14120023_TP_V.jpg";
-    char *input_name = NULL;
+    char *input_name = input_name_default;
     int count;
     int win_w = 600;
     int win_h = 400;
-    int texid;
     int texw, texh, draw_x, draw_y, draw_w, draw_h;
     texture_2d_t captex = {0};
     double ttime[10] = {0}, interval, invoke_ms;
@@ -226,9 +225,6 @@ main(int argc, char *argv[])
         }
     }
 
-    if (input_name == NULL)
-        input_name = input_name_default;
-
     egl_init_with_platform_window_surface (2, 0, 0, 0, win_w * 2, win_h * 2);
 
     init_2d_renderer (win_w, win_h);
@@ -265,6 +261,7 @@ main(int argc, char *argv[])
     else
 #endif
     {
+        int texid;
         load_jpg_texture (input_name, &texid, &texw, &texh);
         captex.texid  = texid;
         captex.width  = texw;
@@ -277,7 +274,7 @@ main(int argc, char *argv[])
     glClearColor (0.f, 0.f, 0.f, 1.0f);
 
     /* --------------------------------------- *
-     *  Style transfer
+     *  Render Loop
      * --------------------------------------- */
     for (count = 0; ; count ++)
     {
@@ -319,7 +316,7 @@ main(int argc, char *argv[])
         invoke_ms = ttime[3] - ttime[2];
 
         /* --------------------------------------- *
-         *  render scene (left half)
+         *  render scene
          * --------------------------------------- */
         float col_white[] = {1.0f, 1.0f, 1.0f, 1.0f};
         glClear (GL_COLOR_BUFFER_BIT);

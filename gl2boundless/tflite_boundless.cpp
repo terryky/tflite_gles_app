@@ -64,7 +64,7 @@ invoke_boundless (boundless_t *predict_result)
     }
 
 #if 1
-    /* /* need to retrieve the output tensor again ? */
+    /* need to retrieve the output tensor again ? */
     tflite_get_tensor_by_name (&s_interpreter, 1, "mul_1", &s_tensor_output);
     tflite_get_tensor_by_name (&s_interpreter, 1, "mul_2", &s_tensor_mask);
 #endif
