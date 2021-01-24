@@ -184,11 +184,10 @@ int
 main(int argc, char *argv[])
 {
     char input_name_default[] = "pakutaso_strawberry.jpg";
-    char *input_name = NULL;
+    char *input_name = input_name_default;
     int count;
     int win_w = 960;
     int win_h = 540;
-    int texid;
     int texw, texh, draw_x, draw_y, draw_w, draw_h;
     texture_2d_t captex = {0};
     double ttime[10] = {0}, interval, invoke_ms;
@@ -230,9 +229,6 @@ main(int argc, char *argv[])
         }
     }
 
-    if (input_name == NULL)
-        input_name = input_name_default;
-
     egl_init_with_platform_window_surface (2, 0, 0, 0, win_w, win_h);
 
     init_2d_renderer (win_w, win_h);
@@ -269,6 +265,7 @@ main(int argc, char *argv[])
     else
 #endif
     {
+        int texid;
         load_jpg_texture (input_name, &texid, &texw, &texh);
         captex.texid  = texid;
         captex.width  = texw;
@@ -326,7 +323,7 @@ main(int argc, char *argv[])
          * --------------------------------------- */
         glClear (GL_COLOR_BUFFER_BIT);
 
-        /* visualize the object detection results. */
+        /* visualize the classification results. */
         draw_2d_texture_ex (&captex, draw_x, draw_y, draw_w, draw_h, 0);
         render_classification_result (draw_x, draw_y, draw_w, draw_h, &class_ret);
 
