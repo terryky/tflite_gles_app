@@ -66,6 +66,7 @@ Target platform: Linux PC / NVIDIA Jetson / RaspberryPi.
 
 ### [Depth Estimation (DenseDepth)](https://github.com/terryky/tflite_gles_app/tree/master/gl2dense_depth)
 - Depth Estimation from single images.<br>
+- TensorRT port is [**HERE**](https://github.com/terryky/tflite_gles_app/tree/master/trt_dense_depth)<br>
 [<img src="gl2dense_depth/gl2dense_depth.jpg" width=600>](https://github.com/terryky/tflite_gles_app/tree/master/gl2dense_depth)
 
 ### [Semantic Segmentation](https://github.com/terryky/tflite_gles_app/tree/master/gl2segmentation)
