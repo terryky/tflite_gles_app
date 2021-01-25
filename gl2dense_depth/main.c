@@ -313,7 +313,7 @@ int
 main(int argc, char *argv[])
 {
     char input_name_default[] = "assets/pexels.jpg";
-    char *input_name = NULL;
+    char *input_name = input_name_default;
     int count;
     int win_w = 900;
     int win_h = 900;
@@ -357,9 +357,6 @@ main(int argc, char *argv[])
             optind++;
         }
     }
-
-    if (input_name == NULL)
-        input_name = input_name_default;
 
     egl_init_with_platform_window_surface (2, 8, 0, 0, win_w * 2, win_h);
 

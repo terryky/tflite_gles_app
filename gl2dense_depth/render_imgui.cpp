@@ -6,6 +6,11 @@
 #include "imgui_impl_opengl3.h"
 #include "render_imgui.h"
 
+#define DISPLAY_SCALE_X 1
+#define DISPLAY_SCALE_Y 1
+#define _X(x)       ((float)(x) / DISPLAY_SCALE_X)
+#define _Y(y)       ((float)(y) / DISPLAY_SCALE_Y)
+
 static int  s_win_w;
 static int  s_win_h;
 
@@ -13,7 +18,6 @@ static ImVec2 s_win_size[10];
 static ImVec2 s_win_pos [10];
 static int    s_win_num = 0;
 static ImVec2 s_mouse_pos;
-
 
 int
 init_imgui (int win_w, int win_h)
@@ -29,7 +33,8 @@ init_imgui (int win_w, int win_h)
     // Setup Platform/Renderer bindings
     ImGui_ImplOpenGL3_Init(NULL);
 
-    io.DisplaySize = ImVec2 ((float)win_w, (float)win_h);
+    io.DisplaySize = ImVec2 (_X(win_w), _Y(win_h));
+    io.DisplayFramebufferScale = {DISPLAY_SCALE_X, DISPLAY_SCALE_Y};
 
     s_win_w = win_w;
     s_win_h = win_h;
@@ -41,7 +46,7 @@ void
 imgui_mousebutton (int button, int state, int x, int y)
 {
     ImGuiIO& io = ImGui::GetIO();
-    io.MousePos = ImVec2((float)x, (float)y);
+    io.MousePos = ImVec2(_X(x), (float)_Y(y));
 
     if (state)
         io.MouseDown[button] = true;
@@ -56,7 +61,7 @@ void
 imgui_mousemove (int x, int y)
 {
     ImGuiIO& io = ImGui::GetIO();
-    io.MousePos = ImVec2((float)x, (float)y);
+    io.MousePos = ImVec2(_X(x), _Y(y));
 
     s_mouse_pos.x = x;
     s_mouse_pos.y = y;
@@ -66,8 +71,8 @@ int
 imgui_is_anywindow_hovered ()
 {
 #if 1
-    int x = s_mouse_pos.x;
-    int y = s_mouse_pos.y;
+    int x = _X(s_mouse_pos.x);
+    int y = _Y(s_mouse_pos.y);
     for (int i = 0; i < s_win_num; i ++)
     {
         int x0 = s_win_pos[i].x;
@@ -75,11 +80,11 @@ imgui_is_anywindow_hovered ()
         int x1 = x0 + s_win_size[i].x;
         int y1 = y0 + s_win_size[i].y;
         if ((x >= x0) && (x < x1) && (y >= y0) && (y < y1))
-            return 1;
+            return true;
     }
-    return 0;
+    return false;
 #else
-    return
+    return ImGui::IsAnyWindowHovered();
 #endif
 }
 
@@ -89,12 +94,13 @@ render_gui (imgui_data_t *imgui_data)
     int win_w = 300;
     int win_h = 220;
     int win_y = 10;
+
     s_win_num = 0;
 
-    ImGui::SetNextWindowPos (ImVec2(s_win_w - win_w - 10, win_y), ImGuiCond_FirstUseEver);
-    ImGui::SetNextWindowSize(ImVec2(win_w,                win_h), ImGuiCond_FirstUseEver);
-
-    ImGui::Begin("config");
+    /* Show main window */
+    ImGui::SetNextWindowPos (ImVec2(_X(s_win_w - win_w - 10), _Y(win_y)), ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(_X(win_w),                _Y(win_h)), ImGuiCond_FirstUseEver);
+    ImGui::Begin("Options");
     {
         ImGui::SliderFloat("depth_scale_x", &imgui_data->pose_scale_x,   0.0f, 1000.0f);
         ImGui::SliderFloat("depth_scale_y", &imgui_data->pose_scale_y,   0.0f, 1000.0f);
@@ -118,7 +124,6 @@ render_gui (imgui_data_t *imgui_data)
 int
 invoke_imgui (imgui_data_t *imgui_data)
 {
-    // Start the Dear ImGui frame
     ImGui_ImplOpenGL3_NewFrame();
     ImGui::NewFrame();
 
