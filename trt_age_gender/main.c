@@ -140,7 +140,7 @@ render_detect_region (int ofstx, int ofsty, int texw, int texh,
     for (int i = 0; i < detection->num; i ++)
     {
 #ifdef show
-        printf("\"%d\":",i+1);
+        printf("\"People\":%d,\"Information\":{\"name\":",i+1);
 #endif
         face_t *face = &(detection->faces[i]);
         float x1 = face->topleft.x  * texw + ofstx;
@@ -157,7 +157,7 @@ render_detect_region (int ofstx, int ofsty, int texw, int texh,
             sprintf (buf, "M:%dyrs", age);
             col_frame = col_blue;
 #ifdef show
-            printf("{Male,%d",age);
+            printf("\"Male\",\"age\":%d",age);
 #endif
         }
         else
@@ -165,11 +165,11 @@ render_detect_region (int ofstx, int ofsty, int texw, int texh,
             sprintf (buf, "F:%dyrs", age);
             col_frame = col_red;
 #ifdef show
-            printf("{Female,%d",age);
+            printf("\"Female\",\"age\":%d",age);
 #endif
         }
 #ifdef show
-        printf(",%.0f,%.0f}",center_x,center_y);
+        printf(",\"center_x\":%.0f,\"center_y\":%.0f}",center_x,center_y);
         if (i < detection->num-1){
             printf(",");
         }
