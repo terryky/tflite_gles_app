@@ -123,6 +123,7 @@ feed_age_gender_image(texture_2d_t *srctex, int win_w, int win_h, face_detect_re
     return;
 }
 
+#define show
 
 static void
 render_detect_region (int ofstx, int ofsty, int texw, int texh, 
@@ -132,28 +133,47 @@ render_detect_region (int ofstx, int ofsty, int texw, int texh,
     float col_blue[]  = {0.0f, 0.0f, 1.0f, 1.0f};
     float col_white[] = {1.0f, 1.0f, 1.0f, 1.0f};
     float *col_frame;
+#ifdef show
+    printf("{");
+#endif
 
     for (int i = 0; i < detection->num; i ++)
     {
+#ifdef show
+        printf("\"%d\":",i+1);
+#endif
         face_t *face = &(detection->faces[i]);
         float x1 = face->topleft.x  * texw + ofstx;
         float y1 = face->topleft.y  * texh + ofsty;
         float x2 = face->btmright.x * texw + ofstx;
         float y2 = face->btmright.y * texh + ofsty;
+        float center_x = x1+ (x2-x1)/2;
+        float center_y = y1+ (y2-y1)/2;
         char buf[512];
-
         age_gender_result_t *age_gender = &age_genders[i];
         int age = age_gender->age.age;
         if (age_gender->gender.score_m > age_gender->gender.score_f)
         {
             sprintf (buf, "M:%dyrs", age);
             col_frame = col_blue;
+#ifdef show
+            printf("{Male,%d",age);
+#endif
         }
         else
         {
             sprintf (buf, "F:%dyrs", age);
             col_frame = col_red;
+#ifdef show
+            printf("{Female,%d",age);
+#endif
         }
+#ifdef show
+        printf(",%.0f,%.0f}",center_x,center_y);
+        if (i < detection->num-1){
+            printf(",");
+        }
+#endif
         float str_scale = 1.0f;
         draw_dbgstr_ex (buf, x1, y1-22 * str_scale, str_scale, col_white, col_frame);
 
@@ -179,6 +199,7 @@ render_detect_region (int ofstx, int ofsty, int texw, int texh,
         }
 #endif
     }
+    printf("}\n");
 }
 
 
