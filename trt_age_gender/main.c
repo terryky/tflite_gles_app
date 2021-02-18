@@ -218,10 +218,46 @@ render_detect_region (int ofstx, int ofsty, int texw, int texh,
 #endif
     }
 #ifdef show
+    printf("{\"People\":[");
     for (int i = 0; i < detection->num; i ++){
-        printf("{\"People\":%d,\"name\":\"%c\",\"age\":%d,\"center_x\":%d,\"center_y\":%d}\n",
-                num_label[i],sex_label[i],age_label[i],center_x_label[i],center_y_label[i]);
+        printf("%d",num_label[i]);
+        if(i < detection->num -1){
+            printf(",");
+        }
     }
+    printf("],\"sex\":[");
+    for (int i = 0; i < detection->num; i ++){
+        printf("\"%c\"",sex_label[i]);
+        if(i < detection->num -1){
+            printf(",");
+        }
+    }
+    printf("],\"age\":[");
+    for (int i = 0; i < detection->num; i ++){
+        printf("%d",age_label[i]);
+        if(i < detection->num -1){
+            printf(",");
+        }
+    }
+    printf("],\"center_x_label\":[");
+    for (int i = 0; i < detection->num; i ++){
+        printf("%d",center_x_label[i]);
+        if(i < detection->num -1){
+            printf(",");
+        }
+    }
+    printf("],\"center_y_label\":[");
+    for (int i = 0; i < detection->num; i ++){
+        printf("%d",center_y_label[i]);
+        if(i < detection->num -1){
+            printf(",");
+        }
+    }
+    printf("]}\n");
+   /* for (int i = 0; i < detection->num; i ++){
+        printf("{\"People\":%d,\"sex\":\"%c\",\"age\":%d,\"center_x\":%d,\"center_y\":%d}\n",
+                num_label[i],sex_label[i],age_label[i],center_x_label[i],center_y_label[i]);
+    }*/
 #endif
 }
 
