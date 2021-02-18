@@ -20,7 +20,13 @@
 
 #define UNUSED(x) (void)(x)
 
-
+struct people{
+    int num;    
+    char sex[1];
+    int age; 
+    int center_x;
+    int center_y;
+};
 
 
 
@@ -133,15 +139,19 @@ render_detect_region (int ofstx, int ofsty, int texw, int texh,
     float col_blue[]  = {0.0f, 0.0f, 1.0f, 1.0f};
     float col_white[] = {1.0f, 1.0f, 1.0f, 1.0f};
     float *col_frame;
-#ifdef show
-    printf("{");
-#endif
 
+#ifdef show
+    int num_label[detection->num];
+    char sex_label[detection->num];
+    int age_label[detection->num];
+    int center_x_label[detection->num];
+    int center_y_label[detection->num];
+    
+#endif
     for (int i = 0; i < detection->num; i ++)
     {
-#ifdef show
-        printf("\"People\":%d,\"Information\":{\"name\":",i+1);
-#endif
+
+
         face_t *face = &(detection->faces[i]);
         float x1 = face->topleft.x  * texw + ofstx;
         float y1 = face->topleft.y  * texh + ofsty;
@@ -152,12 +162,15 @@ render_detect_region (int ofstx, int ofsty, int texw, int texh,
         char buf[512];
         age_gender_result_t *age_gender = &age_genders[i];
         int age = age_gender->age.age;
+
+        struct people person = {i,{'N'},age,center_x,center_y};
+
         if (age_gender->gender.score_m > age_gender->gender.score_f)
         {
             sprintf (buf, "M:%dyrs", age);
             col_frame = col_blue;
 #ifdef show
-            printf("\"Male\",\"age\":%d",age);
+            *person.sex = 'M';
 #endif
         }
         else
@@ -165,15 +178,20 @@ render_detect_region (int ofstx, int ofsty, int texw, int texh,
             sprintf (buf, "F:%dyrs", age);
             col_frame = col_red;
 #ifdef show
-            printf("\"Female\",\"age\":%d",age);
+            *person.sex = 'F';
 #endif
         }
+
 #ifdef show
-        printf(",\"center_x\":%.0f,\"center_y\":%.0f}",center_x,center_y);
-        if (i < detection->num-1){
-            printf(",");
-        }
+        num_label[i] = person.num + 1;
+        sex_label[i] = *person.sex;
+        age_label[i] = person.age;
+        center_x_label[i] = person.center_x;
+        center_y_label[i] = person.center_y;
+        //printf("%d,",i);
+        //printf("%c\n",sex_label[i]);
 #endif
+
         float str_scale = 1.0f;
         draw_dbgstr_ex (buf, x1, y1-22 * str_scale, str_scale, col_white, col_frame);
 
@@ -199,7 +217,12 @@ render_detect_region (int ofstx, int ofsty, int texw, int texh,
         }
 #endif
     }
-    printf("}\n");
+#ifdef show
+    for (int i = 0; i < detection->num; i ++){
+        printf("{\"People\":%d,\"name\":\"%c\",\"age\":%d,\"center_x\":%d,\"center_y\":%d}\n",
+                num_label[i],sex_label[i],age_label[i],center_x_label[i],center_y_label[i]);
+    }
+#endif
 }
 
 
