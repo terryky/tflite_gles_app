@@ -20,6 +20,10 @@
 struct Display s_display;
 struct Window  s_window;
 
+static void (*s_motion_func)(int x, int y) = NULL;
+static void (*s_button_func)(int button, int state, int x, int y) = NULL;
+static void (*s_key_func)(int key, int state, int x, int y) = NULL;
+
 static void
 handle_ping(void *data, struct wl_shell_surface *wlShellSurface,
         uint32_t serial)
@@ -104,12 +108,12 @@ pointer_handle_enter(void *data, struct wl_pointer *pointer,
                      uint32_t serial, struct wl_surface *surface,
                      wl_fixed_t sx, wl_fixed_t sy)
 {
-    UNUSED (data);
     UNUSED (pointer);
     UNUSED (serial);
     UNUSED (surface);
-    UNUSED (sx);
-    UNUSED (sy);
+    struct Display *dpy = (struct Display *)data;
+    dpy->cur_pointer_x = (sx >> 8);
+    dpy->cur_pointer_y = (sx >> 8);
 }
 
 static void
@@ -126,9 +130,15 @@ static void
 pointer_handle_motion(void *data, struct wl_pointer *pointer,
                       uint32_t time, wl_fixed_t sx_w, wl_fixed_t sy_w)
 {
-    UNUSED (data);
     UNUSED (pointer);
     UNUSED (time);
+    struct Display *dpy = (struct Display *)data;
+    dpy->cur_pointer_x = (sx_w >> 8);
+    dpy->cur_pointer_y = (sy_w >> 8);
+    if (s_motion_func)
+    {
+        s_motion_func (dpy->cur_pointer_x, dpy->cur_pointer_y);
+    }
 }
 
 static void
@@ -136,18 +146,15 @@ pointer_handle_button(void *data, struct wl_pointer *wl_pointer,
                       uint32_t serial, uint32_t time, uint32_t button,
                       uint32_t state)
 {
-    UNUSED (data);
     UNUSED (wl_pointer);
     UNUSED (serial);
     UNUSED (time);
     UNUSED (button);
-    UNUSED (state);
-#if 0
-    if (buttonCB) {
-        buttonCB((button == BTN_LEFT) ? 1 : 0,
-            (state == WL_POINTER_BUTTON_STATE_PRESSED) ? 1 : 0);
+    struct Display *dpy = (struct Display *)data;
+    if (s_button_func)
+    {
+        s_button_func (0 /*button*/, state, dpy->cur_pointer_x, dpy->cur_pointer_y);
     }
-#endif
 }
 
 static void
@@ -480,7 +487,8 @@ winsys_init_native_window (void *dpy, int win_w, int win_h)
 int 
 winsys_swap()
 {
-  return 0;
+    wl_display_dispatch(s_display.wlDisplay);
+    return 0;
 }
 
 void *
@@ -488,4 +496,24 @@ winsys_create_native_pixmap (int width, int height)
 {
   return NULL;
 }
+
+
+
+
+void egl_set_motion_func (void (*func)(int x, int y))
+{
+    s_motion_func = func;
+}
+
+void egl_set_button_func (void (*func)(int button, int state, int x, int y))
+{
+    s_button_func = func;
+}
+
+void egl_set_key_func (void (*func)(int key, int state, int x, int y))
+{
+    s_key_func = func;
+}
+
+
 
