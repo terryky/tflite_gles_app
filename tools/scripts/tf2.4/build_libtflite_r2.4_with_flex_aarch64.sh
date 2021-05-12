@@ -43,7 +43,7 @@ echo "----------------------------------------------------"
 bazel build -s -c opt --config=elinux_aarch64 --define=tflite_convert_with_select_tf_ops=true //tensorflow/lite:libtensorflowlite.so 2>&1 | tee -a log_build_libtflite_bazel.txt
 
 # build GPU Delegate library (libdelegate.so)
-bazel build -s -c opt --config=elinux_aarch64 --copt="-DMESA_EGL_NO_X11_HEADERS" tensorflow/lite/delegates/gpu:libtensorflowlite_gpu_delegate.so 2>&1 | tee -a log_build_delegate.txt
+bazel build -s -c opt --config=elinux_aarch64 --copt="-DMESA_EGL_NO_X11_HEADERS" --copt="-DEGL_NO_X11" tensorflow/lite/delegates/gpu:libtensorflowlite_gpu_delegate.so 2>&1 | tee -a log_build_delegate.txt
 
 
 echo "----------------------------------------------------"
@@ -51,7 +51,7 @@ echo " build success."
 echo "----------------------------------------------------"
 
 cd ${TENSORFLOW_DIR}
-ls -l tensorflow/lite/tools/make/gen/linux_aarch64/lib/
+#ls -l tensorflow/lite/tools/make/gen/linux_aarch64/lib/
 ls -l bazel-bin/tensorflow/lite/
 ls -l bazel-bin/tensorflow/lite/delegates/gpu/
 
