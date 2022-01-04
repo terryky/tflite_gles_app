@@ -1,0 +1,124 @@
+name: TFLite-2.7
+
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - name: check envirionment
+        run: |
+          env
+          cmake --version
+          bazel --version
+          pip3 install numpy
+          sudo apt install libgles2-mesa-dev
+          sudo apt install libdrm-dev
+
+
+      # -------------------------------------------------------
+      #   build Tensorflow-lite library.
+      # -------------------------------------------------------
+      - name: Checkout Tensorflow
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+          repository: tensorflow/tensorflow
+          ref: r2.7
+          path: tensorflow
+
+      - name: Configure Tensorflow
+        run: |
+          cd $GITHUB_WORKSPACE/tensorflow
+          git branch
+          export PYTHON_BIN_PATH=/usr/bin/python3
+          export USE_DEFAULT_PYTHON_LIB_PATH=1
+          export TF_NEED_ROCM=false
+          export TF_NEED_CUDA=false
+          export TF_DOWNLOAD_CLANG=false
+          export TF_SET_ANDROID_WORKSPACE=false
+          export CC_OPT_FLAGS=-Wno-sign-compare
+          ./configure
+
+      - name: Build libtensorflowlite.so
+        run: |
+          cd $GITHUB_WORKSPACE/tensorflow
+          bazel build -s -c opt //tensorflow/lite:libtensorflowlite.so
+
+      - name: Build libtensorflowlite_gpu_delegate.so
+        run: |
+          cd $GITHUB_WORKSPACE/tensorflow
+          bazel build -s -c opt --copt="-DMESA_EGL_NO_X11_HEADERS" --copt="-DEGL_NO_X11" tensorflow/lite/delegates/gpu:libtensorflowlite_gpu_delegate.so
+
+      - name: Check Build products
+        run: |
+          cd $GITHUB_WORKSPACE/tensorflow
+          ls -l bazel-bin/tensorflow/lite/
+          ls -l bazel-bin/tensorflow/lite/delegates/gpu/
+
+      - name: Copy libralies
+        run: |
+          cd $GITHUB_WORKSPACE/tensorflow
+          mkdir $GITHUB_WORKSPACE/lib
+          cp bazel-bin/tensorflow/lite/libtensorflowlite.so $GITHUB_WORKSPACE/lib/
+          cp bazel-bin/tensorflow/lite/delegates/gpu/libtensorflowlite_gpu_delegate.so $GITHUB_WORKSPACE/lib/
+          ls -l $GITHUB_WORKSPACE/lib
+
+
+      # -------------------------------------------------------
+      #   download all the build dependencies for tflite-app.
+      # -------------------------------------------------------
+      - name: Download all the build dependencies for tflite-app.
+        run: |
+          cd $GITHUB_WORKSPACE/tensorflow
+          mkdir external
+          cd external
+          cmake ../tensorflow/lite -DCMAKE_FIND_DEBUG_MODE=1
+
+
+      # -------------------------------------------------------
+      #   link include/library path for compatibility.
+      #     $HOME/lib              <-- $GITHUB_WORKSPACE/lib
+      #     $HOME/work/tensorflow  <-- $GITHUB_WORKSPACE/tensorflow
+      # -------------------------------------------------------
+      - name: Link include/library path
+        run: |
+         cd $HOME
+         ln -s $GITHUB_WORKSPACE/lib .
+         mkdir -p work
+         cd work
+         ln -s $GITHUB_WORKSPACE/tensorflow .
+         ls -lF $HOME
+         ls -lF $HOME/work
+
+
+      # -------------------------------------------------------
+      #   build applications.
+      # -------------------------------------------------------
+      - name: Checkout tflite_gles_app
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+          repository: terryky/tflite_gles_app
+          path: tflite_gles_app
+
+      - name: Build applications
+        run: |
+          cd $GITHUB_WORKSPACE/tflite_gles_app
+          make -j
