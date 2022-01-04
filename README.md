@@ -1,4 +1,6 @@
 # GPU accelerated TensorFlow Lite / TensorRT applications.
+[![TFLite-2.7](https://github.com/terryky/tflite_gles_app/actions/workflows/build_tflite_2.7.yml/badge.svg)](https://github.com/terryky/tflite_gles_app/actions/workflows/build_tflite_2.7.yml)
+
 This repository contains several applications which invoke DNN inference with **TensorFlow Lite GPU Delegate** or **TensorRT**.
 
 Target platform: Linux PC / NVIDIA Jetson / RaspberryPi.
