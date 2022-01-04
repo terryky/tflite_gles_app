@@ -61,6 +61,7 @@ INCLUDES += -I$(TENSORFLOW_DIR)/tensorflow/lite/tools/make/downloads/flatbuffers
 INCLUDES += -I$(TENSORFLOW_DIR)/tensorflow/lite/tools/make/downloads/absl
 INCLUDES += -I$(TENSORFLOW_DIR)/tensorflow/lite/tools/make/downloads/eigen
 INCLUDES += -I$(TENSORFLOW_DIR)/external/flatbuffers/include
+INCLUDES += -I$(TENSORFLOW_DIR)/external/eigen
 INCLUDES += -I$(TENSORFLOW_DIR)/external/com_google_absl
 
 LDFLAGS  += -Wl,--allow-multiple-definition

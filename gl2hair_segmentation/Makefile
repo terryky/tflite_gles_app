@@ -66,6 +66,8 @@ INCLUDES += -I$(TENSORFLOW_DIR)/tensorflow/lite/tools/make/downloads/absl
 INCLUDES += -I$(TENSORFLOW_DIR)/tensorflow/lite/tools/make/downloads/gemmlowp
 INCLUDES += -I$(TENSORFLOW_DIR)/tensorflow/lite/tools/make/downloads/neon_2_sse
 INCLUDES += -I$(TENSORFLOW_DIR)/external/flatbuffers/include
+INCLUDES += -I$(TENSORFLOW_DIR)/external/gemmlowp
+INCLUDES += -I$(TENSORFLOW_DIR)/external/neon2sse
 INCLUDES += -I$(TENSORFLOW_DIR)/external/com_google_absl
 
 CXXFLAGS += -fpermissive
